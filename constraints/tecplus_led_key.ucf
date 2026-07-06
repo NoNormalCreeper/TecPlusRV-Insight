@@ -4,6 +4,8 @@
 
 NET "clk"    LOC = "T8"  | IOSTANDARD = "LVCMOS33";
 NET "reset"  LOC = "L3"  | IOSTANDARD = "LVCMOS33";
+NET "clk" TNM_NET = "clk_grp";
+TIMESPEC "TS_clk_grp" = PERIOD "clk_grp" 20 ns HIGH 50%;
 
 NET "led[0]" LOC = "M14" | IOSTANDARD = "LVCMOS33";
 NET "led[1]" LOC = "M13" | IOSTANDARD = "LVCMOS33";

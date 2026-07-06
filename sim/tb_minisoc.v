@@ -70,13 +70,13 @@ always @(posedge clk) begin
             $finish;
         end else begin
             $display("FAIL: test_exit=0x%08x，周期数=%0d", exit_code, cycle_count);
-            $finish_and_return(1);
+            $finish;
         end
     end
 
     if (cycle_count > 200000) begin
         $display("TIMEOUT: 没有到达 test_exit");
-        $finish_and_return(1);
+        $finish;
     end
 end
 

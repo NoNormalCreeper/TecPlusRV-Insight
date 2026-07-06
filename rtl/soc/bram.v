@@ -1,5 +1,6 @@
 module bram #(
     parameter integer ADDR_WIDTH = 11,
+    parameter integer USE_INIT_FILE = 0,
     parameter INIT_FILE = ""
 ) (
     input              clk,
@@ -14,7 +15,7 @@ reg [31:0] mem [0:(1 << ADDR_WIDTH) - 1];
 integer i;
 
 initial begin
-    if (INIT_FILE != "") begin
+    if (USE_INIT_FILE != 0) begin
         // 主要服务于早期仿真和上板准备；综合后的行为仍要在 ISE 流程中复核。
         $readmemh(INIT_FILE, mem);
     end else begin

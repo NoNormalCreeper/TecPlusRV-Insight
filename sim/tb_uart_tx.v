@@ -57,26 +57,26 @@ initial begin
     #(BIT_CLKS * 10 / 2);
     if (txd !== 1'b0) begin
         $display("FAIL: 没有观察到起始位");
-        $finish_and_return(1);
+        $finish;
     end
 
     sample_bit(sampled);
     if (sampled !== 1'b1) begin
         $display("FAIL: bit0 期望为 1");
-        $finish_and_return(1);
+        $finish;
     end
 
     sample_bit(sampled);
     if (sampled !== 1'b0) begin
         $display("FAIL: bit1 期望为 0");
-        $finish_and_return(1);
+        $finish;
     end
 
     wait (ready === 1'b1);
     #20;
     if (txd !== 1'b1) begin
         $display("FAIL: 停止位/空闲电平应为高");
-        $finish_and_return(1);
+        $finish;
     end
 
     $display("PASS: uart_tx 一帧发送完成");

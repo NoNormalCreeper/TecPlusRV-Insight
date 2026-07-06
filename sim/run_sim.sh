@@ -18,12 +18,24 @@ need_tool vvp
 
 mkdir -p "$BUILD_DIR"
 
+run_and_check() {
+    local out_file="$1"
+    shift
+
+    "$@" >"$out_file" 2>&1
+    cat "$out_file"
+
+    if grep -Eq '(^|[[:space:]])(FAIL|TIMEOUT):' "$out_file"; then
+        return 1
+    fi
+}
+
 case "$SIM_KIND" in
     uart_tx)
         iverilog -g2001 -o "$BUILD_DIR/tb_uart_tx.out" \
             "$REPO_ROOT/sim/tb_uart_tx.v" \
             "$REPO_ROOT/rtl/periph/uart_tx.v"
-        vvp "$BUILD_DIR/tb_uart_tx.out"
+        run_and_check "$BUILD_DIR/tb_uart_tx.log" vvp "$BUILD_DIR/tb_uart_tx.out"
         ;;
     minisoc)
         if [ -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
@@ -34,7 +46,7 @@ case "$SIM_KIND" in
             iverilog -g2001 -o "$BUILD_DIR/tb_minisoc.out" \
                 "$REPO_ROOT/sim/tb_minisoc.v"
         fi
-        vvp "$BUILD_DIR/tb_minisoc.out"
+        run_and_check "$BUILD_DIR/tb_minisoc.log" vvp "$BUILD_DIR/tb_minisoc.out"
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
