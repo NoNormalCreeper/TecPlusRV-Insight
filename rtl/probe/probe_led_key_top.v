@@ -13,16 +13,19 @@ reg [3:0]  key_prev;
 reg        speed_fast;
 reg        fixed_mode;
 
+wire rst;
 wire key1_pressed;
 wire key2_pressed;
 wire [25:0] tick_limit;
 
+// 核心板 RESET 实测为低有效，top 内部统一转换为高有效 rst。
+assign rst = !reset;
 assign key1_pressed = key_prev[0] && !key[0];
 assign key2_pressed = key_prev[1] && !key[1];
 assign tick_limit = speed_fast ? FAST_TICKS : SLOW_TICKS;
 
 always @(posedge clk) begin
-    if (reset) begin
+    if (rst) begin
         tick_count <= 26'd0;
         key_prev <= 4'b1111;
         speed_fast <= 1'b0;

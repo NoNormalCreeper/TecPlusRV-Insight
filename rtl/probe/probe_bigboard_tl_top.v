@@ -8,9 +8,13 @@ module probe_bigboard_tl_top #(
 );
 
 reg [24:0] tick_count;
+wire rst;
+
+// 核心板 RESET 实测为低有效，top 内部统一转换为高有效 rst。
+assign rst = !reset;
 
 always @(posedge clk) begin
-    if (reset) begin
+    if (rst) begin
         tick_count <= 25'd0;
         tl <= 12'b0000_0000_0001;
         led <= 4'b0001;

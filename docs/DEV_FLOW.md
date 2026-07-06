@@ -339,7 +339,7 @@ ISE 不关心的通常是：
 
 - `.ucf`
 - top 端口名
-- `reset` 极性
+- `reset` 极性（当前核心板按低有效处理）
 - 时钟路径
 - `timing`
 - SDRAM / 大板连线
@@ -583,7 +583,7 @@ scripts/build_firmware.sh
 目的：
 
 - 确认时钟进了 FPGA
-- 确认 `reset` 极性理解正确
+- 确认 `RESET` 低有效极性理解正确
 - 确认最基本的输入输出链路活着
 
 ### 顺序 2：资源和系统前置风险
@@ -630,7 +630,7 @@ scripts/build_firmware.sh
 - `TXD` 管脚
 - 串口参数 `9600 8N1`
 - 终端端口号
-- `reset` 是否一直有效
+- `reset` 是否因为低有效理解错误而一直有效
 
 ### 情况 3：本地 `MiniSoC` 过了，但板上不工作
 

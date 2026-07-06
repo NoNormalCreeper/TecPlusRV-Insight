@@ -19,14 +19,17 @@ wire [15:0] dq_out;
 wire [15:0] dq_in;
 wire        done_pass;
 wire        done_fail;
+wire        rst;
 
 assign sh_clk = clk;
 assign dq_in = sh_db;
 assign sh_db = dq_oe ? dq_out : 16'hzzzz;
+// 核心板 RESET 实测为低有效，top 内部统一转换为高有效 rst。
+assign rst = !reset;
 
 sdram_smoke_ctrl ctrl (
     .clk(clk),
-    .reset(reset),
+    .reset(rst),
     .dq_in(dq_in),
     .dq_oe(dq_oe),
     .dq_out(dq_out),

@@ -29,7 +29,7 @@ endtask
 
 initial begin
     clk = 1'b0;
-    reset = 1'b1;
+    reset = 1'b0;
     key = 4'b1111;
 
     $dumpfile("sim/build/tb_probe_led_key_top.vcd");
@@ -41,7 +41,7 @@ initial begin
         $finish;
     end
 
-    reset = 1'b0;
+    reset = 1'b1;
 
     @(negedge clk);
     dut.tick_count = 26'd24_999_999;

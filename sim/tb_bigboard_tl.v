@@ -21,13 +21,13 @@ always #5 clk = ~clk;
 
 initial begin
     clk = 1'b0;
-    reset = 1'b1;
+    reset = 1'b0;
 
     $dumpfile("sim/build/tb_bigboard_tl.vcd");
     $dumpvars(0, tb_bigboard_tl);
 
     #25;
-    reset = 1'b0;
+    reset = 1'b1;
 
     @(posedge clk);
     if (tl !== 12'b0000_0000_0001) begin

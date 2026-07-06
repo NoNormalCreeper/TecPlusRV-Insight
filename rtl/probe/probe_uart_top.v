@@ -14,7 +14,11 @@ reg        send_active;
 reg        tx_valid;
 reg [7:0]  tx_data;
 
+wire rst;
 wire tx_ready;
+
+// 核心板 RESET 实测为低有效，top 内部统一转换为高有效 rst。
+assign rst = !reset;
 
 function [7:0] message_byte;
     input [4:0] index;
