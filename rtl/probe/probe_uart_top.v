@@ -50,7 +50,7 @@ uart_tx #(
     .BAUD(9600)
 ) u_uart_tx (
     .clk(clk),
-    .reset(reset),
+    .reset(rst),
     .valid(tx_valid),
     .data_in(tx_data),
     .ready(tx_ready),
@@ -58,16 +58,23 @@ uart_tx #(
 );
 
 always @(posedge clk) begin
-    if (reset) begin
+    if (rst) begin
         gap_count <= 26'd0;
         msg_index <= 5'd0;
         send_active <= 1'b0;
         tx_valid <= 1'b0;
         tx_data <= 8'd0;
     end else begin
-        tx_valid <= 1'b0;
+        if (tx_valid && tx_ready) begin
+            tx_valid <= 1'b0;
 
-        if (!send_active) begin
+            if (msg_index == MSG_LEN - 1) begin
+                send_active <= 1'b0;
+                msg_index <= 5'd0;
+            end else begin
+                msg_index <= msg_index + 5'd1;
+            end
+        end else if (!send_active) begin
             // 留出消息间隔，方便实验室串口观察。
             if (gap_count == GAP_TICKS - 1) begin
                 gap_count <= 26'd0;
@@ -76,16 +83,9 @@ always @(posedge clk) begin
             end else begin
                 gap_count <= gap_count + 26'd1;
             end
-        end else if (tx_ready) begin
+        end else if (!tx_valid) begin
             tx_data <= message_byte(msg_index);
             tx_valid <= 1'b1;
-
-            if (msg_index == MSG_LEN - 1) begin
-                send_active <= 1'b0;
-                msg_index <= 5'd0;
-            end else begin
-                msg_index <= msg_index + 5'd1;
-            end
         end
     end
 end
