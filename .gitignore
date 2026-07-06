@@ -1,0 +1,6 @@
+firmware/build/
+sim/build/
+*.vcd
+*.lst
+*.log
+

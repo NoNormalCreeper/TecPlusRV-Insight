@@ -1,0 +1,16 @@
+# TEC-PLUS LED/KEY 探针约束草案。
+# 如果实验室现象异常，请先核对真实教学板卡和 UCF，
+# 不要直接认定 RTL 有问题。
+
+NET "clk"    LOC = "T8"  | IOSTANDARD = "LVCMOS33";
+NET "reset"  LOC = "L3"  | IOSTANDARD = "LVCMOS33";
+
+NET "led[0]" LOC = "M14" | IOSTANDARD = "LVCMOS33";
+NET "led[1]" LOC = "M13" | IOSTANDARD = "LVCMOS33";
+NET "led[2]" LOC = "L13" | IOSTANDARD = "LVCMOS33";
+NET "led[3]" LOC = "L12" | IOSTANDARD = "LVCMOS33";
+
+NET "key[0]" LOC = "T13" | IOSTANDARD = "LVCMOS33";
+NET "key[1]" LOC = "R12" | IOSTANDARD = "LVCMOS33";
+NET "key[2]" LOC = "T12" | IOSTANDARD = "LVCMOS33";
+NET "key[3]" LOC = "P11" | IOSTANDARD = "LVCMOS33";
