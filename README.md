@@ -33,6 +33,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 
 - 项目目标与边界：`docs/PROJECT_SPEC.md`
 - 探针说明：`docs/PROBES.md`
+- 开发与验证流程：`docs/DEV_FLOW.md`
 
 ## 最简单环境配置教程
 
