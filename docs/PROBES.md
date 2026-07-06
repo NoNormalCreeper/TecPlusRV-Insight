@@ -1,142 +1,418 @@
 # 探针测试说明
 
-本文档描述第一批 bring-up 探针。它们的角色是尽早暴露平台风险，不是项目亮点本身。
+本文档描述 TecPlusRV 第一阶段的 bring-up 探针。这里的“探针”不是项目最终功能，而是最早期风险排查手段，用来快速回答几个问题：
 
-## 探针 0：LED / KEY / RESET / CLK
+- 板卡时钟是不是正常
+- `reset` / `KEY` / `LED` / `UART` 的板级链路是不是通的
+- 当前 UCF 假设和实验室实际板卡是不是一致
+- 在继续做 CPU / bus / BRAM / MiniSoC 之前，本地和板级最小闭环是不是已经成立
+
+## 当前 Probe 状态总览
+
+| Probe | 名称 | 当前状态 | 当前仓库是否已给出可用文件 |
+| --- | --- | --- | --- |
+| Probe 0 | `LED / KEY / RESET / CLK` | 已实现 | 是 |
+| Probe 1 | `UART TX` | 已实现 | 是 |
+| Probe 2 | `PicoRV32 Minimal synthesis probe` | 已定义流程 | 部分 |
+| Probe 3 | `MiniSoC simulation probe` | 已实现 | 是 |
+| Probe 4a | `SDRAM smoke probe` | 已实现 | 是 |
+| Probe 4 | `SDRAM standalone tester` | 计划中，full 版未实现 | 否 |
+| Probe 5a | `bigboard traffic-light thin probe` | 已实现 | 是 |
+| Probe 5 | `显示 / 大板外设探针` | 计划中，full 版未实现 | 否 |
+
+这里要特别说明三点：
+
+- `Probe 4a` 和 `Probe 5a` 是 thin probe，目标是提早排雷，不是假装 full 功能已经完成。
+- `Probe 4` 和 `Probe 5` 的 full 版现在仍然没有对应 RTL 顶层，不是漏做，而是当前任务边界故意停在“基础框架 + 探针测试”。
+- 任务说明明确要求不要伪造 `SDRAM controller`。因此当前版本只实现了脚本式 `Probe 4a`，不假装已经完成 `Probe 4`。
+
+## 先做什么，不要先做什么
+
+如果你第一次把这个仓库带去实验室，建议顺序固定为：
+
+1. `Probe 0`
+2. `Probe 1`
+3. `Probe 2`
+4. `Probe 3` 对照本地结果做联调
+5. `Probe 4a`
+6. `Probe 5a`
+
+不建议的顺序：
+
+- 不要在 `Probe 0` 没过时去调 `UART`
+- 不要在 `Probe 1` 没过时去调完整 `MiniSoC`
+- 不要在 `LED` / `UART` 都还不稳定时就去怀疑 PicoRV32、bus、BRAM 初始化或 `memory map`
+
+原因很简单：如果最基础的板级输入输出都还没确认，后面出现任何 SoC 级故障时，你会失去最基本的定位手段。
+
+## Probe 0：LED / KEY / RESET / CLK
 
 ### 目标
 
-确认 TEC-PLUS 的时钟、复位、LED、按键链路可用，并初步验证 UCF 引脚映射是否合理。
+确认 TEC-PLUS 上与最小交互相关的板级链路已经打通：
 
-### RTL 与约束
+- `CLK`
+- `RESET`
+- `KEY[3:0]`
+- `LED[3:0]`
+
+### 对应文件
 
 - 顶层：`rtl/probe/probe_led_key_top.v`
 - 约束：`constraints/tecplus_led_key.ucf`
 
-### 输入输出
+### 接口说明
 
-- 输入：`clk`、`reset`、`key[3:0]`
+- 输入：`clk`
+- 输入：`reset`
+- 输入：`key[3:0]`
 - 输出：`led[3:0]`
 
-### 预期现象
+### 设计行为
 
-- 复位有效时，LED 全灭
-- 复位释放后，LED 跑马灯
-- 按下 `KEY1` 可切换跑马灯速度
-- 按下 `KEY2` 可切换到固定显示模式
+- `reset` 有效时，`led[3:0]` 全灭
+- `reset` 释放后，LED 进入跑马灯
+- `KEY1` 改变跑马灯速度
+- `KEY2` 切换固定显示模式
+- 默认按 `50MHz` 时钟假设设计
 
-### 实验室操作步骤
+### 你在实验室里应该怎么做
 
-1. 在 ISE 中创建 Spartan-6 XC6SLX9-2FTG256 工程。
-2. 加入 `probe_led_key_top.v` 和 `tecplus_led_key.ucf`。
-3. 完成综合、布局布线并生成 bitstream。
-4. 通过 JTAG 下载到板卡。
-5. 观察 LED 空闲状态、reset 响应和按键响应。
+1. 打开 ISE 14.7，新建工程。
+2. 器件选择 `Spartan-6 XC6SLX9-2FTG256`。
+3. 把 `rtl/probe/probe_led_key_top.v` 加入工程。
+4. 把 `constraints/tecplus_led_key.ucf` 设为约束文件。
+5. 运行 `Synthesize`、`Implement Design`、`Generate Programming File`。
+6. 用下载器把生成的 bitstream 下载到板卡。
+7. 上电后先不要按键，先观察 LED 是否在 `reset` 释放后开始跑马灯。
+8. 按 `KEY1`，观察跑马灯速度是否变化。
+9. 按 `KEY2`，观察是否切到固定显示模式。
+10. 再次触发 `reset`，确认 LED 会全灭并重新开始。
 
-### 失败排查方向
+### 成功标准
 
-- UCF 管脚绑定错误
-- 复位极性和实际板卡不一致
-- key 极性或消抖假设不成立
-- 50MHz 板载时钟未正常进入
-- 实验室使用的约束文件和当前仓库版本不一致
+- 下载后板卡有稳定、可重复的 LED 现象
+- `KEY1` 和 `KEY2` 的作用能明显区分
+- `reset` 行为稳定，不是偶发有效
 
-## 探针 1：UART TX
+### 如果失败，先查什么
+
+- `clk` 管脚是否绑对
+- `reset` 极性是否和实际板卡一致
+- `KEY` 是否为低有效，而你在 UCF 或 RTL 假设成了高有效
+- `LED` 管脚顺序是否和文档一致
+- 实验室板卡版本是否和当前仓库参考文档一致
+
+### 这一步的意义
+
+这一步通过后，你至少知道三件事：
+
+- FPGA 时钟进来了
+- bitstream 可以正常下载并运行
+- 你对最基本的 `input/output` 管脚理解大概率没有严重偏差
+
+## Probe 1：UART TX
 
 ### 目标
 
-确认 CP2102 串口输出、UART TX 管脚映射和终端波特率设置正常。
+确认串口发送链路已经打通：
 
-### RTL 与约束
+- FPGA 内部 `uart_tx.v` 工作正常
+- `UART TXD` UCF 约束没有明显错误
+- 主机侧串口工具参数设置正确
+- 板上串口桥链路可用
+
+### 对应文件
 
 - 顶层：`rtl/probe/probe_uart_top.v`
 - 约束：`constraints/tecplus_uart.ucf`
-- 外设：`rtl/periph/uart_tx.v`
+- 发送器：`rtl/periph/uart_tx.v`
 
-### 输入输出
+### 接口说明
 
-- 输入：`clk`、`reset`
+- 输入：`clk`
+- 输入：`reset`
 - 输出：`uart_txd`
 - 预留输入：`uart_rxd`
 
-### 预期现象
+### 设计行为
 
-- 复位释放后，周期性发送 `Hello TecPlusRV\r\n`
-- 当前版本不要求 RX 或 echo
+- `reset` 释放后，周期性发送 `Hello TecPlusRV\r\n`
+- 当前只保证 `TX`
+- `RX` 这次只是预留，不做 `echo`
 
-### 实验室操作步骤
+### 你在实验室里应该怎么做
 
-1. 在 ISE 中使用 `probe_uart_top.v` 和 `tecplus_uart.ucf` 建工程。
-2. 下载到板卡。
-3. 在主机上打开 CP2102 对应串口。
-4. 设置 `9600 8N1`。
-5. 观察周期性串口输出。
+1. 在 ISE 里新建或切换到独立工程。
+2. 加入 `rtl/probe/probe_uart_top.v` 和 `rtl/periph/uart_tx.v`。
+3. 加入 `constraints/tecplus_uart.ucf`。
+4. 重新生成 bitstream 并下载到板卡。
+5. 用主机打开板载串口对应的终端程序。
+6. 串口参数设为 `9600 8N1`，并关闭奇偶校验和流控。
+7. 按一次 `reset`，从串口终端开始观察输出。
+8. 如果终端持续收到 `Hello TecPlusRV`，说明 `Probe 1` 基本通过。
 
-### 失败排查方向
+### 成功标准
 
-- TXD / RXD 接反
-- 波特率假设不对
-- 串口终端 COM 口或帧格式设置错误
-- 复位一直处于有效状态
-- 板卡连线或 UCF 和当前版本不一致
+- 串口终端能重复看到完整字符串
+- 不是乱码，不是偶发一两个字符
+- 重置后现象可重复
 
-## 探针 2：PicoRV32 Minimal 综合探针
+### 如果失败，先查什么
 
-### 目标
+- `TXD` 管脚是否正确
+- 串口工具是不是接到了正确的端口
+- 波特率是不是 `9600`
+- 帧格式是不是 `8N1`
+- `reset` 是否一直保持有效
+- 板卡是否真的是 `50MHz` 时钟前提
 
-在投入更多 SoC 工作前，先判断一个很小的 PicoRV32 配置能否在 XC6SLX9 上放下。
+### 这一步的意义
 
-### 输入输出
+这一步通过后，后续调 SoC 时你就有一个最基本的文本输出通道，不用每次都靠 LED 猜状态。
 
-- CPU 核 + 小 BRAM + `test_exit`
-- 后续按需要逐步加 UART / GPIO / 计数器
-
-### 预期现象
-
-- 输出一组综合/资源数据，而不是板上演示
-
-### 实验室操作步骤
-
-1. 将 `rtl/core/picorv32.v` vendored 进仓库。
-2. 从 CPU + `test_exit` 的最小组合开始。
-3. 逐步加 BRAM、UART TX、GPIO、计数器。
-4. 每一步记录 LUT / FF / BRAM 占用和 timing slack。
-
-### 失败排查方向
-
-- vendored CPU 文件与 ISE 不兼容
-- 默认 PicoRV32 参数导致资源暴涨
-- 内存初始化方式在综合时不成立
-
-## 探针 3：本地 MiniSoC 仿真
+## Probe 2：PicoRV32 Minimal synthesis probe
 
 ### 目标
 
-给后续 CPU 集成提供一个不依赖板卡的本地保护线。
+在真正做 `MiniSoC` 之前，先判断一个尽量小的 PicoRV32 配置在 `XC6SLX9` 上是否现实，避免后面做了很多集成工作才发现资源根本不够。
 
-### 输入输出
+### 当前仓库提供了什么
 
-- firmware 镜像
-- 可选的 vendored PicoRV32 文件
-- `test_exit` 监视点
+- `rtl/soc/mmio_test_exit.v`
+- `rtl/soc/bram.v`
+- `rtl/soc/tinybus_defs.vh`
+- `rtl/soc/tinybus_decode.v`
+- `firmware/` 骨架
 
-### 预期现象
+### 当前仓库没有替你做什么
 
-- PicoRV32 不存在时输出 `SKIP`
-- firmware 写 `test_exit = 1` 时输出 `PASS`
-- 写其他退出码时输出 `FAIL`
-- 长时间没有到达 `test_exit` 时输出 `TIMEOUT`
+- 不会自动提供 `rtl/core/picorv32.v`
+- 不会假装已经有完整 `MiniSoC top`
+- 不会伪造资源报告
 
-### 本地 / 实验室操作步骤
+### 你现在应该怎么做
 
-1. 本地先构建 firmware。
-2. 运行 `sim/run_sim.sh minisoc`。
-3. 如果 PicoRV32 还没放入仓库，确认 skip 路径明确可见。
-4. 后续 PicoRV32 接入后，继续使用同一条命令作为上板前检查。
+1. 自行准备并审阅 `PicoRV32` 源码。
+2. 仓库约定 CPU 文件位于 `rtl/core/picorv32.v`。
+3. 这里的 `vendored` 只是术语，意思是手工引入并审阅的第三方源码；如果文件已经在工作树里，就不需要再做额外动作。
+4. 先只做最小组合：`CPU + BRAM + test_exit`。
+5. 在 ISE 中跑一次综合，记录 `LUT` / `FF` / `BRAM` 占用。
+6. 再按顺序逐步加 `GPIO`、`UART TX`、计数器，占用每次单独记录。
 
-### 失败排查方向
+### 成功标准
 
-- 缺少 vendored CPU 文件
-- firmware 镜像不匹配
-- `test_exit` 相关 MMIO 译码错误
-- CPU 复位或启动地址假设错误
+- 能得到可信的综合结果
+- 能判断 PicoRV32 最小系统在本板卡上的资源压力
+- 能回答“后续还能不能继续加外设”
+
+### 如果失败，先查什么
+
+- vendored 的 `PicoRV32` 版本是否包含 ISE 难以接受的写法
+- 默认参数是否开了太多功能
+- `BRAM` 初始化方式是否影响综合
+
+### 这一步的意义
+
+它不是展示 probe，而是资源风险 probe。它回答的是“这条路线值不值得继续堆功能”。
+
+## Probe 3：MiniSoC simulation probe
+
+### 目标
+
+为后续 `MiniSoC` 集成保留一个本地 testbench 骨架。这样即使还没去实验室，也能在本地先看控制流是否打通。
+
+### 对应文件
+
+- testbench：`sim/tb_minisoc.v`
+- 运行脚本：`sim/run_sim.sh minisoc`
+- `firmware` 构建脚本：`scripts/build_firmware.sh`
+
+### 当前行为
+
+- 如果 `rtl/core/picorv32.v` 不存在，testbench 输出 `SKIP`
+- 如果 CPU 存在并最终写入 `test_exit = 1`，testbench 输出 `PASS`
+- 如果写入其他退出码，输出 `FAIL`
+- 如果长时间没有写到 `test_exit`，输出 `TIMEOUT`
+
+### 你在本地应该怎么做
+
+1. 先运行：
+
+```bash
+scripts/build_firmware.sh
+```
+
+2. 再运行：
+
+```bash
+sim/run_sim.sh minisoc
+```
+
+3. 看结果属于哪一种：
+
+- `SKIP`
+- `PASS`
+- `FAIL`
+- `TIMEOUT`
+
+### 结果应该怎么理解
+
+- `SKIP`：当前还没放入 vendored PicoRV32，这不是错误
+- `PASS`：本地最小控制流打通
+- `FAIL`：CPU 确实跑到了 `test_exit`，但退出码不对
+- `TIMEOUT`：CPU 没有在预期时间内完成，通常表示启动链路或地址映射还有问题
+
+### 这一步的意义
+
+它不是板级探针，而是 SoC 集成前的本地防线。后面你改 `memory map`、改 `firmware`、改 `mmio_test_exit` 时，都应该继续用它回归。
+
+## Probe 4a：SDRAM smoke probe
+
+### 目标
+
+在不实现通用 `SDRAM controller` 的前提下，尽早确认 U2 SDRAM 的最小命令链路和固定地址读写回读链路是不是活的。
+
+### 对应文件
+
+- 顶层：`rtl/probe/probe_sdram_smoke_top.v`
+- 控制器：`rtl/probe/sdram_smoke_ctrl.v`
+- 约束：`constraints/tecplus_sdram_smoke.ucf`
+- 本地 testbench：`sim/tb_sdram_smoke_ctrl.v`
+
+### 设计行为
+
+- 上电后等待固定 `power-up wait`
+- 发 `PRECHARGE ALL`
+- 发两次 `AUTO REFRESH`
+- 发一次 `LOAD MODE`
+- 对固定地址做一次 `write`
+- 再对同一固定地址做一次 `read back`
+- 比较读回数据和固定测试字
+- 用 `LED` 报状态
+
+### LED 状态建议
+
+- `0001`：初始化阶段
+- `0010`：写阶段
+- `0100`：读阶段
+- `1000`：PASS
+- `1111`：FAIL
+
+### 你在实验室里应该怎么做
+
+1. 在 ISE 中创建或切换到独立工程。
+2. 加入 `rtl/probe/probe_sdram_smoke_top.v` 和 `rtl/probe/sdram_smoke_ctrl.v`。
+3. 加入 `constraints/tecplus_sdram_smoke.ucf`。
+4. 确认顶层为 `probe_sdram_smoke_top`。
+5. 生成 bitstream 并下载到板卡。
+6. 观察板载 `LED` 状态是否最终收敛到 `PASS` 或 `FAIL`。
+
+### 成功标准
+
+- 状态机会稳定运行，不是随机闪烁
+- 能稳定落到 `PASS`
+- 多次 `reset` 后现象可重复
+
+### 如果失败，先查什么
+
+- SDRAM UCF 是否和当前板卡一致
+- `sh_clk`、地址线、控制线、数据线是否存在明显绑错
+- 当前 `50MHz` 时钟和时序参数是否过于激进
+- 板上使用的是不是文档中的 U2 SDRAM 这一组管脚
+
+### 这一步的边界
+
+它不是通用 `SDRAM controller`，不提供任意地址访问、刷新仲裁或 SoC 级接口。它只回答一个更早期的问题：最小命令链路和固定地址回读是否有基本可行性。
+
+## Probe 4：SDRAM standalone tester
+
+### 当前状态
+
+计划中，full 版当前仍未实现。
+
+### 为什么现在没有
+
+- 任务边界明确要求当前只做“基础框架 + 探针测试”
+- 任务边界还明确要求不要伪造 `SDRAM controller`
+- 在 `XC6SLX9` 这样资源紧张的平台上，`SDRAM controller` 不是应该随手占位假装完成的模块
+- 当前已经先落了 `Probe 4a`，full 版不需要在第一阶段硬挤进去
+
+### 当前仓库保留了什么
+
+- `docs/MEMORY_MAP.md` 中的 `0x8000_0000: SDRAM planned region`
+
+### 后续真正做它时，应该是什么样
+
+- 至少要有独立的 `SDRAM controller`
+- 至少要有读写校验
+- 至少要有明确的初始化、刷新、时序和错误现象判定
+
+在这些都没有之前，宁可明确写“未实现”，也不要做一个看起来像有但实际上不能验证的平台假模块。
+
+## Probe 5a：bigboard traffic-light thin probe
+
+### 目标
+
+在不引入复杂显示控制逻辑的前提下，先确认大板交通灯输出那组信号是否真的能从 FPGA 打到外设侧。
+
+### 对应文件
+
+- 顶层：`rtl/probe/probe_bigboard_tl_top.v`
+- 约束：`constraints/tecplus_bigboard_tl.ucf`
+- 本地 testbench：`sim/tb_bigboard_tl.v`
+
+### 设计行为
+
+- `tl[11:0]` 输出一个慢速 one-hot 轮转图样
+- 板载 `LED` 作为辅助心跳显示
+- 不接 SoC、不接 bus、不接 firmware
+
+### 你在实验室里应该怎么做
+
+1. 确认核心板与大板已经按教学环境要求连接好。
+2. 在 ISE 中加入 `rtl/probe/probe_bigboard_tl_top.v`。
+3. 加入 `constraints/tecplus_bigboard_tl.ucf`。
+4. 生成 bitstream 并下载到板卡。
+5. 观察交通灯输出是否按 one-hot 图样轮转。
+6. 同时观察板载 `LED` 是否也有辅助变化。
+
+### 成功标准
+
+- 交通灯输出存在稳定、可重复的轮转现象
+- 板载 `LED` 也能同步给出辅助心跳
+- 多次 `reset` 后现象一致
+
+### 如果失败，先查什么
+
+- 核心板与大板是否真的连接正确
+- 交通灯那组管脚约束是否和教学环境一致
+- 实验室是否需要额外排线或特定插座连接
+- 观察到的是不是大板这一路外设，而不是别的实验区域
+
+### 这一步的边界
+
+它不是完整显示/大板外设系统，也不验证复杂时序外设。它只是回答“这组最小外设输出链路是不是活的”。
+
+## Probe 5：显示 / 大板外设探针
+
+### 当前状态
+
+计划中，full 版当前仍未实现。
+
+### 为什么现在没有
+
+- 第一阶段最关键的是把核心板最小链路打通
+- 显示和大板外设 bring-up 会显著增加 UCF、时序、接口和现象判断复杂度
+- 如果 `Probe 0` 和 `Probe 1` 还没稳定，就提前接显示类外设，排障成本会迅速失控
+- 当前已经先落了 `Probe 5a`，full 版没有必要在第一阶段一起完成
+
+### 这类 Probe 以后应该覆盖什么
+
+- 数码管 / 显示接口
+- 更复杂的 GPIO 扩展
+- 与大板连接后的额外外设链路
+
+### 当前建议
+
+先把 `LED`、`KEY`、`UART`、PicoRV32 资源可行性和 `MiniSoC simulation probe` 稳住，再决定要不要引入这类外设。

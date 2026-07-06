@@ -1,0 +1,26 @@
+# TEC-PLUS 大板交通灯 thin probe 约束草案。
+# 本文件只覆盖最小 traffic-light 存在性探针，不代表更大外设系统已完成。
+# 如果实验室现象异常，请先核对真实教学板卡、排线连接方式和 UCF。
+
+NET "clk"   LOC = "T8" | IOSTANDARD = "LVCMOS33";
+NET "reset" LOC = "L3" | IOSTANDARD = "LVCMOS33";
+NET "clk" TNM_NET = "clk_grp";
+TIMESPEC "TS_clk_grp" = PERIOD "clk_grp" 20 ns HIGH 50%;
+
+NET "led[0]" LOC = "M14" | IOSTANDARD = "LVCMOS33";
+NET "led[1]" LOC = "M13" | IOSTANDARD = "LVCMOS33";
+NET "led[2]" LOC = "L13" | IOSTANDARD = "LVCMOS33";
+NET "led[3]" LOC = "L12" | IOSTANDARD = "LVCMOS33";
+
+NET "tl[0]"  LOC = "M11" | IOSTANDARD = "LVCMOS33";
+NET "tl[1]"  LOC = "M10" | IOSTANDARD = "LVCMOS33";
+NET "tl[2]"  LOC = "M9"  | IOSTANDARD = "LVCMOS33";
+NET "tl[3]"  LOC = "M7"  | IOSTANDARD = "LVCMOS33";
+NET "tl[4]"  LOC = "M6"  | IOSTANDARD = "LVCMOS33";
+NET "tl[5]"  LOC = "M5"  | IOSTANDARD = "LVCMOS33";
+NET "tl[6]"  LOC = "M4"  | IOSTANDARD = "LVCMOS33";
+NET "tl[7]"  LOC = "N9"  | IOSTANDARD = "LVCMOS33";
+NET "tl[8]"  LOC = "N8"  | IOSTANDARD = "LVCMOS33";
+NET "tl[9]"  LOC = "N6"  | IOSTANDARD = "LVCMOS33";
+NET "tl[10]" LOC = "N5"  | IOSTANDARD = "LVCMOS33";
+NET "tl[11]" LOC = "N4"  | IOSTANDARD = "LVCMOS33";

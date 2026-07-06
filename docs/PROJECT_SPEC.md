@@ -19,7 +19,7 @@ TecPlusRV 对应北京邮电大学《项目式课程阶段 2》题目 B：基于
 
 - 在选定 CPU 核外构建完整小型 SoC
 - 增加 cycle / instret 计数器
-- 先做独立 SDRAM tester，再考虑接入 SoC
+- 先做薄版 `Probe 4a`，再做更完整的独立 SDRAM tester，并考虑接入 SoC
 - 将 UART 作为主要可观测出口
 - 在 Spartan-6 资源限制下比较资源与性能权衡
 
@@ -39,12 +39,13 @@ TecPlusRV 对应北京邮电大学《项目式课程阶段 2》题目 B：基于
 - 探针优先、板级先行的验证流程
 - 先做低风险 MMIO 集成，再做侵入式 CPU 改造
 - 对 SDRAM 这类大模块保持诚实延期，不伪造完成状态
+- 在完整模块之前，允许用 thin probe 提前做链路确认
 
 重点不是一开始堆功能，而是在 XC6SLX9 上把 bring-up 和调试难度控制住。
 
 ## PicoRV32 / 开源代码使用边界
 
-PicoRV32 或其他开源 RTL 可以参考、审阅并 vendored 进仓库，但课程工作本身仍需要独立完成以下决策：
+PicoRV32 或其他开源 RTL 可以参考、审阅并 vendored 进仓库。这里的 `vendored` 指手工引入、自己审阅、随仓库一起管理的第三方源码。课程工作本身仍需要独立完成以下决策：
 
 - 地址映射
 - 外设接口
@@ -72,6 +73,8 @@ PicoRV32 或其他开源 RTL 可以参考、审阅并 vendored 进仓库，但�
 - JTAG 下载
 - reset 极性确认
 - LED / KEY / UART 板级现象验证
+- `Probe 4a` 的 SDRAM smoke 现象验证
+- `Probe 5a` 的 bigboard traffic-light 现象验证
 - PicoRV32 集成后的资源适配验证
 
 第一版骨架的目标是减少实验室盲调时间，而不是替代实验室验证。

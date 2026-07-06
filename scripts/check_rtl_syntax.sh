@@ -24,6 +24,19 @@ iverilog -g2001 -s probe_uart_top -o "$BUILD_DIR/probe_uart_top.syntax.out" \
     "$REPO_ROOT/rtl/probe/probe_uart_top.v" \
     "$REPO_ROOT/rtl/periph/uart_tx.v"
 
+echo "语法检查：sdram_smoke_ctrl"
+iverilog -g2001 -s sdram_smoke_ctrl -o "$BUILD_DIR/sdram_smoke_ctrl.syntax.out" \
+    "$REPO_ROOT/rtl/probe/sdram_smoke_ctrl.v"
+
+echo "语法检查：probe_sdram_smoke_top"
+iverilog -g2001 -s probe_sdram_smoke_top -o "$BUILD_DIR/probe_sdram_smoke_top.syntax.out" \
+    "$REPO_ROOT/rtl/probe/probe_sdram_smoke_top.v" \
+    "$REPO_ROOT/rtl/probe/sdram_smoke_ctrl.v"
+
+echo "语法检查：probe_bigboard_tl_top"
+iverilog -g2001 -s probe_bigboard_tl_top -o "$BUILD_DIR/probe_bigboard_tl_top.syntax.out" \
+    "$REPO_ROOT/rtl/probe/probe_bigboard_tl_top.v"
+
 echo "语法检查：tinybus_decode"
 iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -s tinybus_decode \
     -o "$BUILD_DIR/tinybus_decode.syntax.out" \
