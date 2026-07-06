@@ -37,6 +37,37 @@ case "$SIM_KIND" in
             "$REPO_ROOT/rtl/periph/uart_tx.v"
         run_and_check "$BUILD_DIR/tb_uart_tx.log" vvp "$BUILD_DIR/tb_uart_tx.out"
         ;;
+    probe_led_key)
+        iverilog -g2001 -o "$BUILD_DIR/tb_probe_led_key_top.out" \
+            "$REPO_ROOT/sim/tb_probe_led_key_top.v" \
+            "$REPO_ROOT/rtl/probe/probe_led_key_top.v"
+        run_and_check "$BUILD_DIR/tb_probe_led_key_top.log" vvp "$BUILD_DIR/tb_probe_led_key_top.out"
+        ;;
+    probe_uart_top)
+        iverilog -g2001 -o "$BUILD_DIR/tb_probe_uart_top.out" \
+            "$REPO_ROOT/sim/tb_probe_uart_top.v" \
+            "$REPO_ROOT/rtl/probe/probe_uart_top.v" \
+            "$REPO_ROOT/rtl/periph/uart_tx.v"
+        run_and_check "$BUILD_DIR/tb_probe_uart_top.log" vvp "$BUILD_DIR/tb_probe_uart_top.out"
+        ;;
+    bram)
+        iverilog -g2001 -o "$BUILD_DIR/tb_bram.out" \
+            "$REPO_ROOT/sim/tb_bram.v" \
+            "$REPO_ROOT/rtl/soc/bram.v"
+        run_and_check "$BUILD_DIR/tb_bram.log" vvp "$BUILD_DIR/tb_bram.out"
+        ;;
+    tinybus_decode)
+        iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -o "$BUILD_DIR/tb_tinybus_decode.out" \
+            "$REPO_ROOT/sim/tb_tinybus_decode.v" \
+            "$REPO_ROOT/rtl/soc/tinybus_decode.v"
+        run_and_check "$BUILD_DIR/tb_tinybus_decode.log" vvp "$BUILD_DIR/tb_tinybus_decode.out"
+        ;;
+    mmio_test_exit)
+        iverilog -g2001 -o "$BUILD_DIR/tb_mmio_test_exit.out" \
+            "$REPO_ROOT/sim/tb_mmio_test_exit.v" \
+            "$REPO_ROOT/rtl/soc/mmio_test_exit.v"
+        run_and_check "$BUILD_DIR/tb_mmio_test_exit.log" vvp "$BUILD_DIR/tb_mmio_test_exit.out"
+        ;;
     minisoc)
         if [ -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
             iverilog -g2001 -DPICORV32_PRESENT -o "$BUILD_DIR/tb_minisoc.out" \
@@ -62,7 +93,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、minisoc、sdram_smoke、bigboard_tl" >&2
+        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、tinybus_decode、mmio_test_exit、minisoc、sdram_smoke、bigboard_tl" >&2
         exit 1
         ;;
 esac
