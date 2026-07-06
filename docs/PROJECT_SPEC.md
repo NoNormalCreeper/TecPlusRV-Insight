@@ -54,7 +54,7 @@ PicoRV32 或其他开源 RTL 可以参考、审阅并 vendored 进仓库。这�
 - 实验室 bring-up 流程
 - 系统验证和调试策略
 
-因此当前仓库默认不直接把 PicoRV32 放进树里，而是把其位置和接入方式写清楚，由后续人工引入。
+当前仓库已经把 PicoRV32 作为 vendored 源码放在 `rtl/core/picorv32.v`，但 SoC 集成、地址图、约束和验证仍然是本项目自己的工程内容。
 
 ## 开发策略：本地优先，实验室验证收口
 
@@ -65,7 +65,7 @@ PicoRV32 或其他开源 RTL 可以参考、审阅并 vendored 进仓库。这�
 - 写模块级 testbench
 - 本地构建 firmware
 - 先打通 memory image 流程
-- 在没有板子的情况下保留 MiniSoC 仿真骨架
+- 在没有板子的情况下运行真实 MiniSoC 板级 top 仿真
 
 ### 实验室收口
 
@@ -75,6 +75,6 @@ PicoRV32 或其他开源 RTL 可以参考、审阅并 vendored 进仓库。这�
 - LED / KEY / UART 板级现象验证
 - `Probe 4a` 的 SDRAM smoke 现象验证
 - `Probe 5a` 的 bigboard traffic-light 现象验证
-- PicoRV32 集成后的资源适配验证
+- `tecplus_minisoc_top` 集成后的资源适配验证
 
 第一版骨架的目标是减少实验室盲调时间，而不是替代实验室验证。

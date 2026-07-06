@@ -7,13 +7,13 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 工程目录骨架
 - 早期板级探针
 - 可复用的 UART TX RTL
-- 最小 SoC 占位模块
+- MiniSoC 板级 top 与 SoC 基础模块
 - 裸机 firmware 骨架
 - 本地构建和仿真入口
 
 当前版本还不提供：
 
-- 完整 SoC 顶层
+- UART RX bootloader
 - 通用 SDRAM 控制器
 - ISE 工程文件或 bitstream
 
@@ -21,8 +21,8 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 
 - `rtl/probe/`：早期上板探针顶层
 - `rtl/periph/`：可复用外设
-- `rtl/soc/`：地址映射、BRAM、MMIO 占位模块
-- `rtl/core/`：外部 CPU 核，例如后续放入的 `picorv32.v`
+- `rtl/soc/`：地址映射、BRAM、MMIO 和 MiniSoC 板级 top
+- `rtl/core/`：vendored CPU 核，例如 `picorv32.v`
 - `rtl/accel/`：后续扩展加速器
 - `constraints/`：TEC-PLUS 约束文件
 - `firmware/`：裸机启动代码、链接脚本、驱动和测试
@@ -81,7 +81,7 @@ scripts/test_local.sh
 4. UART TX 仿真
 5. SDRAM smoke 控制器仿真
 6. bigboard traffic-light 仿真
-7. MiniSoC 骨架仿真
+7. MiniSoC 板级 top 仿真
 
 ## 常用本地命令
 
@@ -115,7 +115,7 @@ scripts/build_firmware.sh
 sim/run_sim.sh uart_tx
 ```
 
-单独跑 MiniSoC 骨架：
+单独跑 MiniSoC 板级 top 仿真：
 
 ```bash
 sim/run_sim.sh minisoc
@@ -133,7 +133,7 @@ sim/run_sim.sh sdram_smoke
 sim/run_sim.sh bigboard_tl
 ```
 
-如果 `rtl/core/picorv32.v` 不存在，MiniSoC testbench 会输出 `SKIP`，而不是假装通过。
+MiniSoC testbench 现在会编译真实板级 top：`rtl/soc/tecplus_minisoc_top.v`。
 
 ## 第一次上手怎么做
 
@@ -149,8 +149,7 @@ scripts/test_local.sh
 
 - firmware 构建成功
 - `uart_tx` 仿真输出 `PASS`
-- `minisoc` 仿真在没有 `rtl/core/picorv32.v` 时输出 `SKIP`
-- 如果已经放入 `rtl/core/picorv32.v`，则应输出 `PASS` / `FAIL` / `TIMEOUT` 之一
+- `minisoc` 仿真输出 `PASS` / `FAIL` / `TIMEOUT` 之一
 
 ### 第 2 步：实验室先做 Probe 0
 
@@ -216,7 +215,7 @@ scripts/test_local.sh
 
 ## PicoRV32 放置方式
 
-如果后续要尝试 MiniSoC 真正执行，仓库约定 PicoRV32 文件位于：
+MiniSoC 使用的 PicoRV32 文件位于：
 
 ```text
 rtl/core/picorv32.v
@@ -237,7 +236,7 @@ rtl/core/picorv32.v
 3. PicoRV32 minimal 综合/资源探针
 4. `probe_sdram_smoke_top` + `constraints/tecplus_sdram_smoke.ucf`
 5. `probe_bigboard_tl_top` + `constraints/tecplus_bigboard_tl.ucf`
-6. MiniSoC 板级启动
+6. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`
 
 这里要区分两层：
 
@@ -277,7 +276,7 @@ rtl/core/picorv32.v
 - UART TX 模块仿真
 - SDRAM smoke 控制器命令序列仿真
 - bigboard traffic-light 图样仿真
-- MiniSoC 骨架控制流
+- MiniSoC 板级 top 控制流
 
 这些仍然必须在实验室验证：
 

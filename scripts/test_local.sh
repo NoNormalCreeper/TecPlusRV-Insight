@@ -50,7 +50,7 @@ echo "[11/12] 运行 bigboard traffic-light 仿真"
 "$REPO_ROOT/sim/run_sim.sh" bigboard_tl
 
 echo
-echo "[12/12] 运行 MiniSoC testbench 骨架"
+echo "[12/12] 运行 MiniSoC 板级 top 仿真"
 "$REPO_ROOT/sim/run_sim.sh" minisoc
 
 echo

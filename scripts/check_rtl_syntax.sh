@@ -54,4 +54,16 @@ echo "语法检查：mmio_test_exit"
 iverilog -g2001 -s mmio_test_exit -o "$BUILD_DIR/mmio_test_exit.syntax.out" \
     "$REPO_ROOT/rtl/soc/mmio_test_exit.v"
 
+if [ -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
+    echo "语法检查：tecplus_minisoc_top"
+    iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -s tecplus_minisoc_top \
+        -o "$BUILD_DIR/tecplus_minisoc_top.syntax.out" \
+        "$REPO_ROOT/rtl/soc/tecplus_minisoc_top.v" \
+        "$REPO_ROOT/rtl/core/picorv32.v" \
+        "$REPO_ROOT/rtl/soc/bram.v" \
+        "$REPO_ROOT/rtl/soc/tinybus_decode.v" \
+        "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
+        "$REPO_ROOT/rtl/periph/uart_tx.v"
+fi
+
 echo "RTL syntax smoke checks passed"

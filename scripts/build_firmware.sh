@@ -39,7 +39,7 @@ $REPO_ROOT/firmware/main.c
 # 不单独生成 .o，保持脚本最薄；后续文件多了再引入 Makefile/CMake。
 "$CC" $CFLAGS $INCLUDES $LDFLAGS -o "$BUILD_DIR/firmware.elf" $SOURCES
 "$OBJCOPY" -O binary "$BUILD_DIR/firmware.elf" "$BUILD_DIR/firmware.bin"
-"$PYTHON" "$REPO_ROOT/scripts/bin2mem.py" "$BUILD_DIR/firmware.bin" "$BUILD_DIR/firmware.mem"
+"$PYTHON" "$REPO_ROOT/scripts/bin2mem.py" "$BUILD_DIR/firmware.bin" "$BUILD_DIR/firmware.mem" 16384
 
 if command -v "$OBJDUMP" >/dev/null 2>&1; then
     # 反汇编不是仿真必需，但调启动代码和 memory map 时很有用。

@@ -1,0 +1,21 @@
+# TEC-PLUS MiniSoC 顶层约束草案。
+# 对应顶层：rtl/soc/tecplus_minisoc_top.v。
+# 只暴露真实板级管脚；CPU/BRAM/TinyBus 都留在 FPGA 内部。
+
+NET "clk"    LOC = "T8" | IOSTANDARD = "LVCMOS33";
+NET "reset"  LOC = "L3" | IOSTANDARD = "LVCMOS33";
+NET "clk" TNM_NET = "clk_grp";
+TIMESPEC "TS_clk_grp" = PERIOD "clk_grp" 20 ns HIGH 50%;
+
+NET "led[0]" LOC = "M14" | IOSTANDARD = "LVCMOS33";
+NET "led[1]" LOC = "M13" | IOSTANDARD = "LVCMOS33";
+NET "led[2]" LOC = "L13" | IOSTANDARD = "LVCMOS33";
+NET "led[3]" LOC = "L12" | IOSTANDARD = "LVCMOS33";
+
+NET "key[0]" LOC = "T13" | IOSTANDARD = "LVCMOS33";
+NET "key[1]" LOC = "R12" | IOSTANDARD = "LVCMOS33";
+NET "key[2]" LOC = "T12" | IOSTANDARD = "LVCMOS33";
+NET "key[3]" LOC = "P11" | IOSTANDARD = "LVCMOS33";
+
+NET "uart_txd" LOC = "D6" | IOSTANDARD = "LVCMOS33";
+NET "uart_rxd" LOC = "D5" | IOSTANDARD = "LVCMOS33";

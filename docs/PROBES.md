@@ -183,22 +183,20 @@
 - `rtl/soc/bram.v`
 - `rtl/soc/tinybus_defs.vh`
 - `rtl/soc/tinybus_decode.v`
+- `rtl/soc/tecplus_minisoc_top.v`
+- `constraints/tecplus_minisoc.ucf`
 - `firmware/` 骨架
 
 ### 当前仓库没有替你做什么
 
-- 不会自动提供 `rtl/core/picorv32.v`
-- 不会假装已经有完整 `MiniSoC top`
 - 不会伪造资源报告
 
 ### 你现在应该怎么做
 
-1. 自行准备并审阅 `PicoRV32` 源码。
-2. 仓库约定 CPU 文件位于 `rtl/core/picorv32.v`。
-3. 这里的 `vendored` 只是术语，意思是手工引入并审阅的第三方源码；如果文件已经在工作树里，就不需要再做额外动作。
-4. 先只做最小组合：`CPU + BRAM + test_exit`。
-5. 在 ISE 中跑一次综合，记录 `LUT` / `FF` / `BRAM` 占用。
-6. 再按顺序逐步加 `GPIO`、`UART TX`、计数器，占用每次单独记录。
+1. 确认 vendored 的 `rtl/core/picorv32.v` 已加入 ISE 工程。
+2. 使用 `tecplus_minisoc_top` 做最小组合：`CPU + 64 KiB BRAM + GPIO + UART TX + test_exit`。
+3. 在 ISE 中跑一次综合，记录 `LUT` / `FF` / `BRAM` / `IOB` 占用。
+4. 后续再逐步加 `UART RX`、bootloader 写 BRAM、SDRAM，占用每次单独记录。
 
 ### 成功标准
 
@@ -211,6 +209,7 @@
 - vendored 的 `PicoRV32` 版本是否包含 ISE 难以接受的写法
 - 默认参数是否开了太多功能
 - `BRAM` 初始化方式是否影响综合
+- Map report 如果是 `IOB` 超限，通常是 top module 选错；如果是 `LUT Memory` 超限，优先检查 `BRAM` 是否被推断成 Block RAM。
 
 ### 这一步的意义
 
@@ -220,7 +219,7 @@
 
 ### 目标
 
-为后续 `MiniSoC` 集成保留一个本地 testbench 骨架。这样即使还没去实验室，也能在本地先看控制流是否打通。
+用真实 `MiniSoC` 板级 top 做本地 smoke。这样即使还没去实验室，也能先验证 CPU、BRAM、TinyBus、LED 和 UART TX 是否通过同一条顶层路径打通。
 
 ### 对应文件
 
@@ -230,7 +229,6 @@
 
 ### 当前行为
 
-- 如果 `rtl/core/picorv32.v` 不存在，testbench 输出 `SKIP`
 - 如果 CPU 存在并最终写入 `test_exit = 1`，testbench 输出 `PASS`
 - 如果写入其他退出码，输出 `FAIL`
 - 如果长时间没有写到 `test_exit`，输出 `TIMEOUT`
@@ -251,14 +249,12 @@ sim/run_sim.sh minisoc
 
 3. 看结果属于哪一种：
 
-- `SKIP`
 - `PASS`
 - `FAIL`
 - `TIMEOUT`
 
 ### 结果应该怎么理解
 
-- `SKIP`：当前还没放入 vendored PicoRV32，这不是错误
 - `PASS`：本地最小控制流打通
 - `FAIL`：CPU 确实跑到了 `test_exit`，但退出码不对
 - `TIMEOUT`：CPU 没有在预期时间内完成，通常表示启动链路或地址映射还有问题

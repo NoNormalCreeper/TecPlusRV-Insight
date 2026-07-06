@@ -14,7 +14,9 @@ module bram #(
     output reg [31:0]  rdata
 );
 
+(* ram_style = "block" *)
 reg [31:0] mem [0:(1 << ADDR_WIDTH) - 1];
+// synthesis attribute ram_style of mem is block
 integer i;
 
 initial begin

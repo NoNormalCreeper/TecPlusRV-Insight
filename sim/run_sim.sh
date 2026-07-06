@@ -74,14 +74,18 @@ case "$SIM_KIND" in
         ;;
     minisoc)
         if [ -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
-            # picorv32.v 是外部核；存在时才编译真实 CPU 仿真路径。
-            iverilog -g2001 -DPICORV32_PRESENT -o "$BUILD_DIR/tb_minisoc.out" \
+            # picorv32.v 是外部核；存在时编译真实板级 MiniSoC 路径。
+            iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -o "$BUILD_DIR/tb_minisoc.out" \
                 "$REPO_ROOT/sim/tb_minisoc.v" \
-                "$REPO_ROOT/rtl/core/picorv32.v"
+                "$REPO_ROOT/rtl/core/picorv32.v" \
+                "$REPO_ROOT/rtl/soc/tecplus_minisoc_top.v" \
+                "$REPO_ROOT/rtl/soc/bram.v" \
+                "$REPO_ROOT/rtl/soc/tinybus_decode.v" \
+                "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
+                "$REPO_ROOT/rtl/periph/uart_tx.v"
         else
-            # 缺外部核时仍编译 testbench，让本地 smoke 能明确输出 SKIP。
-            iverilog -g2001 -o "$BUILD_DIR/tb_minisoc.out" \
-                "$REPO_ROOT/sim/tb_minisoc.v"
+            echo "缺少 rtl/core/picorv32.v，无法运行 MiniSoC 板级 top 仿真" >&2
+            exit 1
         fi
         run_and_check "$BUILD_DIR/tb_minisoc.log" vvp "$BUILD_DIR/tb_minisoc.out"
         ;;

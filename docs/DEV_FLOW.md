@@ -148,7 +148,7 @@
 设计原则：
 
 - 单模块和系统级 testbench 分开
-- 尽量统一结束语义：`PASS / FAIL / TIMEOUT / SKIP`
+- 尽量统一结束语义：`PASS / FAIL / TIMEOUT`
 
 ### `scripts/`
 
@@ -500,9 +500,9 @@ ISE 自己做：
 
 - `rtl/core/picorv32.v`
 - `rtl/soc/*.v`
-- 未来的 MiniSoC top
-- 相关 `periph`
-- 对应 `.ucf`
+- `rtl/soc/tecplus_minisoc_top.v`
+- `rtl/periph/uart_tx.v`
+- `constraints/tecplus_minisoc.ucf`
 - `firmware/build/firmware.mem`
 
 注意这里的 `firmware.mem` 不是 ISE 输出，而是 ISE 的输入之一。
@@ -535,6 +535,7 @@ scripts/build_firmware.sh
 
 - `firmware/build/firmware.mem` 已重新生成
 - ISE 工程工作目录下能正确找到该文件
+- Map report 里 64 KiB 启动内存应主要消耗 `RAMB16BWER` / `RAMB8BWER`；如果看到大量 `Slice LUTs used as Memory`，说明 BRAM 没有被正确推断。
 
 ### 什么时候需要手工改引脚
 
