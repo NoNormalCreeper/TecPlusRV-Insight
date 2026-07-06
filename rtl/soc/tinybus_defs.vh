@@ -1,3 +1,6 @@
+// TinyBus 的统一地址表。
+// RTL 和 firmware 都要使用同一套 memory map；这里是硬件侧常量，
+// firmware/drivers/mmio.h 是软件侧镜像，改地址时两边必须一起改。
 `ifndef TINYBUS_DEFS_VH
 `define TINYBUS_DEFS_VH
 
@@ -12,4 +15,3 @@
 `define TINYBUS_ADDR_SDRAM_BASE   32'h8000_0000
 
 `endif
-

@@ -1,3 +1,6 @@
+// MiniSoC 的临时骨架仿真。
+// 如果 rtl/core/picorv32.v 存在，就直接实例化 PicoRV32 native memory interface；
+// 如果不存在，输出 SKIP，避免把缺外部核误判成项目失败。
 `timescale 1ns/1ps
 
 module tb_minisoc;
@@ -33,6 +36,7 @@ initial begin
         mem[word_index] = 32'h0000_0000;
     end
 
+    // build_firmware.sh 生成的 firmware.mem 是 little-endian 32-bit word 文本。
     $readmemh("firmware/build/firmware.mem", mem);
     #100;
     resetn = 1'b1;
@@ -48,16 +52,19 @@ always @(posedge clk) begin
         mem_ready <= 1'b1;
 
         if (mem_addr[31:13] == 19'h0) begin
+            // 0x0000_0000 起的 8 KiB 模拟 BRAM，地址按 word 对齐取 mem_addr[12:2]。
             if (mem_wstrb[0]) mem[mem_addr[12:2]][7:0] <= mem_wdata[7:0];
             if (mem_wstrb[1]) mem[mem_addr[12:2]][15:8] <= mem_wdata[15:8];
             if (mem_wstrb[2]) mem[mem_addr[12:2]][23:16] <= mem_wdata[23:16];
             if (mem_wstrb[3]) mem[mem_addr[12:2]][31:24] <= mem_wdata[31:24];
             mem_rdata <= mem[mem_addr[12:2]];
         end else if (mem_addr == 32'h1000_0030 && mem_wstrb != 4'b0000) begin
+            // 软件写 test_exit 后，testbench 根据写入值判断 PASS/FAIL。
             exited <= 1'b1;
             exit_code <= mem_wdata;
             mem_rdata <= 32'h0000_0000;
         end else if (mem_addr == 32'h1000_0014) begin
+            // UART_STATUS 固定返回 ready，保证 firmware 的阻塞发送能继续前进。
             mem_rdata <= 32'h0000_0001;
         end else begin
             mem_rdata <= 32'h0000_0000;

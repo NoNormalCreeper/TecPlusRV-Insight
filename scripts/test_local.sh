@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# 本地一键 smoke flow。
+# 给新组员判断“当前骨架有没有坏”：先查工具，再构建 firmware，再跑 RTL syntax 和仿真。
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)

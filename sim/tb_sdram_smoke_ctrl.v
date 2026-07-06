@@ -1,3 +1,5 @@
+// sdram_smoke_ctrl 的命令序列仿真。
+// testbench 不建完整 SDRAM 模型，只检查命令顺序，并在 READ 后喂回 TEST_DATA。
 `timescale 1ns/1ps
 
 module tb_sdram_smoke_ctrl;
@@ -25,6 +27,7 @@ reg [3:0]  read_wait;
 reg        read_armed;
 
 sdram_smoke_ctrl #(
+    // 把真实等待周期缩短，保持状态机顺序不变但让仿真快速结束。
     .PWRUP_WAIT_CYCLES(4),
     .TRP_CYCLES(2),
     .TRFC_CYCLES(2),
@@ -95,6 +98,7 @@ end
 always @(posedge clk) begin
     if (read_armed) begin
         if (read_wait == 4'd0) begin
+            // 模拟 SDRAM 在 CAS latency 后把写入的数据读回来。
             dq_in <= 16'hA55A;
             read_armed <= 1'b0;
         end else begin
@@ -103,6 +107,7 @@ always @(posedge clk) begin
     end
 
     if (!sdram_cs_n && !sdram_ras_n && sdram_cas_n && !sdram_we_n) begin
+        // RAS=0 CAS=1 WE=0 是 PRECHARGE；A10=1 表示 all banks。
         if (sdram_addr[10] !== 1'b1 || seen_stage !== 4'd0) begin
             $display("FAIL: PRECHARGE ALL 顺序错误");
             $finish;
@@ -111,6 +116,7 @@ always @(posedge clk) begin
     end
 
     if (!sdram_cs_n && !sdram_ras_n && !sdram_cas_n && sdram_we_n) begin
+        // RAS=0 CAS=0 WE=1 是 AUTO REFRESH。
         if (seen_stage == 4'd1) begin
             seen_stage <= 4'd2;
         end else if (seen_stage == 4'd2) begin
@@ -122,6 +128,7 @@ always @(posedge clk) begin
     end
 
     if (!sdram_cs_n && !sdram_ras_n && !sdram_cas_n && !sdram_we_n) begin
+        // RAS=0 CAS=0 WE=0 是 LOAD MODE REGISTER。
         if (seen_stage !== 4'd3) begin
             $display("FAIL: LOAD MODE 顺序错误");
             $finish;
@@ -130,6 +137,7 @@ always @(posedge clk) begin
     end
 
     if (!sdram_cs_n && !sdram_ras_n && sdram_cas_n && sdram_we_n) begin
+        // RAS=0 CAS=1 WE=1 是 ACTIVE，用于打开 row。
         if (seen_stage == 4'd4) begin
             seen_stage <= 4'd5;
         end else if (seen_stage == 4'd6) begin
@@ -141,6 +149,7 @@ always @(posedge clk) begin
     end
 
     if (!sdram_cs_n && sdram_ras_n && !sdram_cas_n && !sdram_we_n) begin
+        // RAS=1 CAS=0 WE=0 是 WRITE。
         if (seen_stage !== 4'd5) begin
             $display("FAIL: WRITE 顺序错误");
             $finish;
@@ -153,6 +162,7 @@ always @(posedge clk) begin
     end
 
     if (!sdram_cs_n && sdram_ras_n && !sdram_cas_n && sdram_we_n) begin
+        // RAS=1 CAS=0 WE=1 是 READ。
         if (seen_stage !== 4'd7) begin
             $display("FAIL: READ 顺序错误");
             $finish;

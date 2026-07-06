@@ -1,3 +1,8 @@
+// Probe 4a 的 SDRAM smoke 控制器。
+// 这不是通用 SDRAM controller，只按固定脚本执行：
+// power-up wait -> precharge -> auto-refresh x2 -> mode register set
+// -> activate/write -> activate/read -> compare。
+// 通过/失败只反映最小链路是否像预期工作，不能代表完整内存系统完成。
 module sdram_smoke_ctrl #(
     parameter integer PWRUP_WAIT_CYCLES = 16'd10000,
     parameter integer TRP_CYCLES = 16'd3,
@@ -74,6 +79,8 @@ always @(posedge clk) begin
         done_pass <= 1'b0;
         done_fail <= 1'b0;
     end else begin
+        // 每拍先给 SDRAM 输出 NOP 和安全默认值。
+        // 具体状态只覆盖本拍真正需要拉低的命令线，减少遗留信号造成的误判。
         dq_oe <= 1'b0;
         dq_out <= TEST_DATA;
         sdram_cke <= 1'b1;
@@ -100,6 +107,7 @@ always @(posedge clk) begin
                 status_led <= 4'b0001;
                 sdram_ras_n <= 1'b0;
                 sdram_we_n <= 1'b0;
+                // A10=1 表示 precharge all banks。
                 sdram_addr[10] <= 1'b1;
                 wait_count <= 16'd0;
                 state <= ST_WAIT_TRP;
@@ -192,6 +200,7 @@ always @(posedge clk) begin
 
             ST_WRITE: begin
                 status_led <= 4'b0010;
+                // 写周期由 FPGA 驱动 DQ；其他周期必须释放给 SDRAM/外部模型。
                 dq_oe <= 1'b1;
                 dq_out <= TEST_DATA;
                 sdram_cas_n <= 1'b0;
@@ -251,6 +260,7 @@ always @(posedge clk) begin
             end
 
             ST_SAMPLE: begin
+                // 这里只采样一个固定 half-word，够做冒烟，不处理 burst/刷新/仲裁。
                 if (dq_in == TEST_DATA) begin
                     status_led <= 4'b1000;
                     done_pass <= 1'b1;

@@ -1,3 +1,5 @@
+// GPIO MMIO 驱动实现。
+// 这里不做缓存和状态保存，每次调用都直接访问硬件寄存器。
 #include "gpio.h"
 #include "mmio.h"
 
@@ -10,4 +12,3 @@ unsigned int gpio_read_key(void)
 {
     return mmio_read(TINYBUS_GPIO_KEY);
 }
-

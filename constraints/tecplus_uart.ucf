@@ -1,4 +1,6 @@
 # TEC-PLUS UART 探针约束草案。
+# 对应顶层：rtl/probe/probe_uart_top.v。
+# 只覆盖 Probe 1 需要的 clk/reset/UART TX/RX。
 # 如果实验室现象异常，请先核对真实教学板卡和 UCF，
 # 不要直接认定 RTL 有问题。
 

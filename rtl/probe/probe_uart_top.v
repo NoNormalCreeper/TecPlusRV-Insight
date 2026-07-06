@@ -1,3 +1,6 @@
+// Probe 1：UART TX 最小板级探针。
+// 周期性发送 "Hello TecPlusRV\r\n"，用于确认串口管脚、波特率和 reset 极性。
+// RXD 当前只保留为顶层端口，避免 UCF/外部连线和后续扩展不一致。
 module probe_uart_top (
     input  clk,
     input  reset,
@@ -20,6 +23,8 @@ wire tx_ready;
 // 核心板 RESET 实测为低有效，top 内部统一转换为高有效 rst。
 assign rst = !reset;
 
+// Verilog-2001 里没有方便的字符串数组，这里用 function 按 index 取常量字节。
+// MSG_LEN 包含最后的 LF；default 分支返回 LF，覆盖 index=16。
 function [7:0] message_byte;
     input [4:0] index;
     begin
@@ -91,6 +96,7 @@ always @(posedge clk) begin
 end
 
 wire unused_uart_rxd;
+// 显式消费未使用输入，避免部分工具报告悬空/未使用告警。
 assign unused_uart_rxd = uart_rxd;
 
 endmodule

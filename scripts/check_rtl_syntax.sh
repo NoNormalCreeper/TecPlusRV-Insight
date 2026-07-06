@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# RTL 语法 smoke 检查。
+# 这里用 iverilog 编译每个关键模块，目标是尽早发现拼写、端口和 Verilog-2001 语法错误。
+# 它不是综合检查，也不能替代 ISE timing/implementation。
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
@@ -15,6 +18,7 @@ need_tool() {
 need_tool iverilog
 mkdir -p "$BUILD_DIR"
 
+# 每个 -s 都指定一个顶层，避免因为同名/未实例化模块导致检查范围不清楚。
 echo "语法检查：probe_led_key_top"
 iverilog -g2001 -s probe_led_key_top -o "$BUILD_DIR/probe_led_key_top.syntax.out" \
     "$REPO_ROOT/rtl/probe/probe_led_key_top.v"

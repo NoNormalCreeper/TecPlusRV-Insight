@@ -1,3 +1,5 @@
+// tinybus_decode 的组合逻辑仿真。
+// 重点验证地址命中、写使能、读数据 mux，而不是完整 CPU 总线时序。
 `timescale 1ns/1ps
 
 `include "tinybus_defs.vh"
@@ -71,6 +73,7 @@ initial begin
     valid = 1'b1;
     addr = `TINYBUS_ADDR_GPIO_KEY;
     #1;
+    // 组合逻辑需要一个 delta 时间稳定，所以这里用 #1 后再检查。
     if (!gpio_key_sel || rdata !== gpio_key_rdata) begin
         $display("FAIL: GPIO KEY 译码或读回错误");
         $finish;

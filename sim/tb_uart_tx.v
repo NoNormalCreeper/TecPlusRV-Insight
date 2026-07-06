@@ -1,3 +1,5 @@
+// uart_tx 的最小行为仿真。
+// 把时钟和波特率缩小到 100 Hz / 10 baud，避免仿真等真实 9600 baud 那么久。
 `timescale 1ns/1ps
 
 module tb_uart_tx;
@@ -29,6 +31,7 @@ always #5 clk = ~clk;
 task sample_bit;
     output bit_value;
     begin
+        // 等一个 bit 时间后采样 TXD，模拟串口接收端在 bit 中心附近取样。
         #(BIT_CLKS * 10);
         bit_value = txd;
     end
@@ -49,6 +52,7 @@ initial begin
     #30;
     reset = 1'b0;
     @(posedge clk);
+    // 0x41 = 'A' = 8'b0100_0001，便于检查 LSB-first 的前两位。
     data_in = 8'h41;
     valid = 1'b1;
     @(posedge clk);

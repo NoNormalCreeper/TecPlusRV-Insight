@@ -1,3 +1,6 @@
+// 最小 UART 发送器，只负责 TX，不负责接收。
+// 上层用 valid/ready 握手送入 1 个字节，本模块输出 8N1 帧：
+// 1 个低电平起始位、8 个 LSB-first 数据位、1 个高电平停止位。
 module uart_tx #(
     parameter integer CLK_FREQ = 50000000,
     parameter integer BAUD = 9600
@@ -10,6 +13,8 @@ module uart_tx #(
     output reg   txd
 );
 
+// 四舍五入得到每个 bit 占多少个 clk。50 MHz / 9600 不是整数，
+// 这里的误差对早期串口探针足够小，但不是高精度 baud generator。
 localparam integer BAUD_DIV = (CLK_FREQ + (BAUD / 2)) / BAUD;
 
 reg [15:0] baud_count;
@@ -27,6 +32,7 @@ always @(posedge clk) begin
         busy <= 1'b0;
         txd <= 1'b1;
     end else if (!busy) begin
+        // 空闲线保持高电平；valid 只在 ready=1 时会被接收。
         txd <= 1'b1;
         baud_count <= 16'd0;
         bit_index <= 4'd0;

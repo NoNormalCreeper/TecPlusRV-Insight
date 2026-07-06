@@ -1,3 +1,5 @@
+// Probe 4a 顶层：把 SDRAM smoke 控制器接到 TEC-PLUS 板级端口。
+// 顶层主要负责 reset 极性、SDRAM 时钟直通、以及 DQ 双向总线的三态控制。
 module probe_sdram_smoke_top (
     input         clk,
     input         reset,
@@ -23,6 +25,7 @@ wire        rst;
 
 assign sh_clk = clk;
 assign dq_in = sh_db;
+// SDRAM DQ 是 inout：写时 FPGA 驱动，读/空闲时输出高阻，避免和 SDRAM 对打。
 assign sh_db = dq_oe ? dq_out : 16'hzzzz;
 // 核心板 RESET 实测为低有效，top 内部统一转换为高有效 rst。
 assign rst = !reset;

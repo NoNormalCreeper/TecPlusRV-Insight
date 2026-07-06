@@ -1,3 +1,6 @@
+// 仿真专用的 test-exit MMIO 寄存器。
+// firmware 写 TINYBUS_TEST_EXIT 后，testbench 可以用 exited/exit_code
+// 判断程序已经跑到预期终点；真实上板时可以不接这个模块。
 module mmio_test_exit (
     input        clk,
     input        reset,

@@ -1,3 +1,5 @@
+// probe_uart_top 的消息序列仿真。
+// 不解码串口波形，而是在 valid/ready 握手点检查待发送字节序列。
 `timescale 1ns/1ps
 
 module tb_probe_uart_top;
@@ -23,6 +25,7 @@ always @(posedge clk) begin
     if (!reset) begin
         accepted_count <= 0;
     end else if (dut.tx_valid && dut.tx_ready) begin
+        // 这里窥探 DUT 内部 tx_data，是为了快速验证顶层消息调度，不替代 uart_tx 波形测试。
         if (dut.tx_data !== expected[accepted_count]) begin
             $display("FAIL: 第 %0d 个发送字节错误，期望 0x%02x，实际 0x%02x",
                      accepted_count, expected[accepted_count], dut.tx_data);
@@ -69,6 +72,7 @@ initial begin
     reset = 1'b1;
 
     @(negedge clk);
+    // 跳过 1 秒消息间隔，避免仿真真实等待 50,000,000 个周期。
     dut.gap_count = 26'd49_999_999;
     @(posedge clk);
     #1;

@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# firmware 构建脚本。
+# 生成 firmware.elf / firmware.bin / firmware.mem；其中 .mem 供 Verilog $readmemh 使用。
+# 可通过环境变量覆盖 CC/OBJCOPY/OBJDUMP/PYTHON，方便不同机器调工具链。
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
@@ -22,6 +25,7 @@ need_tool "$PYTHON"
 
 mkdir -p "$BUILD_DIR"
 
+# rv32i/ilp32 对齐 PicoRV32 最小配置；freestanding 表示不依赖标准 C runtime。
 CFLAGS="-march=rv32i -mabi=ilp32 -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -Werror -Os"
 INCLUDES="-I$REPO_ROOT/firmware"
 LDFLAGS="-T $REPO_ROOT/firmware/linker.ld"
@@ -32,11 +36,13 @@ $REPO_ROOT/firmware/drivers/gpio.c
 $REPO_ROOT/firmware/main.c
 "
 
+# 不单独生成 .o，保持脚本最薄；后续文件多了再引入 Makefile/CMake。
 "$CC" $CFLAGS $INCLUDES $LDFLAGS -o "$BUILD_DIR/firmware.elf" $SOURCES
 "$OBJCOPY" -O binary "$BUILD_DIR/firmware.elf" "$BUILD_DIR/firmware.bin"
 "$PYTHON" "$REPO_ROOT/scripts/bin2mem.py" "$BUILD_DIR/firmware.bin" "$BUILD_DIR/firmware.mem"
 
 if command -v "$OBJDUMP" >/dev/null 2>&1; then
+    # 反汇编不是仿真必需，但调启动代码和 memory map 时很有用。
     "$OBJDUMP" -d "$BUILD_DIR/firmware.elf" > "$BUILD_DIR/firmware.lst"
 fi
 

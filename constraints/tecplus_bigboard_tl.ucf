@@ -1,4 +1,5 @@
 # TEC-PLUS 大板交通灯 thin probe 约束草案。
+# 对应顶层：rtl/probe/probe_bigboard_tl_top.v。
 # 本文件只覆盖最小 traffic-light 存在性探针，不代表更大外设系统已完成。
 # 如果实验室现象异常，请先核对真实教学板卡、排线连接方式和 UCF。
 
@@ -12,6 +13,7 @@ NET "led[1]" LOC = "M13" | IOSTANDARD = "LVCMOS33";
 NET "led[2]" LOC = "L13" | IOSTANDARD = "LVCMOS33";
 NET "led[3]" LOC = "L12" | IOSTANDARD = "LVCMOS33";
 
+# tl[11:0] 当前只做单 1 轮转，用来快速确认 12 路输出是否能被观察到。
 NET "tl[0]"  LOC = "M11" | IOSTANDARD = "LVCMOS33";
 NET "tl[1]"  LOC = "M10" | IOSTANDARD = "LVCMOS33";
 NET "tl[2]"  LOC = "M9"  | IOSTANDARD = "LVCMOS33";

@@ -1,3 +1,6 @@
+// Probe 5a：大板 traffic-light 最小存在性探针。
+// tl[11:0] 只做单 1 轮转，目标是确认排线/管脚/约束方向，
+// 不是最终交通灯业务逻辑。
 module probe_bigboard_tl_top #(
     parameter integer STEP_TICKS = 25_000_000
 ) (

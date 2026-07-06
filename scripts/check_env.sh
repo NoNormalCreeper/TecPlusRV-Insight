@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
+# 本地工具链检查入口。
+# 只检查命令是否存在，不验证版本是否完全适配；版本问题留到构建/仿真阶段暴露。
 set -eu
 
 check_tool() {
     local name="$1"
     local kind="$2"
 
+    # command -v 只查 PATH；这样不会因为不同发行版安装路径不同而写死位置。
     if command -v "$name" >/dev/null 2>&1; then
         printf '[ok]      %-24s %s\n' "$name" "$kind"
     else

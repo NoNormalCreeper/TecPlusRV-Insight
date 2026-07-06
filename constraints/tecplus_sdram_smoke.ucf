@@ -1,4 +1,5 @@
 # TEC-PLUS SDRAM smoke probe 约束草案。
+# 对应顶层：rtl/probe/probe_sdram_smoke_top.v。
 # 该 probe 只用于最早期链路确认，不代表通用 SDRAM controller 已完成。
 # 如果实验室现象异常，请先核对真实教学板卡、连线方式和 UCF。
 
@@ -23,6 +24,7 @@ NET "sh_dqm[1]" LOC = "D3" | IOSTANDARD = "LVCMOS33";
 NET "sh_ba[0]"  LOC = "N1" | IOSTANDARD = "LVCMOS33";
 NET "sh_ba[1]"  LOC = "N3" | IOSTANDARD = "LVCMOS33";
 
+# 地址线和数据线数量按当前 smoke probe 的 13-bit row/10-bit col、16-bit DQ 写法列出。
 NET "sh_a[0]"  LOC = "P2" | IOSTANDARD = "LVCMOS33";
 NET "sh_a[1]"  LOC = "R1" | IOSTANDARD = "LVCMOS33";
 NET "sh_a[2]"  LOC = "R2" | IOSTANDARD = "LVCMOS33";
@@ -37,6 +39,7 @@ NET "sh_a[10]" LOC = "P1" | IOSTANDARD = "LVCMOS33";
 NET "sh_a[11]" LOC = "B3" | IOSTANDARD = "LVCMOS33";
 NET "sh_a[12]" LOC = "A4" | IOSTANDARD = "LVCMOS33";
 
+# sh_db 是双向总线；RTL 里必须用三态释放读周期，不能一直驱动。
 NET "sh_db[0]"  LOC = "G1" | IOSTANDARD = "LVCMOS33";
 NET "sh_db[1]"  LOC = "H2" | IOSTANDARD = "LVCMOS33";
 NET "sh_db[2]"  LOC = "H1" | IOSTANDARD = "LVCMOS33";

@@ -1,3 +1,6 @@
+// TinyBus 的最小 MMIO 译码器。
+// 这个模块不保存状态，只把 CPU 发来的地址译码成各外设的 select 信号，
+// 并在读操作时把被选中外设的数据 mux 回 CPU。
 `include "tinybus_defs.vh"
 
 module tinybus_decode (
@@ -24,6 +27,8 @@ module tinybus_decode (
     output [31:0]     write_data
 );
 
+// 每个 *_sel 表示本周期地址命中了对应外设。
+// 目前 TinyBus 是单周期占位协议，所以 valid 一来就直接 ready。
 assign gpio_led_sel = valid && (addr == `TINYBUS_ADDR_GPIO_LED);
 assign gpio_key_sel = valid && (addr == `TINYBUS_ADDR_GPIO_KEY);
 assign uart_data_sel = valid && (addr == `TINYBUS_ADDR_UART_DATA);
@@ -37,6 +42,7 @@ assign write_data = wdata;
 assign ready = valid;
 
 always @(*) begin
+    // 未实现地址默认读 0。这样早期 bring-up 不会因为空洞地址产生 X。
     rdata = 32'h0000_0000;
 
     // 当前只有少量占位外设支持读回。

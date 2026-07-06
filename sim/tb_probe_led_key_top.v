@@ -1,3 +1,5 @@
+// probe_led_key_top 的板级探针仿真。
+// 真实板上 tick 很慢；testbench 会直接改 dut.tick_count 来跳过等待时间。
 `timescale 1ns/1ps
 
 module tb_probe_led_key_top;
@@ -20,6 +22,7 @@ always #5 clk = ~clk;
 task press_key;
     input integer index;
     begin
+        // KEY 为低有效，这里制造一个短按：拉低一拍再释放。
         @(negedge clk);
         key[index] = 1'b0;
         @(negedge clk);
@@ -44,6 +47,7 @@ initial begin
     reset = 1'b1;
 
     @(negedge clk);
+    // 直接写 DUT 内部计数器是仿真加速手段，不是综合路径。
     dut.tick_count = 26'd24_999_999;
     @(posedge clk);
     #1;

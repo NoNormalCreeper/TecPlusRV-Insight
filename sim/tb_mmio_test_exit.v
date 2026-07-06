@@ -1,3 +1,5 @@
+// mmio_test_exit 的最小寄存器仿真。
+// 这个模块只服务 testbench：firmware 写入后，仿真知道程序已经结束。
 `timescale 1ns/1ps
 
 module tb_mmio_test_exit;

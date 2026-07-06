@@ -1,3 +1,5 @@
+// probe_bigboard_tl_top 的 thin-probe 仿真。
+// 只验证 tl 单 1 轮转和 LED 心跳存在，不验证真实交通灯业务时序。
 `timescale 1ns/1ps
 
 module tb_bigboard_tl;

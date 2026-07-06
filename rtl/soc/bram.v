@@ -1,3 +1,6 @@
+// 简单 32-bit BRAM 模型。
+// 用于早期 MiniSoC 仿真和之后的片上小内存占位；接口保留字节写使能，
+// 这样可以直接承接 PicoRV32 native memory interface 的 wstrb。
 module bram #(
     parameter integer ADDR_WIDTH = 11,
     parameter integer USE_INIT_FILE = 0,
@@ -27,10 +30,12 @@ end
 
 always @(posedge clk) begin
     if (en) begin
+        // wstrb 每一位控制一个 byte lane，支持 sb/sh/sw 这类不同宽度写入。
         if (wstrb[0]) mem[addr][7:0] <= wdata[7:0];
         if (wstrb[1]) mem[addr][15:8] <= wdata[15:8];
         if (wstrb[2]) mem[addr][23:16] <= wdata[23:16];
         if (wstrb[3]) mem[addr][31:24] <= wdata[31:24];
+        // 同步读：rdata 在时钟沿后更新，testbench 要等一个 delta/周期再检查。
         rdata <= mem[addr];
     end
 end

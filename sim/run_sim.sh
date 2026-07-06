@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# 本地仿真统一入口。
+# 用法：sim/run_sim.sh <目标名>；不传参数时默认跑 uart_tx。
+# 每个目标都会编译到 sim/build，再用 vvp 运行并检查 FAIL/TIMEOUT。
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
@@ -25,6 +28,7 @@ run_and_check() {
     "$@" >"$out_file" 2>&1
     cat "$out_file"
 
+    # testbench 统一用 "FAIL:" / "TIMEOUT:" 标记失败，脚本只解析这两个关键词。
     if grep -Eq '(^|[[:space:]])(FAIL|TIMEOUT):' "$out_file"; then
         return 1
     fi
@@ -70,10 +74,12 @@ case "$SIM_KIND" in
         ;;
     minisoc)
         if [ -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
+            # picorv32.v 是外部核；存在时才编译真实 CPU 仿真路径。
             iverilog -g2001 -DPICORV32_PRESENT -o "$BUILD_DIR/tb_minisoc.out" \
                 "$REPO_ROOT/sim/tb_minisoc.v" \
                 "$REPO_ROOT/rtl/core/picorv32.v"
         else
+            # 缺外部核时仍编译 testbench，让本地 smoke 能明确输出 SKIP。
             iverilog -g2001 -o "$BUILD_DIR/tb_minisoc.out" \
                 "$REPO_ROOT/sim/tb_minisoc.v"
         fi

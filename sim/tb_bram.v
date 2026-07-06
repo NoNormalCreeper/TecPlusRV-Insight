@@ -1,3 +1,5 @@
+// bram 的最小读写仿真。
+// 覆盖两个关键行为：整字写入，以及 wstrb 控制的字节局部写入。
 `timescale 1ns/1ps
 
 module tb_bram;
@@ -38,6 +40,7 @@ initial begin
     en = 1'b1;
     addr = 2'b01;
     wdata = 32'h1122_3344;
+    // 4'b1111 表示 4 个 byte lane 全部写入。
     wstrb = 4'b1111;
     @(posedge clk);
 
@@ -52,6 +55,7 @@ initial begin
 
     @(negedge clk);
     wdata = 32'hAA00_00BB;
+    // 只写最高字节和最低字节，中间两个字节应保持原值 22_33。
     wstrb = 4'b1001;
     @(posedge clk);
 
