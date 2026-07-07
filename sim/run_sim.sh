@@ -244,6 +244,18 @@ case "$SIM_KIND" in
             "$REPO_ROOT/rtl/probe/sdram_tester_ctrl.v"
         run_and_check "$BUILD_DIR/tb_sdram_tester_ctrl.log" vvp "$BUILD_DIR/tb_sdram_tester_ctrl.out"
         ;;
+    sdram_tester_fail)
+        iverilog -g2001 -o "$BUILD_DIR/tb_sdram_tester_fail.out" \
+            "$REPO_ROOT/sim/tb_sdram_tester_fail.v" \
+            "$REPO_ROOT/rtl/probe/sdram_tester_ctrl.v"
+        run_and_check "$BUILD_DIR/tb_sdram_tester_fail.log" vvp "$BUILD_DIR/tb_sdram_tester_fail.out"
+        ;;
+    sdram_tester_reset)
+        iverilog -g2001 -o "$BUILD_DIR/tb_sdram_tester_reset.out" \
+            "$REPO_ROOT/sim/tb_sdram_tester_reset.v" \
+            "$REPO_ROOT/rtl/probe/sdram_tester_ctrl.v"
+        run_and_check "$BUILD_DIR/tb_sdram_tester_reset.log" vvp "$BUILD_DIR/tb_sdram_tester_reset.out"
+        ;;
     bigboard_tl)
         iverilog -g2001 -o "$BUILD_DIR/tb_bigboard_tl.out" \
             "$REPO_ROOT/sim/tb_bigboard_tl.v" \
@@ -252,7 +264,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_tester、bigboard_tl" >&2
+        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_tester、sdram_tester_fail、sdram_tester_reset、bigboard_tl" >&2
         exit 1
         ;;
 esac

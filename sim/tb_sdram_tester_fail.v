@@ -1,11 +1,13 @@
-// sdram_tester_ctrl 的模块级仿真。
-// 这里建一个很小的行为内存，只验证 tester 的多地址写读和 PASS/FAIL 控制流。
+// sdram_tester_ctrl 的受控失败仿真。
+// 行为内存在一个指定地址/pattern 上注入 1 bit 错误，期望 DUT 锁存首错并进入 FAIL。
 `timescale 1ns/1ps
 
-module tb_sdram_tester_ctrl;
+module tb_sdram_tester_fail;
 
 localparam integer TEST_WORDS = 8;
 localparam integer PATTERN_COUNT = 4;
+localparam [9:0]  INJECT_INDEX = 10'd3;
+localparam [7:0]  INJECT_PATTERN = 8'd2;
 
 reg clk;
 reg reset;
@@ -37,6 +39,7 @@ reg [15:0] mem [0:1023];
 reg        read_armed;
 reg [3:0]  read_wait;
 reg [9:0]  read_col;
+reg [7:0]  read_pattern;
 integer    write_seen;
 integer    read_seen;
 integer    i;
@@ -102,6 +105,7 @@ initial begin
     read_armed = 1'b0;
     read_wait = 4'd0;
     read_col = 10'd0;
+    read_pattern = 8'd0;
     write_seen = 0;
     read_seen = 0;
 
@@ -109,14 +113,14 @@ initial begin
         mem[i] = 16'hxxxx;
     end
 
-    $dumpfile("sim/build/tb_sdram_tester_ctrl.vcd");
-    $dumpvars(0, tb_sdram_tester_ctrl);
+    $dumpfile("sim/build/tb_sdram_tester_fail.vcd");
+    $dumpvars(0, tb_sdram_tester_fail);
 
     #40;
     reset = 1'b0;
 
-    #20000;
-    $display("TIMEOUT: sdram_tester_ctrl 没有完成");
+    #30000;
+    $display("TIMEOUT: sdram_tester_fail 没有完成");
     $finish;
 end
 
@@ -126,12 +130,17 @@ always @(posedge clk) begin
         read_armed <= 1'b0;
         read_wait <= 4'd0;
         read_col <= 10'd0;
+        read_pattern <= 8'd0;
         write_seen <= 0;
         read_seen <= 0;
     end else begin
         if (read_armed) begin
             if (read_wait == 4'd0) begin
-                dq_in <= mem[read_col];
+                if (read_col == INJECT_INDEX && read_pattern == INJECT_PATTERN) begin
+                    dq_in <= mem[read_col] ^ 16'h0001;
+                end else begin
+                    dq_in <= mem[read_col];
+                end
                 read_armed <= 1'b0;
             end else begin
                 read_wait <= read_wait - 4'd1;
@@ -139,16 +148,8 @@ always @(posedge clk) begin
         end
 
         if (!sdram_cs_n && sdram_ras_n && !sdram_cas_n && !sdram_we_n) begin
-            if (!dq_oe) begin
-                $display("FAIL: WRITE 周期没有驱动 DQ");
-                $finish;
-            end
-            if (sdram_dqm !== 2'b00) begin
-                $display("FAIL: WRITE 周期 DQM 没有打开");
-                $finish;
-            end
-            if (sdram_addr[10] !== 1'b1) begin
-                $display("FAIL: WRITE 没有使用 auto-precharge");
+            if (!dq_oe || sdram_addr[10] !== 1'b1) begin
+                $display("FAIL: WRITE 周期方向或 auto-precharge 错误");
                 $finish;
             end
             if (dq_out !== make_pattern(sdram_addr[9:0], pattern_index, pass_count)) begin
@@ -160,48 +161,55 @@ always @(posedge clk) begin
         end
 
         if (!sdram_cs_n && sdram_ras_n && !sdram_cas_n && sdram_we_n) begin
-            if (dq_oe) begin
-                $display("FAIL: READ 周期不应驱动 DQ");
-                $finish;
-            end
-            if (sdram_addr[10] !== 1'b1) begin
-                $display("FAIL: READ 没有使用 auto-precharge");
+            if (dq_oe || sdram_addr[10] !== 1'b1) begin
+                $display("FAIL: READ 周期方向或 auto-precharge 错误");
                 $finish;
             end
             read_col <= sdram_addr[9:0];
+            read_pattern <= pattern_index;
             read_wait <= 4'd0;
             read_armed <= 1'b1;
             read_seen <= read_seen + 1;
         end
 
-        if (done_fail) begin
-            $display("FAIL: sdram_tester_ctrl 返回 FAIL");
+        if (done_pass) begin
+            $display("FAIL: 注错路径不应返回 PASS");
             $finish;
         end
 
-        if (done_pass) begin
-            if (write_seen !== TEST_WORDS * PATTERN_COUNT) begin
-                $display("FAIL: 写入数量不正确 writes=%0d", write_seen);
+        if (done_fail) begin
+            if (status_led !== 4'b1111) begin
+                $display("FAIL: FAIL 状态 LED 不正确");
                 $finish;
             end
-            if (read_seen !== TEST_WORDS * PATTERN_COUNT) begin
-                $display("FAIL: 读取数量不正确 reads=%0d", read_seen);
+            if (write_seen !== TEST_WORDS * PATTERN_COUNT ||
+                read_seen !== TEST_WORDS * PATTERN_COUNT) begin
+                $display("FAIL: 注错路径没有完成完整 sweep writes=%0d reads=%0d", write_seen, read_seen);
                 $finish;
             end
-            if (error_count !== 16'd0) begin
-                $display("FAIL: PASS 路径不应有错误计数");
+            if (error_count !== 16'd1) begin
+                $display("FAIL: 错误计数不正确 error_count=%0d", error_count);
                 $finish;
             end
-            if (first_error_index !== 10'd0 || first_error_pattern !== 8'd0 ||
-                first_error_expected !== 16'd0 || first_error_actual !== 16'd0) begin
-                $display("FAIL: PASS 路径不应锁存首错信息");
+            if (first_error_index !== INJECT_INDEX ||
+                first_error_pattern !== INJECT_PATTERN) begin
+                $display(
+                    "FAIL: 首错位置不正确 index=%0d pattern=%0d",
+                    first_error_index,
+                    first_error_pattern
+                );
                 $finish;
             end
-            if (status_led !== 4'b1000) begin
-                $display("FAIL: PASS 状态 LED 不正确");
+            if (first_error_expected !== make_pattern(INJECT_INDEX, INJECT_PATTERN, 8'd0) ||
+                first_error_actual !== (make_pattern(INJECT_INDEX, INJECT_PATTERN, 8'd0) ^ 16'h0001)) begin
+                $display(
+                    "FAIL: 首错数据不正确 expected=%h actual=%h",
+                    first_error_expected,
+                    first_error_actual
+                );
                 $finish;
             end
-            $display("PASS: sdram_tester_ctrl 多地址写读校验通过");
+            $display("PASS: sdram_tester_fail 受控注错被正确锁存");
             $finish;
         end
     end

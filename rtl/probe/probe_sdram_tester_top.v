@@ -22,7 +22,13 @@ wire        dq_oe;
 wire [15:0] dq_out;
 wire [15:0] dq_in;
 wire [9:0]  test_index;
+wire [7:0]  pattern_index;
 wire [7:0]  pass_count;
+wire [15:0] error_count;
+wire [9:0]  first_error_index;
+wire [7:0]  first_error_pattern;
+wire [15:0] first_error_expected;
+wire [15:0] first_error_actual;
 wire        done_pass;
 wire        done_fail;
 wire        rst;
@@ -48,7 +54,13 @@ sdram_tester_ctrl ctrl (
     .sdram_dqm(sh_dqm),
     .status_led(led),
     .test_index(test_index),
+    .pattern_index(pattern_index),
     .pass_count(pass_count),
+    .error_count(error_count),
+    .first_error_index(first_error_index),
+    .first_error_pattern(first_error_pattern),
+    .first_error_expected(first_error_expected),
+    .first_error_actual(first_error_actual),
     .done_pass(done_pass),
     .done_fail(done_fail)
 );

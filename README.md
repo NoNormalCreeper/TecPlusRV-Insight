@@ -275,7 +275,7 @@ make test-all
 其中：
 
 - `Probe 4a` 不是通用 `SDRAM controller`，只是一个脚本式 `write -> read back -> compare` smoke probe
-- `Probe 4` 是独立 SDRAM tester 初版，会对一段地址窗口重复写入、读回、校验，但仍不接 MiniSoC
+- `Probe 4` 是独立 SDRAM tester，会对一段地址窗口和多组 pattern 重复写入、读回、校验，但仍不接 MiniSoC
 - `Probe 5a` 不是完整显示/大板外设系统，只是交通灯输出存在性探针
 
 这些 probe 的意义是先回答“最小链路是不是活的”，再把风险逐步推到 SoC 集成层。
@@ -302,17 +302,17 @@ rtl/core/picorv32.v
 2. `probe_uart_top` + `constraints/tecplus_uart.ucf`
 3. CPU minimal 综合/资源探针（PicoRV32 / DarkRISCV）
 4. `probe_sdram_smoke_top` + `constraints/tecplus_sdram_smoke.ucf`
-5. `probe_sdram_tester_top` + `constraints/tecplus_sdram_smoke.ucf`
+5. `probe_sdram_tester_top` + `constraints/tecplus_sdram_tester.ucf`
 6. `probe_bigboard_tl_top` + `constraints/tecplus_bigboard_tl.ucf`
 7. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`
 
 这里要区分两层：
 
 - `Probe 4a / 5a`：thin probe
-- `Probe 4`：独立 SDRAM tester 初版
+- `Probe 4`：独立 SDRAM tester
 - `Probe 5`：后续更完整的显示与大板外设 probe
 
-也就是说，当前 `Probe 4` 可以用于独立 SDRAM 写读校验，但还不能当作 SoC 的通用 SDRAM 子系统使用。
+也就是说，当前 `Probe 4` 可以用于独立 SDRAM 多地址、多 pattern 写读校验，但还不能当作 SoC 的通用 SDRAM 子系统使用。
 
 ## ISE 里还需要做什么
 
@@ -345,6 +345,7 @@ rtl/core/picorv32.v
 - UART TX 模块仿真
 - SDRAM smoke 控制器命令序列仿真
 - SDRAM tester 多地址写读控制流仿真
+- SDRAM tester 受控失败与 reset 重复仿真
 - bigboard traffic-light 图样仿真
 - MiniSoC 板级 top 控制流
 

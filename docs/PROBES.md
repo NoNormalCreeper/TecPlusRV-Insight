@@ -351,8 +351,10 @@ sim/run_sim.sh minisoc_smoke_dark
 
 - 顶层：`rtl/probe/probe_sdram_tester_top.v`
 - 控制器：`rtl/probe/sdram_tester_ctrl.v`
-- 约束：`constraints/tecplus_sdram_smoke.ucf`
+- 约束：`constraints/tecplus_sdram_tester.ucf`
 - 本地 testbench：`sim/tb_sdram_tester_ctrl.v`
+- 受控失败 testbench：`sim/tb_sdram_tester_fail.v`
+- reset 重复 testbench：`sim/tb_sdram_tester_reset.v`
 
 ### 设计行为
 
@@ -360,9 +362,11 @@ sim/run_sim.sh minisoc_smoke_dark
 - 上电后完成 `PRECHARGE ALL`、两次 `AUTO REFRESH`、`LOAD MODE`。
 - 对同一 row 内的一段地址窗口逐字写入 pattern。
 - 再对同一地址窗口逐字读回并比较。
+- 一轮内默认扫描 `4` 组 pattern。
+- 若读回不匹配，继续完成 sweep，同时累计 `error_count` 并锁存第一处错误的地址、pattern、期望值和实际值。
 - 每完成一轮后短暂停在 PASS 状态，再用新的 `pass_count` 进入下一轮。
 - pattern 包含地址和轮次，因此同一地址在不同轮次写入的数据不同。
-- 默认测试 `256` 个 `16-bit` halfword；当前地址发生器限制在同一 row 的 `10-bit` column 窗口内。
+- 默认每组 pattern 测试 `256` 个 `16-bit` halfword；当前地址发生器限制在同一 row 的 `10-bit` column 窗口内。
 
 ### LED 状态建议
 
@@ -376,7 +380,7 @@ sim/run_sim.sh minisoc_smoke_dark
 
 1. 在 ISE 中创建或切换到独立工程。
 2. 加入 `rtl/probe/probe_sdram_tester_top.v` 和 `rtl/probe/sdram_tester_ctrl.v`。
-3. 加入 `constraints/tecplus_sdram_smoke.ucf`。
+3. 加入 `constraints/tecplus_sdram_tester.ucf`。
 4. 确认顶层为 `probe_sdram_tester_top`。
 5. 生成 bitstream 并下载到板卡。
 6. 观察 LED 是否重复经历写、读、PASS，且不会稳定到 `1111`。
@@ -386,6 +390,15 @@ sim/run_sim.sh minisoc_smoke_dark
 - 下载后不是随机闪烁或长期卡在初始化。
 - 能重复进入 `1000`，并在 PASS hold 后继续下一轮。
 - 多次 reset 后现象可重复。
+
+### 本地验证
+
+```bash
+sim/run_sim.sh sdram_tester
+sim/run_sim.sh sdram_tester_fail
+sim/run_sim.sh sdram_tester_reset
+scripts/check_rtl_syntax.sh
+```
 
 ### 这一步的边界
 

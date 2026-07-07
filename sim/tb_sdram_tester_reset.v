@@ -1,14 +1,16 @@
-// sdram_tester_ctrl 的模块级仿真。
-// 这里建一个很小的行为内存，只验证 tester 的多地址写读和 PASS/FAIL 控制流。
+// sdram_tester_ctrl 的复位重复运行仿真。
+// 连续 3 次 reset/release 后都应完成同样的 PASS 收敛。
 `timescale 1ns/1ps
 
-module tb_sdram_tester_ctrl;
+module tb_sdram_tester_reset;
 
-localparam integer TEST_WORDS = 8;
+localparam integer TEST_WORDS = 4;
 localparam integer PATTERN_COUNT = 4;
 
 reg clk;
 reg reset;
+reg [3:0] reset_hold;
+reg [1:0] pass_events;
 reg [15:0] dq_in;
 
 wire        dq_oe;
@@ -37,8 +39,6 @@ reg [15:0] mem [0:1023];
 reg        read_armed;
 reg [3:0]  read_wait;
 reg [9:0]  read_col;
-integer    write_seen;
-integer    read_seen;
 integer    i;
 
 sdram_tester_ctrl #(
@@ -81,42 +81,25 @@ sdram_tester_ctrl #(
 
 always #5 clk = ~clk;
 
-function [15:0] make_pattern;
-    input [9:0] index;
-    input [7:0] pattern;
-    input [7:0] round;
-    begin
-        case (pattern[1:0])
-            2'd0: make_pattern = 16'hA55A ^ {index[7:0], index[9:2]} ^ {round, ~round};
-            2'd1: make_pattern = 16'h5AA5 ^ {~index[7:0], index[9:2]} ^ {~round, round};
-            2'd2: make_pattern = {index[7:0], ~index[7:0]} ^ {round, 8'h3C};
-            default: make_pattern = {~index[7:0], index[7:0]} ^ {8'hC3, round};
-        endcase
-    end
-endfunction
-
 initial begin
     clk = 1'b0;
     reset = 1'b1;
+    reset_hold = 4'd4;
+    pass_events = 2'd0;
     dq_in = 16'h0000;
     read_armed = 1'b0;
     read_wait = 4'd0;
     read_col = 10'd0;
-    write_seen = 0;
-    read_seen = 0;
 
     for (i = 0; i < 1024; i = i + 1) begin
         mem[i] = 16'hxxxx;
     end
 
-    $dumpfile("sim/build/tb_sdram_tester_ctrl.vcd");
-    $dumpvars(0, tb_sdram_tester_ctrl);
+    $dumpfile("sim/build/tb_sdram_tester_reset.vcd");
+    $dumpvars(0, tb_sdram_tester_reset);
 
-    #40;
-    reset = 1'b0;
-
-    #20000;
-    $display("TIMEOUT: sdram_tester_ctrl 没有完成");
+    #80000;
+    $display("TIMEOUT: sdram_tester_reset 没有完成 3 次 reset/pass");
     $finish;
 end
 
@@ -126,8 +109,11 @@ always @(posedge clk) begin
         read_armed <= 1'b0;
         read_wait <= 4'd0;
         read_col <= 10'd0;
-        write_seen <= 0;
-        read_seen <= 0;
+        if (reset_hold == 4'd0) begin
+            reset <= 1'b0;
+        end else begin
+            reset_hold <= reset_hold - 4'd1;
+        end
     end else begin
         if (read_armed) begin
             if (read_wait == 4'd0) begin
@@ -139,70 +125,44 @@ always @(posedge clk) begin
         end
 
         if (!sdram_cs_n && sdram_ras_n && !sdram_cas_n && !sdram_we_n) begin
-            if (!dq_oe) begin
-                $display("FAIL: WRITE 周期没有驱动 DQ");
-                $finish;
-            end
-            if (sdram_dqm !== 2'b00) begin
-                $display("FAIL: WRITE 周期 DQM 没有打开");
-                $finish;
-            end
-            if (sdram_addr[10] !== 1'b1) begin
-                $display("FAIL: WRITE 没有使用 auto-precharge");
-                $finish;
-            end
-            if (dq_out !== make_pattern(sdram_addr[9:0], pattern_index, pass_count)) begin
-                $display("FAIL: WRITE pattern 错误 addr=%0d data=%h", sdram_addr[9:0], dq_out);
+            if (!dq_oe || sdram_addr[10] !== 1'b1) begin
+                $display("FAIL: WRITE 周期方向或 auto-precharge 错误");
                 $finish;
             end
             mem[sdram_addr[9:0]] <= dq_out;
-            write_seen <= write_seen + 1;
         end
 
         if (!sdram_cs_n && sdram_ras_n && !sdram_cas_n && sdram_we_n) begin
-            if (dq_oe) begin
-                $display("FAIL: READ 周期不应驱动 DQ");
-                $finish;
-            end
-            if (sdram_addr[10] !== 1'b1) begin
-                $display("FAIL: READ 没有使用 auto-precharge");
+            if (dq_oe || sdram_addr[10] !== 1'b1) begin
+                $display("FAIL: READ 周期方向或 auto-precharge 错误");
                 $finish;
             end
             read_col <= sdram_addr[9:0];
             read_wait <= 4'd0;
             read_armed <= 1'b1;
-            read_seen <= read_seen + 1;
         end
 
         if (done_fail) begin
-            $display("FAIL: sdram_tester_ctrl 返回 FAIL");
+            $display("FAIL: reset 重复运行期间不应返回 FAIL");
             $finish;
         end
 
         if (done_pass) begin
-            if (write_seen !== TEST_WORDS * PATTERN_COUNT) begin
-                $display("FAIL: 写入数量不正确 writes=%0d", write_seen);
-                $finish;
-            end
-            if (read_seen !== TEST_WORDS * PATTERN_COUNT) begin
-                $display("FAIL: 读取数量不正确 reads=%0d", read_seen);
-                $finish;
-            end
-            if (error_count !== 16'd0) begin
-                $display("FAIL: PASS 路径不应有错误计数");
-                $finish;
-            end
-            if (first_error_index !== 10'd0 || first_error_pattern !== 8'd0 ||
+            if (status_led !== 4'b1000 || error_count !== 16'd0 ||
+                first_error_index !== 10'd0 || first_error_pattern !== 8'd0 ||
                 first_error_expected !== 16'd0 || first_error_actual !== 16'd0) begin
-                $display("FAIL: PASS 路径不应锁存首错信息");
+                $display("FAIL: reset 后 PASS 状态或错误锁存不正确");
                 $finish;
             end
-            if (status_led !== 4'b1000) begin
-                $display("FAIL: PASS 状态 LED 不正确");
+
+            if (pass_events == 2'd2) begin
+                $display("PASS: sdram_tester_reset 连续 3 次 reset 后稳定通过");
                 $finish;
             end
-            $display("PASS: sdram_tester_ctrl 多地址写读校验通过");
-            $finish;
+
+            pass_events <= pass_events + 2'd1;
+            reset <= 1'b1;
+            reset_hold <= 4'd4;
         end
     end
 end

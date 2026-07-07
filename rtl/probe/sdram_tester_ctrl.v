@@ -12,6 +12,8 @@ module sdram_tester_ctrl #(
     parameter integer PASS_HOLD_CYCLES = 32'd25000000,
     // 当前地址发生器只扫同一 row 的 10-bit column 窗口，TEST_WORDS 应保持 <= 1024。
     parameter integer TEST_WORDS = 256,
+    // 默认每轮扫 4 组 pattern，覆盖 issue #13 建议的最小 4 地址 x 4 pattern。
+    parameter integer PATTERN_COUNT = 4,
     parameter [12:0] MODE_REG_VALUE = 13'h220,
     parameter [12:0] ROW_ADDR = 13'd0
 ) (
@@ -30,7 +32,13 @@ module sdram_tester_ctrl #(
     output reg [1:0] sdram_dqm,
     output reg [3:0] status_led,
     output reg [9:0] test_index,
+    output reg [7:0] pattern_index,
     output reg [7:0] pass_count,
+    output reg [15:0] error_count,
+    output reg [9:0] first_error_index,
+    output reg [7:0] first_error_pattern,
+    output reg [15:0] first_error_expected,
+    output reg [15:0] first_error_actual,
     output reg    done_pass,
     output reg    done_fail
 );
@@ -69,13 +77,19 @@ wire [12:0] col_addr_with_ap;
 wire [15:0] expected_data;
 
 assign col_addr_with_ap = {2'b00, 1'b1, test_index};
-assign expected_data = make_pattern(test_index, pass_count);
+assign expected_data = make_pattern(test_index, pattern_index, pass_count);
 
 function [15:0] make_pattern;
     input [9:0] index;
+    input [7:0] pattern;
     input [7:0] round;
     begin
-        make_pattern = 16'hA55A ^ {index[7:0], index[9:2]} ^ {round, ~round};
+        case (pattern[1:0])
+            2'd0: make_pattern = 16'hA55A ^ {index[7:0], index[9:2]} ^ {round, ~round};
+            2'd1: make_pattern = 16'h5AA5 ^ {~index[7:0], index[9:2]} ^ {~round, round};
+            2'd2: make_pattern = {index[7:0], ~index[7:0]} ^ {round, 8'h3C};
+            default: make_pattern = {~index[7:0], index[7:0]} ^ {8'hC3, round};
+        endcase
     end
 endfunction
 
@@ -84,7 +98,13 @@ always @(posedge clk) begin
         state <= ST_PWRUP_WAIT;
         wait_count <= 32'd0;
         test_index <= 10'd0;
+        pattern_index <= 8'd0;
         pass_count <= 8'd0;
+        error_count <= 16'd0;
+        first_error_index <= 10'd0;
+        first_error_pattern <= 8'd0;
+        first_error_expected <= 16'd0;
+        first_error_actual <= 16'd0;
         dq_oe <= 1'b0;
         dq_out <= 16'h0000;
         sdram_cke <= 1'b1;
@@ -186,6 +206,12 @@ always @(posedge clk) begin
                 sdram_addr <= MODE_REG_VALUE;
                 wait_count <= 32'd0;
                 test_index <= 10'd0;
+                pattern_index <= 8'd0;
+                error_count <= 16'd0;
+                first_error_index <= 10'd0;
+                first_error_pattern <= 8'd0;
+                first_error_expected <= 16'd0;
+                first_error_actual <= 16'd0;
                 state <= ST_WAIT_TMRD;
             end
 
@@ -306,9 +332,17 @@ always @(posedge clk) begin
                     wait_count <= 32'd0;
                     state <= ST_WAIT_RTRP;
                 end else begin
-                    status_led <= 4'b1111;
-                    done_fail <= 1'b1;
-                    state <= ST_FAIL;
+                    if (error_count == 16'd0) begin
+                        first_error_index <= test_index;
+                        first_error_pattern <= pattern_index;
+                        first_error_expected <= expected_data;
+                        first_error_actual <= dq_in;
+                    end
+                    if (error_count != 16'hffff) begin
+                        error_count <= error_count + 16'd1;
+                    end
+                    wait_count <= 32'd0;
+                    state <= ST_WAIT_RTRP;
                 end
             end
 
@@ -324,8 +358,20 @@ always @(posedge clk) begin
 
             ST_NEXT_READ: begin
                 if (test_index >= TEST_WORDS - 1) begin
+                    test_index <= 10'd0;
                     wait_count <= 32'd0;
-                    state <= ST_PASS;
+                    if (pattern_index >= PATTERN_COUNT - 1) begin
+                        if (error_count == 16'd0) begin
+                            state <= ST_PASS;
+                        end else begin
+                            status_led <= 4'b1111;
+                            done_fail <= 1'b1;
+                            state <= ST_FAIL;
+                        end
+                    end else begin
+                        pattern_index <= pattern_index + 8'd1;
+                        state <= ST_ACT_WRITE;
+                    end
                 end else begin
                     test_index <= test_index + 10'd1;
                     wait_count <= 32'd0;
@@ -345,7 +391,13 @@ always @(posedge clk) begin
                 if (wait_count >= PASS_HOLD_CYCLES - 1) begin
                     wait_count <= 32'd0;
                     test_index <= 10'd0;
+                    pattern_index <= 8'd0;
                     pass_count <= pass_count + 8'd1;
+                    error_count <= 16'd0;
+                    first_error_index <= 10'd0;
+                    first_error_pattern <= 8'd0;
+                    first_error_expected <= 16'd0;
+                    first_error_actual <= 16'd0;
                     state <= ST_ACT_WRITE;
                 end else begin
                     wait_count <= wait_count + 32'd1;
