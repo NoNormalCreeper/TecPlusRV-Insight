@@ -1,6 +1,6 @@
-# TEC-PLUS SDRAM smoke probe 约束草案。
-# 对应顶层：rtl/probe/probe_sdram_smoke_top.v。
-# 该 probe 只用于最早期链路确认，不代表通用 SDRAM controller 已完成。
+# TEC-PLUS SDRAM probe 约束草案。
+# 可用于 rtl/probe/probe_sdram_smoke_top.v 和 rtl/probe/probe_sdram_tester_top.v。
+# 这些 probe 用于 SDRAM 链路确认，不代表 SoC 级通用 SDRAM controller 已完成。
 # 如果实验室现象异常，请先核对真实教学板卡、连线方式和 UCF。
 
 NET "clk"   LOC = "T8" | IOSTANDARD = "LVCMOS33";

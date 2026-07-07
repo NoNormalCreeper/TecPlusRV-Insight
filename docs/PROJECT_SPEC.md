@@ -75,6 +75,7 @@ PicoRV32、DarkRISCV 或其他开源 RTL 可以参考、审阅并 vendored 进�
 - reset 极性确认
 - LED / KEY / UART 板级现象验证
 - `Probe 4a` 的 SDRAM smoke 现象验证
+- `Probe 4` 的独立 SDRAM tester 现象验证
 - `Probe 5a` 的 bigboard traffic-light 现象验证
 - `tecplus_minisoc_top` 集成后的资源适配验证
 

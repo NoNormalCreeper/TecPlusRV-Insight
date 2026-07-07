@@ -264,19 +264,21 @@ make test-all
 
 原因很直接：如果 LED 和 UART 这两个最小探针都没过，后面即使 SoC 不工作，你也分不清是 CPU、wrapper、总线、memory map、UCF、还是板级 I/O 出的问题。
 
-### 第 5 步：用更薄的 Probe 4a / 5a 提前排雷
+### 第 5 步：用 Probe 4a / Probe 4 / 5a 提前排雷
 
-当前仓库已经补了两个薄探针，用来在不上完整系统的前提下更早暴露风险：
+当前仓库已经补了几个独立探针，用来在不上完整系统的前提下更早暴露风险：
 
 - `Probe 4a`：`rtl/probe/probe_sdram_smoke_top.v`
+- `Probe 4`：`rtl/probe/probe_sdram_tester_top.v`
 - `Probe 5a`：`rtl/probe/probe_bigboard_tl_top.v`
 
 其中：
 
 - `Probe 4a` 不是通用 `SDRAM controller`，只是一个脚本式 `write -> read back -> compare` smoke probe
+- `Probe 4` 是独立 SDRAM tester 初版，会对一段地址窗口重复写入、读回、校验，但仍不接 MiniSoC
 - `Probe 5a` 不是完整显示/大板外设系统，只是交通灯输出存在性探针
 
-这两个 probe 的意义是让你在投入完整 `Probe 4 / 5` 之前，先回答“最小链路是不是活的”。
+这些 probe 的意义是先回答“最小链路是不是活的”，再把风险逐步推到 SoC 集成层。
 
 ## PicoRV32 放置方式
 
@@ -300,15 +302,17 @@ rtl/core/picorv32.v
 2. `probe_uart_top` + `constraints/tecplus_uart.ucf`
 3. CPU minimal 综合/资源探针（PicoRV32 / DarkRISCV）
 4. `probe_sdram_smoke_top` + `constraints/tecplus_sdram_smoke.ucf`
-5. `probe_bigboard_tl_top` + `constraints/tecplus_bigboard_tl.ucf`
-6. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`
+5. `probe_sdram_tester_top` + `constraints/tecplus_sdram_smoke.ucf`
+6. `probe_bigboard_tl_top` + `constraints/tecplus_bigboard_tl.ucf`
+7. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`
 
 这里要区分两层：
 
-- `Probe 4a / 5a`：当前仓库已经实现的 thin probe
-- `Probe 4 / 5`：后续更完整的 `SDRAM standalone tester` / 显示与大板外设 probe
+- `Probe 4a / 5a`：thin probe
+- `Probe 4`：独立 SDRAM tester 初版
+- `Probe 5`：后续更完整的显示与大板外设 probe
 
-也就是说，当前不是“Probe 4/5 完整实现了”，而是先落了更薄、更适合早期排雷的版本。
+也就是说，当前 `Probe 4` 可以用于独立 SDRAM 写读校验，但还不能当作 SoC 的通用 SDRAM 子系统使用。
 
 ## ISE 里还需要做什么
 
@@ -340,6 +344,7 @@ rtl/core/picorv32.v
 - RTL 语法烟测
 - UART TX 模块仿真
 - SDRAM smoke 控制器命令序列仿真
+- SDRAM tester 多地址写读控制流仿真
 - bigboard traffic-light 图样仿真
 - MiniSoC 板级 top 控制流
 
@@ -355,4 +360,4 @@ rtl/core/picorv32.v
 
 - 新增工程路径保持 ASCII，避免 ISE/脚本在中文路径、空格路径下出问题。
 - `rtl/soc/bram.v` 支持 `$readmemh`，用于早期仿真和 bring-up；但在 ISE 下的初始化行为仍要以实验室验证为准。
-- `Probe 4a` 只代表 SDRAM smoke probe 已存在，不代表通用 SDRAM 控制器已完成。
+- `Probe 4a` 是最小 smoke；`Probe 4` 是独立 tester 初版。二者都不代表 SoC 级通用 SDRAM 控制器已完成。

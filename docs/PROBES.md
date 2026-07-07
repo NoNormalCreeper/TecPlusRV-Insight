@@ -17,15 +17,16 @@
 | Probe 2b | `DarkRISCV Minimal synthesis probe` | 已定义流程 | 部分 |
 | Probe 3 | `MiniSoC dual-core simulation probe` | 已实现 | 是 |
 | Probe 4a | `SDRAM smoke probe` | 已实现 | 是 |
-| Probe 4 | `SDRAM standalone tester` | 计划中，full 版未实现 | 否 |
+| Probe 4 | `SDRAM standalone tester` | 独立 tester 初版已实现 | 是 |
 | Probe 5a | `bigboard traffic-light thin probe` | 已实现 | 是 |
 | Probe 5 | `显示 / 大板外设探针` | 计划中，full 版未实现 | 否 |
 
-这里要特别说明三点：
+这里要特别说明四点：
 
 - `Probe 4a` 和 `Probe 5a` 是 thin probe，目标是提早排雷，不是假装 full 功能已经完成。
-- `Probe 4` 和 `Probe 5` 的 full 版现在仍然没有对应 RTL 顶层，不是漏做，而是当前任务边界故意停在“基础框架 + 探针测试”。
-- 任务说明明确要求不要伪造 `SDRAM controller`。因此当前版本只实现了脚本式 `Probe 4a`，不假装已经完成 `Probe 4`。
+- `Probe 4` 已有独立 tester 初版，但仍然不是 SoC 级通用 SDRAM controller。
+- `Probe 5` 的 full 版现在仍然没有对应 RTL 顶层，不是漏做，而是当前任务边界故意停在“基础框架 + 探针测试”。
+- 任务说明明确要求不要伪造 `SDRAM controller`，因此当前 `Probe 4` 只宣称“独立 tester”，不宣称已经能给 MiniSoC 当 SDRAM 子系统。
 
 ## 先做什么，不要先做什么
 
@@ -37,7 +38,8 @@
 4. `Probe 2b`
 5. `Probe 3` 对照本地结果做联调
 6. `Probe 4a`
-7. `Probe 5a`
+7. `Probe 4`
+8. `Probe 5a`
 
 不建议的顺序：
 
@@ -343,26 +345,51 @@ sim/run_sim.sh minisoc_smoke_dark
 
 ### 当前状态
 
-计划中，full 版当前仍未实现。
+独立 tester 初版已实现。
 
-### 为什么现在没有
+### 对应文件
 
-- 任务边界明确要求当前只做“基础框架 + 探针测试”
-- 任务边界还明确要求不要伪造 `SDRAM controller`
-- 在 `XC6SLX9` 这样资源紧张的平台上，`SDRAM controller` 不是应该随手占位假装完成的模块
-- 当前已经先落了 `Probe 4a`，full 版不需要在第一阶段硬挤进去
+- 顶层：`rtl/probe/probe_sdram_tester_top.v`
+- 控制器：`rtl/probe/sdram_tester_ctrl.v`
+- 约束：`constraints/tecplus_sdram_smoke.ucf`
+- 本地 testbench：`sim/tb_sdram_tester_ctrl.v`
 
-### 当前仓库保留了什么
+### 设计行为
 
-- `docs/MEMORY_MAP.md` 中的 `0x8000_0000: SDRAM planned region`
+- 仍然不接 CPU，不接 MiniSoC，不做 runtime、bootloader 或 UART 错误打印。
+- 上电后完成 `PRECHARGE ALL`、两次 `AUTO REFRESH`、`LOAD MODE`。
+- 对同一 row 内的一段地址窗口逐字写入 pattern。
+- 再对同一地址窗口逐字读回并比较。
+- 每完成一轮后短暂停在 PASS 状态，再用新的 `pass_count` 进入下一轮。
+- pattern 包含地址和轮次，因此同一地址在不同轮次写入的数据不同。
+- 默认测试 `256` 个 `16-bit` halfword；当前地址发生器限制在同一 row 的 `10-bit` column 窗口内。
 
-### 后续真正做它时，应该是什么样
+### LED 状态建议
 
-- 至少要有独立的 `SDRAM controller`
-- 至少要有读写校验
-- 至少要有明确的初始化、刷新、时序和错误现象判定
+- `0001`：初始化阶段
+- `0010`：写地址窗口
+- `0100`：读地址窗口
+- `1000`：本轮 PASS，随后继续下一轮
+- `1111`：FAIL，保持到 reset
 
-在这些都没有之前，宁可明确写“未实现”，也不要做一个看起来像有但实际上不能验证的平台假模块。
+### 你在实验室里应该怎么做
+
+1. 在 ISE 中创建或切换到独立工程。
+2. 加入 `rtl/probe/probe_sdram_tester_top.v` 和 `rtl/probe/sdram_tester_ctrl.v`。
+3. 加入 `constraints/tecplus_sdram_smoke.ucf`。
+4. 确认顶层为 `probe_sdram_tester_top`。
+5. 生成 bitstream 并下载到板卡。
+6. 观察 LED 是否重复经历写、读、PASS，且不会稳定到 `1111`。
+
+### 成功标准
+
+- 下载后不是随机闪烁或长期卡在初始化。
+- 能重复进入 `1000`，并在 PASS hold 后继续下一轮。
+- 多次 reset 后现象可重复。
+
+### 这一步的边界
+
+它是独立 SDRAM tester，不是 SoC 可复用的 SDRAM slave。当前实现优先验证 U2 SDRAM 的初始化、单字写读、DQ 三态、地址/数据/control/UCF 链路，以及“地址 + 轮次”pattern 的读回一致性。它还没有提供 CPU 总线接口、刷新仲裁、burst 访问、完整地址空间遍历或错误地址 UART 打印。
 
 ## Probe 5a：bigboard traffic-light thin probe
 
