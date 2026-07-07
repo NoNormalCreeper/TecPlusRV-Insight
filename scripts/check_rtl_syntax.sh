@@ -50,17 +50,50 @@ echo "语法检查：bram"
 iverilog -g2001 -s bram -o "$BUILD_DIR/bram.syntax.out" \
     "$REPO_ROOT/rtl/soc/bram.v"
 
+echo "语法检查：bram_dualport"
+iverilog -g2001 -s bram_dualport -o "$BUILD_DIR/bram_dualport.syntax.out" \
+    "$REPO_ROOT/rtl/soc/bram_dualport.v"
+
 echo "语法检查：mmio_test_exit"
 iverilog -g2001 -s mmio_test_exit -o "$BUILD_DIR/mmio_test_exit.syntax.out" \
     "$REPO_ROOT/rtl/soc/mmio_test_exit.v"
 
 if [ -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
+    echo "语法检查：picorv32_adapter"
+    iverilog -g2001 -I "$REPO_ROOT/rtl/core" -s picorv32_adapter \
+        -o "$BUILD_DIR/picorv32_adapter.syntax.out" \
+        "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
+        "$REPO_ROOT/rtl/core/picorv32.v"
+fi
+
+if [ -f "$REPO_ROOT/rtl/core/darkriscv.v" ]; then
+    echo "语法检查：darkriscv_adapter"
+    iverilog -g2001 -I "$REPO_ROOT/rtl/core" -s darkriscv_adapter \
+        -o "$BUILD_DIR/darkriscv_adapter.syntax.out" \
+        "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
+        "$REPO_ROOT/rtl/core/darkriscv.v"
+fi
+
+if [ -f "$REPO_ROOT/rtl/core/picorv32.v" ] && [ -f "$REPO_ROOT/rtl/core/darkriscv.v" ]; then
+    echo "语法检查：tecplus_cpu_wrapper"
+    iverilog -g2001 -I "$REPO_ROOT/rtl/core" -s tecplus_cpu_wrapper \
+        -o "$BUILD_DIR/tecplus_cpu_wrapper.syntax.out" \
+        "$REPO_ROOT/rtl/soc/tecplus_cpu_wrapper.v" \
+        "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
+        "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
+        "$REPO_ROOT/rtl/core/picorv32.v" \
+        "$REPO_ROOT/rtl/core/darkriscv.v"
+
     echo "语法检查：tecplus_minisoc_top"
-    iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -s tecplus_minisoc_top \
+    iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -I "$REPO_ROOT/rtl/core" -s tecplus_minisoc_top \
         -o "$BUILD_DIR/tecplus_minisoc_top.syntax.out" \
         "$REPO_ROOT/rtl/soc/tecplus_minisoc_top.v" \
+        "$REPO_ROOT/rtl/soc/tecplus_cpu_wrapper.v" \
+        "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
+        "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
         "$REPO_ROOT/rtl/core/picorv32.v" \
-        "$REPO_ROOT/rtl/soc/bram.v" \
+        "$REPO_ROOT/rtl/core/darkriscv.v" \
+        "$REPO_ROOT/rtl/soc/bram_dualport.v" \
         "$REPO_ROOT/rtl/soc/tinybus_decode.v" \
         "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
         "$REPO_ROOT/rtl/periph/uart_tx.v"
