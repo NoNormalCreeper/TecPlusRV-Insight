@@ -109,4 +109,33 @@ initial begin
     $finish;
 end
 
+// ---- UART 监听器：把 CPU 打到 uart_txd 上的 8N1 帧还原成字符打印 ----
+// 这样仿真终端能直接看到 firmware 的 boot log、自检结果和性能报告，
+// 而不只是最后的 PASS/FAIL。仅用于仿真观测，不参与 PASS 判定。
+//
+// 时序换算：tb 用 CLK_FREQ=1MHz / BAUD=100kHz，即每个 bit 占 10 个时钟；
+// 时钟周期 10ns（#5 翻转），所以 1 个 bit = 100ns。
+localparam integer UART_CLKS_PER_BIT = 1000000 / 100000; // 10 个时钟/bit
+localparam integer UART_CLK_PERIOD_NS = 10;              // 时钟周期 10ns
+localparam integer UART_BIT_NS = UART_CLKS_PER_BIT * UART_CLK_PERIOD_NS; // 100ns
+
+integer uart_bit_i;
+reg [7:0] uart_rx_byte;
+
+initial begin
+    forever begin
+        // 空闲时线是高电平，等一个下降沿 = 起始位到来。
+        @(negedge uart_txd);
+        // 跳到第 0 个数据位的正中间采样（起始位 1 个 + 半个 bit）。
+        #(UART_BIT_NS + UART_BIT_NS / 2);
+        for (uart_bit_i = 0; uart_bit_i < 8; uart_bit_i = uart_bit_i + 1) begin
+            uart_rx_byte[uart_bit_i] = uart_txd; // LSB 先到
+            #(UART_BIT_NS);
+        end
+        // 一帧收全，直接把字符打到终端（stop 位不用再等）。
+        $write("%c", uart_rx_byte);
+        $fflush;
+    end
+end
+
 endmodule
