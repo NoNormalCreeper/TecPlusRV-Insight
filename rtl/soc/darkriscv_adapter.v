@@ -11,7 +11,11 @@ module darkriscv_adapter (
     output [31:0] mem_addr,
     output [31:0] mem_wdata,
     output [3:0]  mem_wstrb,
-    input  [31:0] mem_rdata
+    input  [31:0] mem_rdata,
+    // SoC shell 的稳定计数器契约。
+    // 以后接入新 CPU 时，应优先补齐这对输出，而不是重新引入 top-level proxy counting。
+    output [31:0] counter_cycle,
+    output [31:0] counter_instret
 );
 
 wire        ibus_req;
@@ -57,6 +61,8 @@ darkriscv u_cpu (
     .DATAI(mem_rdata),
     .DDACK(mem_ready),
     .DBERR(1'b0),
+    .PERF_CYCLE(counter_cycle),
+    .PERF_INSTRET(counter_instret),
     .DEBUG(debug)
 );
 

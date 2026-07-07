@@ -104,6 +104,11 @@ module darkriscv
     input             CPR_ACK,
 `endif
 
+    // TecPlusRV 的 vendor diff 说明：
+    // 这两个端口只负责导出现有 DarkRISCV CSR counter，供 SoC 集成使用。
+    // 它们是 observation-only 的导出，不应在这里混入新的 SoC 逻辑。
+    output     [31:0] PERF_CYCLE,
+    output     [31:0] PERF_INSTRET,
     output [3:0]  DEBUG       // old-school osciloscope based debug! :)
 );
 
@@ -486,6 +491,16 @@ module darkriscv
 			end
 		end
     `endif
+
+`ifdef __CSR_ESSENTIAL__
+    // 这里只是 export tap。
+    // 保持直接连到 core 自己的 CSR counter，避免 MiniSoC 的 MMIO 视图退回 SoC-side proxy count。
+    assign PERF_CYCLE = CSRCLK[31:0];
+    assign PERF_INSTRET = CSRINS[31:0];
+`else
+    assign PERF_CYCLE = 32'h0000_0000;
+    assign PERF_INSTRET = 32'h0000_0000;
+`endif
 
     wire [31:0] CRDATA = 
     `ifdef __THREADS__    

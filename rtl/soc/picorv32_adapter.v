@@ -13,7 +13,11 @@ module picorv32_adapter #(
     output [31:0] mem_addr,
     output [31:0] mem_wdata,
     output [3:0]  mem_wstrb,
-    input  [31:0] mem_rdata
+    input  [31:0] mem_rdata,
+    // SoC shell 的稳定计数器契约。
+    // 这里必须保持为 CPU core 自己的计数结果，不要改回 top-level proxy counting。
+    output [31:0] counter_cycle,
+    output [31:0] counter_instret
 );
 
 wire unused_ifetch_ready;
@@ -25,7 +29,9 @@ assign unused_ifetch_ready = ifetch_ready;
 assign unused_ifetch_rdata = ifetch_rdata;
 
 picorv32 #(
-    .ENABLE_COUNTERS(0),
+    // ENABLE_COUNTERS 必须保持打开。
+    // MiniSoC 的 MMIO counter 读数要求直接反映 core 自己的计数，而不是 SoC 侧估算值。
+    .ENABLE_COUNTERS(1),
     .ENABLE_COUNTERS64(0),
     .ENABLE_REGS_DUALPORT(0),
     .TWO_STAGE_SHIFT(1),
@@ -57,7 +63,9 @@ picorv32 #(
     .irq(32'h0000_0000),
     .eoi(),
     .trace_valid(),
-    .trace_data()
+    .trace_data(),
+    .counter_cycle(counter_cycle),
+    .counter_instret(counter_instret)
 );
 
 endmodule

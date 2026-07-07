@@ -14,7 +14,11 @@ module tecplus_cpu_wrapper #(
     output [31:0] mem_addr,
     output [31:0] mem_wdata,
     output [3:0]  mem_wstrb,
-    input  [31:0] mem_rdata
+    input  [31:0] mem_rdata,
+    // wrapper 层契约：
+    // 每个 CPU 实现都必须通过这两个输出提供 counter，这样 SoC 其余部分不需要再去偷看 per-core 内部信号。
+    output [31:0] counter_cycle,
+    output [31:0] counter_instret
 );
 
 localparam integer CPU_IMPL_PICORV32 = 0;
@@ -35,7 +39,9 @@ generate
             .mem_addr(mem_addr),
             .mem_wdata(mem_wdata),
             .mem_wstrb(mem_wstrb),
-            .mem_rdata(mem_rdata)
+            .mem_rdata(mem_rdata),
+            .counter_cycle(counter_cycle),
+            .counter_instret(counter_instret)
         );
     end else begin : g_picorv32
         picorv32_adapter #(
@@ -53,7 +59,9 @@ generate
             .mem_addr(mem_addr),
             .mem_wdata(mem_wdata),
             .mem_wstrb(mem_wstrb),
-            .mem_rdata(mem_rdata)
+            .mem_rdata(mem_rdata),
+            .counter_cycle(counter_cycle),
+            .counter_instret(counter_instret)
         );
     end
 endgenerate

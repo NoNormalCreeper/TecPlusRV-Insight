@@ -58,6 +58,8 @@ wire [31:0] gpio_key_rdata;
 wire [31:0] uart_status_rdata;
 wire [31:0] cycle_rdata;
 wire [31:0] instret_rdata;
+wire [31:0] cpu_cycle_count;
+wire [31:0] cpu_instret_count;
 wire [31:0] mmio_rdata;
 wire        mmio_write_en;
 wire        gpio_led_sel;
@@ -68,9 +70,6 @@ wire        uart_fire;
 wire        test_exit_write;
 wire        mmio_stall;
 wire        respond;
-
-reg [31:0] cycle_count;
-reg [31:0] instret_count;
 
 wire unused_uart_rxd;
 
@@ -93,8 +92,10 @@ assign ifetch_rdata = ifetch_bram_rdata;
 
 assign gpio_key_rdata = {28'h0000000, key};
 assign uart_status_rdata = {31'h00000000, uart_ready};
-assign cycle_rdata = cycle_count;
-assign instret_rdata = instret_count;
+// MMIO 可见的 counter 故意通过 wrapper 契约直接来自被选中的 CPU。
+// 这里不要重新引入 local proxy counting，否则 instret 语义会再次偏离 core 自己的报告值。
+assign cycle_rdata = cpu_cycle_count;
+assign instret_rdata = cpu_instret_count;
 
 assign mmio_stall = pending && !req_is_bram && uart_data_sel && mmio_write_en && !uart_ready;
 assign respond = pending && !mmio_stall;
@@ -117,7 +118,9 @@ tecplus_cpu_wrapper #(
     .mem_addr(mem_addr),
     .mem_wdata(mem_wdata),
     .mem_wstrb(mem_wstrb),
-    .mem_rdata(mem_rdata)
+    .mem_rdata(mem_rdata),
+    .counter_cycle(cpu_cycle_count),
+    .counter_instret(cpu_instret_count)
 );
 
 bram_dualport #(
@@ -193,11 +196,8 @@ always @(posedge clk) begin
         mem_ready <= 1'b0;
         mem_rdata <= 32'h0000_0000;
         led <= 4'h0;
-        cycle_count <= 32'h0000_0000;
-        instret_count <= 32'h0000_0000;
     end else begin
         mem_ready <= 1'b0;
-        cycle_count <= cycle_count + 32'd1;
 
         if (ifetch_pending) begin
             ifetch_pending <= 1'b0;
@@ -219,10 +219,6 @@ always @(posedge clk) begin
             req_addr <= mem_addr;
             req_wdata <= mem_wdata;
             req_wstrb <= mem_wstrb;
-        end
-
-        if (ifetch_ready || (respond && req_is_bram && mem_instr && req_wstrb == 4'b0000)) begin
-            instret_count <= instret_count + 32'd1;
         end
     end
 end

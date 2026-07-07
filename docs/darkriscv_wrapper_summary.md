@@ -260,8 +260,8 @@ scripts/compare_cpu_perf.sh
 
 ```text
 cpu          cycles       instret      cpi_x1000
-picorv32     862823       156901       5499
-darkriscv    404897       202448       2000
+picorv32     858661       143853       5969
+darkriscv    402526       143853       2798
 ```
 
 ### 这个结果该怎么解读
@@ -273,9 +273,9 @@ darkriscv    404897       202448       2000
 
 它的限制也很明确：
 
-- `cycle` / `instret` 目前是 **SoC 侧统一接口**
-- `instret` 不是最终严格的 ISA retire 证明
-- 结果包含启动、校验和 `test_exit` 的固定开销
+- `cycle` / `instret` 现在来自 **core-backed counter source**
+- `instret` 对 PicoRV32 已经直接对应核内计数；DarkRISCV 当前来自其内部 `CSRINS`
+- 结果已经缩到 benchmark 测量区间，但仍然包含固定的测量读数开销
 
 所以这条流适合做：
 
@@ -285,6 +285,23 @@ darkriscv    404897       202448       2000
 
 但**不适合直接拿来当最终课程报告里的严谨性能结论**。  
 如果后面要正式汇报性能，建议再把统计口径升级成更精确的 per-core 方案。
+
+### Counter source 一致性回归
+
+现在额外有两条专门的回归用来验证 MMIO 读到的 `cycle` / `instret` 是否真的来自对应 CPU 的 backing counter：
+
+```bash
+sim/run_sim.sh minisoc_counter_source_pico
+sim/run_sim.sh minisoc_counter_source_dark
+```
+
+这两条测试会在 `test_exit` 后直接对比：
+
+- MiniSoC MMIO 侧看到的 counter
+- PicoRV32 的 `count_cycle` / `count_instr`
+- DarkRISCV 的 `CSRCLK` / `CSRINS`
+
+这样后续如果有人又把顶层改回 SoC 代理计数，这里会先红。
 
 ## ISE 使用方式
 
@@ -465,14 +482,18 @@ CPU_IMPL=1
 
 ## 计数器说明
 
-`cycle` / `instret` 的 MMIO 地址保持不变，但当前 SoC 顶层的 `instret` 仍然是**SoC 侧代理计数**，不是严格意义上的 ISA retire 证明。
+`cycle` / `instret` 的 MMIO 地址保持不变，但当前读到的值已经改成**core-backed counter source**：
+
+- PicoRV32: `count_cycle` / `count_instr`
+- DarkRISCV: `CSRCLK` / `CSRINS`
 
 目前它更适合作为：
 
 - 双核可读的统一软件接口
 - 基本趋势对照
+- 课程阶段的第一版 per-core 性能对比口径
 
-而不是最终严谨的微架构退休统计。
+但它依然不是最终严谨的微架构退休统计，主要是 DarkRISCV 这里目前仍然是 `CSRINS`，比旧的 SoC 代理计数可靠得多，但还不是形式化意义上的 retire proof。
 
 如果后面要做正式性能报告，建议把这部分再升级成更精确的 per-core 统计来源。
 

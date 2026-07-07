@@ -131,6 +131,13 @@ sim/run_sim.sh minisoc_dark
 scripts/compare_cpu_perf.sh
 ```
 
+单独跑 core-backed counter source 检查：
+
+```bash
+sim/run_sim.sh minisoc_counter_source_pico
+sim/run_sim.sh minisoc_counter_source_dark
+```
+
 单独跑 SDRAM smoke 控制器仿真：
 
 ```bash

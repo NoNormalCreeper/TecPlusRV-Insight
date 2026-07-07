@@ -3,6 +3,8 @@
 module tb_minisoc_perf #(
     parameter integer CPU_IMPL = 0,
     parameter [31:0] EXPECT_EXIT_CODE = 32'h0000_0001,
+    parameter [31:0] RESULT_CYCLE_ADDR = 32'h0000_0000,
+    parameter [31:0] RESULT_INSTRET_ADDR = 32'h0000_0004,
     parameter integer TIMEOUT_CYCLES = 2000000
 );
 
@@ -14,6 +16,8 @@ wire [3:0] led;
 wire uart_txd;
 
 integer cpi_x1000;
+reg [31:0] measured_cycle;
+reg [31:0] measured_instret;
 
 tecplus_minisoc_top #(
     .CLK_FREQ(1000000),
@@ -50,13 +54,16 @@ initial begin
                 $finish;
             end
 
-            if (dut.instret_count == 32'h0000_0000) begin
-                $display("FAIL: instret_count stayed zero");
+            measured_cycle = dut.u_bram.mem[RESULT_CYCLE_ADDR[15:2]];
+            measured_instret = dut.u_bram.mem[RESULT_INSTRET_ADDR[15:2]];
+
+            if (measured_instret == 32'h0000_0000) begin
+                $display("FAIL: 测量区间内的 instret 结果仍为零");
                 $finish;
             end
 
-            cpi_x1000 = (dut.cycle_count * 1000) / dut.instret_count;
-            $display("RESULT: cpu_impl=%0d cycles=%0d instret=%0d cpi_x1000=%0d", CPU_IMPL, dut.cycle_count, dut.instret_count, cpi_x1000);
+            cpi_x1000 = (measured_cycle * 1000) / measured_instret;
+            $display("RESULT: cpu_impl=%0d cycles=%0d instret=%0d cpi_x1000=%0d", CPU_IMPL, measured_cycle, measured_instret, cpi_x1000);
             $display("PASS: MiniSoC perf measurement completed");
             $finish;
         end
