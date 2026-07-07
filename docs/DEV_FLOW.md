@@ -250,13 +250,13 @@ ISE 不关心的通常是：
 
 顺序：
 
-1. `PicoRV32 Minimal synthesis probe`
+1. `CPU Minimal synthesis probe`（`Probe 2a / 2b`）
 2. `Probe 4a`：`SDRAM smoke probe`
 3. `Probe 5a`：`bigboard traffic-light thin probe`
 
 此时要能回答的问题是：
 
-- CPU 最小配置能不能放下
+- 两颗 CPU 最小配置能不能放下
 - SDRAM 最小命令链路是不是活的
 - 核心板到大板某一组最小输出链路是不是活的
 
@@ -326,7 +326,7 @@ ISE 不关心的通常是：
 
 要求：
 
-- 使用真实 `rtl/core/picorv32.v`
+- 使用真实 CPU wrapper 和 vendored CPU 核
 - 使用真实 `firmware/build/firmware.mem`
 - 使用统一的 `test_exit`
 - 结果收敛到 `PASS / FAIL / TIMEOUT`
@@ -504,6 +504,11 @@ ISE 自己做：
 需要的通常包括：
 
 - `rtl/core/picorv32.v`
+- `rtl/core/darkriscv.v`
+- `rtl/soc/tecplus_cpu_wrapper.v`
+- `rtl/soc/picorv32_adapter.v`
+- `rtl/soc/darkriscv_adapter.v`
+- `rtl/soc/bram_dualport.v`
 - `rtl/soc/*.v`
 - `rtl/soc/tecplus_minisoc_top.v`
 - `rtl/periph/uart_tx.v`
@@ -533,6 +538,11 @@ scripts/build_firmware.sh
 1. `Synthesize`
 2. `Implement Design`
 3. `Generate Programming File`
+
+如果当前目标是切换 CPU 核，还需要在 `Synthesize - XST` 的 `Generics, Parameters` 中确认：
+
+- `CPU_IMPL=0`：PicoRV32
+- `CPU_IMPL=1`：DarkRISCV
 
 ### 如果需要 BRAM 初始化
 
@@ -594,13 +604,13 @@ scripts/build_firmware.sh
 
 ### 顺序 2：资源和系统前置风险
 
-1. `PicoRV32 Minimal synthesis probe`
-2. `MiniSoC simulation probe`
+1. `Probe 2a / 2b`
+2. `MiniSoC dual-core simulation probe`
 
 目的：
 
-- 先看 CPU 最小配置资源能不能接受
-- 先看本地最小系统启动路径是否打通
+- 先看两颗核的资源和时序是否都能接受
+- 先看本地双核最小系统启动路径是否都打通
 
 ### 顺序 3：板级扩展风险
 
@@ -720,11 +730,12 @@ thin probe 的价值是早发现底层风险，不是替代后续完整系统。
 
 1. `Probe 0`
 2. `Probe 1`
-3. `PicoRV32 Minimal synthesis probe`
-4. `MiniSoC simulation probe`
-5. `Probe 4a`
-6. `Probe 5a`
-7. 板级 `MiniSoC bring-up`
+3. `Probe 2a`
+4. `Probe 2b`
+5. `MiniSoC dual-core simulation probe`
+6. `Probe 4a`
+7. `Probe 5a`
+8. 板级 `MiniSoC bring-up`
 
 如果 `Probe 0` 和 `Probe 1` 还没稳定，就不要急着上完整 SoC。
 
@@ -734,7 +745,7 @@ thin probe 的价值是早发现底层风险，不是替代后续完整系统。
 2. 本地仿真通过，不等于 `.ucf` 一定正确。
 3. `Probe 4a` 通过，不等于通用 `SDRAM controller` 已经可用。
 4. `Probe 5a` 通过，不等于完整显示/大板外设系统已经可用。
-5. `MiniSoC simulation probe` 通过，不等于板级串口、reset、下载链路一定没问题。
+5. `MiniSoC dual-core simulation probe` 通过，不等于板级串口、reset、下载链路一定没问题。
 
 ## 最后一句话
 

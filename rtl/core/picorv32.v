@@ -156,7 +156,13 @@ module picorv32 #(
 
 	// Trace Interface
 	output reg        trace_valid,
-	output reg [35:0] trace_data
+	output reg [35:0] trace_data,
+
+	// TecPlusRV 的 vendor diff 说明：
+	// 这两个端口只负责导出现有内部计数器，供 SoC shell 提供 core-backed MMIO 读数。
+	// 这里不要顺手改计数语义，应保持与 count_cycle/count_instr 一致。
+	output [31:0] counter_cycle,
+	output [31:0] counter_instret
 );
 	localparam integer irq_timer = 0;
 	localparam integer irq_ebreak = 1;
@@ -173,6 +179,10 @@ module picorv32 #(
 	localparam [35:0] TRACE_IRQ    = {4'b 1000, 32'b 0};
 
 	reg [63:0] count_cycle, count_instr;
+	// 这里只是 export tap。
+	// 除非明确要修改 PicoRV32 内部计数行为，否则不要在这里“顺手修正” counter 语义。
+	assign counter_cycle = ENABLE_COUNTERS ? count_cycle[31:0] : 32'h0000_0000;
+	assign counter_instret = ENABLE_COUNTERS ? count_instr[31:0] : 32'h0000_0000;
 	reg [31:0] reg_pc, reg_next_pc, reg_op1, reg_op2, reg_out;
 	reg [4:0] reg_sh;
 

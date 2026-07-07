@@ -11,6 +11,7 @@ CC=${CC:-riscv64-unknown-elf-gcc}
 OBJCOPY=${OBJCOPY:-riscv64-unknown-elf-objcopy}
 OBJDUMP=${OBJDUMP:-riscv64-unknown-elf-objdump}
 PYTHON=${PYTHON:-python3}
+FIRMWARE_MAIN=${FIRMWARE_MAIN:-$REPO_ROOT/firmware/main.c}
 
 need_tool() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -25,6 +26,11 @@ need_tool "$PYTHON"
 
 mkdir -p "$BUILD_DIR"
 
+if [ ! -f "$FIRMWARE_MAIN" ]; then
+    echo "找不到 firmware 入口文件：$FIRMWARE_MAIN" >&2
+    exit 1
+fi
+
 # rv32i/ilp32 对齐 PicoRV32 最小配置；freestanding 表示不依赖标准 C runtime。
 CFLAGS="-march=rv32i -mabi=ilp32 -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -Werror -Os"
 INCLUDES="-I$REPO_ROOT/firmware"
@@ -33,7 +39,7 @@ SOURCES="
 $REPO_ROOT/firmware/startup.S
 $REPO_ROOT/firmware/drivers/uart.c
 $REPO_ROOT/firmware/drivers/gpio.c
-$REPO_ROOT/firmware/main.c
+$FIRMWARE_MAIN
 "
 
 # 不单独生成 .o，保持脚本最薄；后续文件多了再引入 Makefile/CMake。
@@ -47,6 +53,7 @@ if command -v "$OBJDUMP" >/dev/null 2>&1; then
 fi
 
 echo "firmware 构建完成："
+echo "  entry: $FIRMWARE_MAIN"
 echo "  $BUILD_DIR/firmware.elf"
 echo "  $BUILD_DIR/firmware.bin"
 echo "  $BUILD_DIR/firmware.mem"

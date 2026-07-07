@@ -4,7 +4,12 @@
 // LED, and UART TX are connected through the same wrapper.
 `timescale 1ns/1ps
 
-module tb_minisoc;
+module tb_minisoc #(
+    parameter integer CPU_IMPL = 0,
+    parameter [31:0] EXPECT_EXIT_CODE = 32'h0000_0001,
+    parameter [3:0]  EXPECT_LED = 4'h5,
+    parameter integer TIMEOUT_CYCLES = 2000000
+);
 
 reg clk;
 reg reset;
@@ -21,6 +26,7 @@ wire uart_txd;
 tecplus_minisoc_top #(
     .CLK_FREQ(1000000),
     .UART_BAUD(100000),
+    .CPU_IMPL(CPU_IMPL),
     .BRAM_ADDR_WIDTH(14),
     .BRAM_INIT_FILE("firmware/build/firmware.mem")
 ) dut (
@@ -58,7 +64,7 @@ initial begin
 end
 
 initial begin
-    repeat (500000) begin
+    repeat (TIMEOUT_CYCLES) begin
         @(posedge clk);
         if (dut.uart_fire)
             uart_written = 1'b1;
@@ -67,12 +73,12 @@ initial begin
         if (dut.test_exit_write)
             exit_written = 1'b1;
         if (dut.test_exited) begin
-            if (dut.test_exit_code !== 32'h0000_0001) begin
+            if (dut.test_exit_code !== EXPECT_EXIT_CODE) begin
                 $display("FAIL: test_exit=0x%08x", dut.test_exit_code);
                 $finish;
             end
 
-            if (led !== 4'h5) begin
+            if (led !== EXPECT_LED) begin
                 $display("FAIL: firmware LED write did not reach board pins, led=0x%0x", led);
                 $finish;
             end

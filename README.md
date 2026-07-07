@@ -7,7 +7,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 工程目录骨架
 - 早期板级探针
 - 可复用的 UART TX RTL
-- MiniSoC 板级 top 与 SoC 基础模块
+- 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
 - 裸机 firmware 骨架
 - 本地构建和仿真入口
 
@@ -22,7 +22,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - `rtl/probe/`：早期上板探针顶层
 - `rtl/periph/`：可复用外设
 - `rtl/soc/`：地址映射、BRAM、MMIO 和 MiniSoC 板级 top
-- `rtl/core/`：vendored CPU 核，例如 `picorv32.v`
+- `rtl/core/`：vendored CPU 核，例如 `picorv32.v`、`darkriscv.v`
 - `rtl/accel/`：后续扩展加速器
 - `constraints/`：TEC-PLUS 约束文件
 - `firmware/`：裸机启动代码、链接脚本、驱动和测试
@@ -34,6 +34,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 项目目标与边界：`docs/PROJECT_SPEC.md`
 - 探针说明：`docs/PROBES.md`
 - 开发与验证流程：`docs/DEV_FLOW.md`
+- 双核 wrapper 与 ISE/性能说明：`docs/darkriscv_wrapper_summary.md`
 
 ## 最简单环境配置教程
 
@@ -84,9 +85,12 @@ make test-all
 1. 本地工具检查
 2. firmware 构建
 3. RTL 语法烟测
-4. probe 类仿真
-5. 平台层仿真
-6. MiniSoC / SoC 级仿真
+4. probe / BRAM / MMIO 等关键模块仿真
+5. SDRAM smoke 控制器仿真
+6. bigboard traffic-light 仿真
+7. PicoRV32 MiniSoC 板级 top 仿真
+8. DarkRISCV MiniSoC 板级 top 仿真
+9. 双核 firmware regression
 
 ## 常用本地命令
 
@@ -135,6 +139,21 @@ make test-soc
 跑当前分支的全部正确性检查：
 
 ```bash
+sim/run_sim.sh minisoc_pico
+sim/run_sim.sh minisoc_dark
+```
+
+单独跑双核性能粗对比：
+
+```bash
+make perf
+```
+
+单独跑 core-backed counter source 检查：
+
+```bash
+sim/run_sim.sh minisoc_counter_source_pico
+sim/run_sim.sh minisoc_counter_source_dark
 make test-all
 ```
 
@@ -168,7 +187,7 @@ make test-smoke
 
 - firmware 构建成功
 - `uart_tx` 仿真输出 `PASS`
-- `minisoc` 仿真输出 `PASS` / `FAIL` / `TIMEOUT` 之一
+- `minisoc_pico` / `minisoc_dark` 仿真输出 `PASS` / `FAIL` / `TIMEOUT`
 
 如果当前分支还有双核 wrapper / regression，再补跑：
 
@@ -214,15 +233,15 @@ make test-all
 - `reset` 是否一直有效
 - 实验室板卡实际 UCF 是否与仓库文档一致
 
-### 第 4 步：再碰 PicoRV32 / MiniSoC
+### 第 4 步：再碰 CPU / MiniSoC
 
 只有在 Probe 0 和 Probe 1 都通过后，才建议做：
 
-1. PicoRV32 minimal 综合探针
-2. MiniSoC 本地仿真
+1. CPU minimal 综合探针（PicoRV32 / DarkRISCV）
+2. 双核 MiniSoC 本地仿真
 3. MiniSoC 板级 bring-up
 
-原因很直接：如果 LED 和 UART 这两个最小探针都没过，后面即使 SoC 不工作，你也分不清是 CPU、总线、memory map、UCF、还是板级 I/O 出的问题。
+原因很直接：如果 LED 和 UART 这两个最小探针都没过，后面即使 SoC 不工作，你也分不清是 CPU、wrapper、总线、memory map、UCF、还是板级 I/O 出的问题。
 
 ### 第 5 步：用更薄的 Probe 4a / 5a 提前排雷
 
@@ -258,7 +277,7 @@ rtl/core/picorv32.v
 
 1. `probe_led_key_top` + `constraints/tecplus_led_key.ucf`
 2. `probe_uart_top` + `constraints/tecplus_uart.ucf`
-3. PicoRV32 minimal 综合/资源探针
+3. CPU minimal 综合/资源探针（PicoRV32 / DarkRISCV）
 4. `probe_sdram_smoke_top` + `constraints/tecplus_sdram_smoke.ucf`
 5. `probe_bigboard_tl_top` + `constraints/tecplus_bigboard_tl.ucf`
 6. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`

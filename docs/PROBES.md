@@ -13,8 +13,9 @@
 | --- | --- | --- | --- |
 | Probe 0 | `LED / KEY / RESET / CLK` | 已实现 | 是 |
 | Probe 1 | `UART TX` | 已实现 | 是 |
-| Probe 2 | `PicoRV32 Minimal synthesis probe` | 已定义流程 | 部分 |
-| Probe 3 | `MiniSoC simulation probe` | 已实现 | 是 |
+| Probe 2a | `PicoRV32 Minimal synthesis probe` | 已定义流程 | 部分 |
+| Probe 2b | `DarkRISCV Minimal synthesis probe` | 已定义流程 | 部分 |
+| Probe 3 | `MiniSoC dual-core simulation probe` | 已实现 | 是 |
 | Probe 4a | `SDRAM smoke probe` | 已实现 | 是 |
 | Probe 4 | `SDRAM standalone tester` | 计划中，full 版未实现 | 否 |
 | Probe 5a | `bigboard traffic-light thin probe` | 已实现 | 是 |
@@ -32,16 +33,17 @@
 
 1. `Probe 0`
 2. `Probe 1`
-3. `Probe 2`
-4. `Probe 3` 对照本地结果做联调
-5. `Probe 4a`
-6. `Probe 5a`
+3. `Probe 2a`
+4. `Probe 2b`
+5. `Probe 3` 对照本地结果做联调
+6. `Probe 4a`
+7. `Probe 5a`
 
 不建议的顺序：
 
 - 不要在 `Probe 0` 没过时去调 `UART`
 - 不要在 `Probe 1` 没过时去调完整 `MiniSoC`
-- 不要在 `LED` / `UART` 都还不稳定时就去怀疑 PicoRV32、bus、BRAM 初始化或 `memory map`
+- 不要在 `LED` / `UART` 都还不稳定时就去怀疑 CPU wrapper、bus、BRAM 初始化或 `memory map`
 
 原因很简单：如果最基础的板级输入输出都还没确认，后面出现任何 SoC 级故障时，你会失去最基本的定位手段。
 
@@ -171,18 +173,27 @@
 
 这一步通过后，后续调 SoC 时你就有一个最基本的文本输出通道，不用每次都靠 LED 猜状态。
 
-## Probe 2：PicoRV32 Minimal synthesis probe
+## Probe 2：CPU Minimal synthesis probe
 
 ### 目标
 
-在真正做 `MiniSoC` 之前，先判断一个尽量小的 PicoRV32 配置在 `XC6SLX9` 上是否现实，避免后面做了很多集成工作才发现资源根本不够。
+在真正做 `MiniSoC` 之前，先判断一个尽量小的 CPU + BRAM + MMIO 组合在 `XC6SLX9` 上是否现实，避免后面做了很多集成工作才发现资源根本不够。
+
+当前建议把这一步拆成两支并排记录：
+
+- `Probe 2a`：PicoRV32 minimal
+- `Probe 2b`：DarkRISCV + wrapper
 
 ### 当前仓库提供了什么
 
 - `rtl/soc/mmio_test_exit.v`
 - `rtl/soc/bram.v`
+- `rtl/soc/bram_dualport.v`
 - `rtl/soc/tinybus_defs.vh`
 - `rtl/soc/tinybus_decode.v`
+- `rtl/soc/tecplus_cpu_wrapper.v`
+- `rtl/soc/picorv32_adapter.v`
+- `rtl/soc/darkriscv_adapter.v`
 - `rtl/soc/tecplus_minisoc_top.v`
 - `constraints/tecplus_minisoc.ucf`
 - `firmware/` 骨架
@@ -193,38 +204,43 @@
 
 ### 你现在应该怎么做
 
-1. 确认 vendored 的 `rtl/core/picorv32.v` 已加入 ISE 工程。
+1. 确认 vendored 的 CPU 核源码已加入 ISE 工程：
+   - `Probe 2a`：`rtl/core/picorv32.v`
+   - `Probe 2b`：`rtl/core/darkriscv.v`
 2. 使用 `tecplus_minisoc_top` 做最小组合：`CPU + 64 KiB BRAM + GPIO + UART TX + test_exit`。
-3. 在 ISE 中跑一次综合，记录 `LUT` / `FF` / `BRAM` / `IOB` 占用。
-4. 后续再逐步加 `UART RX`、bootloader 写 BRAM、SDRAM，占用每次单独记录。
+3. 需要时在 ISE 的 `Generics, Parameters` 中覆写：
+   - `CPU_IMPL=0`：PicoRV32
+   - `CPU_IMPL=1`：DarkRISCV
+4. 在 ISE 中跑一次综合/实现，记录 `LUT` / `FF` / `BRAM` / `IOB` / `timing`。
+5. 结果按 `2a` 与 `2b` 并排记录，再逐步加 `UART RX`、bootloader 写 BRAM、SDRAM，占用每次单独记录。
 
 ### 成功标准
 
 - 能得到可信的综合结果
-- 能判断 PicoRV32 最小系统在本板卡上的资源压力
+- 能判断两颗核在同一 SoC 外壳下的资源压力与时序差异
 - 能回答“后续还能不能继续加外设”
 
 ### 如果失败，先查什么
 
-- vendored 的 `PicoRV32` 版本是否包含 ISE 难以接受的写法
+- vendored 的 CPU 核版本是否包含 ISE 难以接受的写法
 - 默认参数是否开了太多功能
 - `BRAM` 初始化方式是否影响综合
-- Map report 如果是 `IOB` 超限，通常是 top module 选错；如果是 `LUT Memory` 超限，优先检查 `BRAM` 是否被推断成 Block RAM。
+- Map report 如果是 `IOB` 超限，通常是 top module 选错；如果是 `LUT Memory` 超限，优先检查 `BRAM` 是否被推断成 Block RAM；如果是 `RAMB16BWER` 已满，优先检查当前 64 KiB 启动 BRAM 配置是否过大。
 
 ### 这一步的意义
 
 它不是展示 probe，而是资源风险 probe。它回答的是“这条路线值不值得继续堆功能”。
 
-## Probe 3：MiniSoC simulation probe
+## Probe 3：MiniSoC dual-core simulation probe
 
 ### 目标
 
-用真实 `MiniSoC` 板级 top 做本地 smoke。这样即使还没去实验室，也能先验证 CPU、BRAM、TinyBus、LED 和 UART TX 是否通过同一条顶层路径打通。
+用真实 `MiniSoC` 板级 top 做本地 smoke。这样即使还没去实验室，也能先验证 PicoRV32 和 DarkRISCV 是否都能通过同一条顶层路径打通 CPU、BRAM、TinyBus、LED 和 UART TX。
 
 ### 对应文件
 
 - testbench：`sim/tb_minisoc.v`
-- 运行脚本：`sim/run_sim.sh minisoc`
+- 运行脚本：`sim/run_sim.sh minisoc_pico`、`sim/run_sim.sh minisoc_dark`
 - `firmware` 构建脚本：`scripts/build_firmware.sh`
 
 ### 当前行为
@@ -232,6 +248,7 @@
 - 如果 CPU 存在并最终写入 `test_exit = 1`，testbench 输出 `PASS`
 - 如果写入其他退出码，输出 `FAIL`
 - 如果长时间没有写到 `test_exit`，输出 `TIMEOUT`
+- 当前默认期望是：两颗核对同一批 firmware 都能收敛到一致的 SoC 结果
 
 ### 你在本地应该怎么做
 
@@ -241,10 +258,11 @@
 scripts/build_firmware.sh
 ```
 
-2. 再运行：
+2. 再分别运行：
 
 ```bash
-sim/run_sim.sh minisoc
+sim/run_sim.sh minisoc_pico
+sim/run_sim.sh minisoc_dark
 ```
 
 3. 看结果属于哪一种：
@@ -255,7 +273,7 @@ sim/run_sim.sh minisoc
 
 ### 结果应该怎么理解
 
-- `PASS`：本地最小控制流打通
+- `PASS`：当前这颗核的本地最小控制流打通
 - `FAIL`：CPU 确实跑到了 `test_exit`，但退出码不对
 - `TIMEOUT`：CPU 没有在预期时间内完成，通常表示启动链路或地址映射还有问题
 
@@ -411,4 +429,4 @@ sim/run_sim.sh minisoc
 
 ### 当前建议
 
-先把 `LED`、`KEY`、`UART`、PicoRV32 资源可行性和 `MiniSoC simulation probe` 稳住，再决定要不要引入这类外设。
+先把 `LED`、`KEY`、`UART`、双核资源可行性和 `MiniSoC dual-core simulation probe` 稳住，再决定要不要引入这类外设。
