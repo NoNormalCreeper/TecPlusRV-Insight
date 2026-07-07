@@ -54,7 +54,7 @@ sudo apt install -y \
 这几个包分别用于：
 
 - `python3`：运行 `bin2mem.py`
-- `make`：通用构建辅助工具，虽然当前脚本不强依赖，但建议一起装
+- `make`：本仓库统一的构建、仿真和 CI 入口
 - `iverilog`：本地 Verilog 编译/仿真
 - `gcc-riscv64-unknown-elf`：生成 RV32I 裸机程序
 - `binutils-riscv64-unknown-elf`：提供 `objcopy`、`objdump`
@@ -62,7 +62,7 @@ sudo apt install -y \
 ### 2. 确认工具已就绪
 
 ```bash
-scripts/check_env.sh
+make check-env
 ```
 
 如果环境正常，应该能看到这些工具都显示为 `[ok]`。
@@ -70,70 +70,89 @@ scripts/check_env.sh
 ### 3. 跑一遍本地 smoke
 
 ```bash
-scripts/test_local.sh
+make test-smoke
 ```
 
-这条命令会顺序执行：
+如果当前分支还带了双核 regression，可以再跑：
+
+```bash
+make test-all
+```
+
+`make test-smoke` 会顺序执行：
 
 1. 本地工具检查
 2. firmware 构建
 3. RTL 语法烟测
-4. UART TX 仿真
-5. SDRAM smoke 控制器仿真
-6. bigboard traffic-light 仿真
-7. MiniSoC 板级 top 仿真
+4. probe 类仿真
+5. 平台层仿真
+6. MiniSoC / SoC 级仿真
 
 ## 常用本地命令
 
 检查工具环境：
 
 ```bash
-scripts/check_env.sh
+make check-env
+```
+
+查看可用目标：
+
+```bash
+make help
 ```
 
 检查 RTL 语法：
 
 ```bash
-scripts/check_rtl_syntax.sh
-```
-
-运行当前本地 smoke：
-
-```bash
-scripts/test_local.sh
+make rtl-syntax
 ```
 
 单独构建 firmware：
 
 ```bash
-scripts/build_firmware.sh
+make firmware
 ```
 
-单独跑 UART TX 仿真：
+跑探针类仿真：
 
 ```bash
-sim/run_sim.sh uart_tx
+make test-probe
 ```
 
-单独跑 MiniSoC 板级 top 仿真：
+跑平台层仿真：
 
 ```bash
-sim/run_sim.sh minisoc
+make test-platform
 ```
 
-单独跑 SDRAM smoke 控制器仿真：
+跑 SoC 级仿真：
 
 ```bash
-sim/run_sim.sh sdram_smoke
+make test-soc
 ```
 
-单独跑 bigboard traffic-light 仿真：
+跑当前分支的全部正确性检查：
 
 ```bash
-sim/run_sim.sh bigboard_tl
+make test-all
 ```
 
-MiniSoC testbench 现在会编译真实板级 top：`rtl/soc/tecplus_minisoc_top.v`。
+单独跑一个仿真目标：
+
+```bash
+make sim TARGET=uart_tx
+make sim TARGET=minisoc
+```
+
+如果当前分支提供双核脚本，还可以用：
+
+```bash
+make test-dual-core
+make perf
+```
+
+底层脚本 `scripts/*.sh` 和 `sim/run_sim.sh` 仍然保留，但推荐优先从 `make` 入口进入。
 
 ## 第一次上手怎么做
 
@@ -142,7 +161,7 @@ MiniSoC testbench 现在会编译真实板级 top：`rtl/soc/tecplus_minisoc_top
 ### 第 1 步：本地确认仓库骨架没坏
 
 ```bash
-scripts/test_local.sh
+make test-smoke
 ```
 
 你应该看到几类结果：
@@ -150,6 +169,12 @@ scripts/test_local.sh
 - firmware 构建成功
 - `uart_tx` 仿真输出 `PASS`
 - `minisoc` 仿真输出 `PASS` / `FAIL` / `TIMEOUT` 之一
+
+如果当前分支还有双核 wrapper / regression，再补跑：
+
+```bash
+make test-all
+```
 
 ### 第 2 步：实验室先做 Probe 0
 

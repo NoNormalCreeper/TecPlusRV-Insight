@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: 构建与仿真检查
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            make \
+            python3 \
+            iverilog \
+            gcc-riscv64-unknown-elf \
+            binutils-riscv64-unknown-elf
+
+      - name: Check env
+        run: make check-env
+
+      - name: Test
+        run: make ci
+
+      - name: Upload debug artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-debug-artifacts
+          if-no-files-found: ignore
+          path: |
+            sim/build
+            firmware/build

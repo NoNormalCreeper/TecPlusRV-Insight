@@ -363,13 +363,13 @@ ISE 不关心的通常是：
 3. 再跑：
 
 ```bash
-scripts/check_rtl_syntax.sh
+make rtl-syntax
 ```
 
 4. 如果该模块影响系统行为，再跑：
 
 ```bash
-sim/run_sim.sh minisoc
+make test-soc
 ```
 
 ### 场景 2：改 `firmware`
@@ -386,13 +386,13 @@ sim/run_sim.sh minisoc
 1. 先构建：
 
 ```bash
-scripts/build_firmware.sh
+make firmware
 ```
 
 2. 再跑：
 
 ```bash
-sim/run_sim.sh minisoc
+make test-soc
 ```
 
 3. 如果改动涉及 `MMIO` 或启动流程，重点看 `PASS / FAIL / TIMEOUT` 是否变化。
@@ -412,7 +412,7 @@ sim/run_sim.sh minisoc
 2. 再跑：
 
 ```bash
-scripts/check_rtl_syntax.sh
+make rtl-syntax
 ```
 
 3. 最后再在实验室验证对应 `.ucf` 和真实现象。
@@ -422,7 +422,7 @@ scripts/check_rtl_syntax.sh
 直接跑整套本地 smoke：
 
 ```bash
-scripts/test_local.sh
+make test-smoke
 ```
 
 当前它覆盖：
@@ -430,10 +430,15 @@ scripts/test_local.sh
 1. 工具链检查
 2. `firmware` 构建
 3. RTL 语法烟测
-4. `UART TX` 仿真
-5. `SDRAM smoke` 仿真
-6. `bigboard traffic-light` 仿真
-7. `MiniSoC` 仿真
+4. probe 类仿真
+5. 平台层仿真
+6. `MiniSoC` / SoC 级仿真
+
+如果当前分支还带了双核 regression，再跑：
+
+```bash
+make test-all
+```
 
 ## 从本地文件到 ISE 工程，应该怎么转换
 
