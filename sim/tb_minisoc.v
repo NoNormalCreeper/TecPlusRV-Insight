@@ -10,12 +10,13 @@ reg clk;
 reg reset;
 reg [3:0] key;
 
-wire [3:0] led;
-wire uart_txd;
-
 reg uart_written;
 reg led_written;
 reg exit_written;
+
+wire [3:0] led;
+wire uart_txd;
+
 
 tecplus_minisoc_top #(
     .CLK_FREQ(1000000),
@@ -38,6 +39,10 @@ initial begin
     reset = 1'b0;
     key = 4'b1111;
 
+    uart_written = 1'b0;
+    led_written = 1'b0;
+    exit_written = 1'b0;
+
     $dumpfile("sim/build/tb_minisoc.vcd");
     $dumpvars(0, tb_minisoc);
 
@@ -53,16 +58,13 @@ initial begin
 end
 
 initial begin
-    uart_written = 1'b0;
-    led_written = 1'b0;
-    exit_written = 1'b0;
     repeat (500000) begin
         @(posedge clk);
         if (dut.uart_fire)
             uart_written = 1'b1;
         if (dut.gpio_led_sel && (dut.req_wstrb != 4'b0))
             led_written = 1'b1;
-        if (test_exit_write)
+        if (dut.test_exit_write)
             exit_written = 1'b1;
         if (dut.test_exited) begin
             if (dut.test_exit_code !== 32'h0000_0001) begin
