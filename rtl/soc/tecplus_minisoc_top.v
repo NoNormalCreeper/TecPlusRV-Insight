@@ -50,9 +50,14 @@ wire [31:0] ifetch_bram_rdata;
 reg         pending;
 reg         ifetch_pending;
 reg         req_is_bram;
+reg         req_is_replay;
 reg  [31:0] req_addr;
 reg  [31:0] req_wdata;
 reg  [3:0]  req_wstrb;
+reg         last_req_valid;
+reg  [31:0] last_req_addr;
+reg  [31:0] last_req_wdata;
+reg  [3:0]  last_req_wstrb;
 
 wire [31:0] gpio_key_rdata;
 wire [31:0] uart_status_rdata;
@@ -75,6 +80,7 @@ wire unused_uart_rxd;
 
 wire        test_exited;
 wire [31:0] test_exit_code;
+wire        same_as_last_req;
 
 assign resetn = reset;
 assign rst = !reset;
@@ -97,10 +103,16 @@ assign uart_status_rdata = {31'h00000000, uart_ready};
 assign cycle_rdata = cpu_cycle_count;
 assign instret_rdata = cpu_instret_count;
 
-assign mmio_stall = pending && !req_is_bram && uart_data_sel && mmio_write_en && !uart_ready;
+assign same_as_last_req =
+    last_req_valid &&
+    (mem_addr == last_req_addr) &&
+    (mem_wdata == last_req_wdata) &&
+    (mem_wstrb == last_req_wstrb);
+
+assign mmio_stall = pending && !req_is_bram && !req_is_replay && uart_data_sel && mmio_write_en && !uart_ready;
 assign respond = pending && !mmio_stall;
-assign uart_fire = respond && !req_is_bram && uart_data_sel && mmio_write_en;
-assign test_exit_write = respond && !req_is_bram && test_exit_sel && mmio_write_en;
+assign uart_fire = respond && !req_is_bram && !req_is_replay && uart_data_sel && mmio_write_en;
+assign test_exit_write = respond && !req_is_bram && !req_is_replay && test_exit_sel && mmio_write_en;
 
 tecplus_cpu_wrapper #(
     .CPU_IMPL(CPU_IMPL),
@@ -190,14 +202,23 @@ always @(posedge clk) begin
         pending <= 1'b0;
         ifetch_pending <= 1'b0;
         req_is_bram <= 1'b0;
+        req_is_replay <= 1'b0;
         req_addr <= 32'h0000_0000;
         req_wdata <= 32'h0000_0000;
         req_wstrb <= 4'b0000;
+        last_req_valid <= 1'b0;
+        last_req_addr <= 32'h0000_0000;
+        last_req_wdata <= 32'h0000_0000;
+        last_req_wstrb <= 4'b0000;
         mem_ready <= 1'b0;
         mem_rdata <= 32'h0000_0000;
         led <= 4'h0;
     end else begin
         mem_ready <= 1'b0;
+
+        if (!mem_valid) begin
+            last_req_valid <= 1'b0;
+        end
 
         if (ifetch_pending) begin
             ifetch_pending <= 1'b0;
@@ -209,13 +230,18 @@ always @(posedge clk) begin
             pending <= 1'b0;
             mem_ready <= 1'b1;
             mem_rdata <= req_is_bram ? bram_data_rdata : mmio_rdata;
+            last_req_valid <= 1'b1;
+            last_req_addr <= req_addr;
+            last_req_wdata <= req_wdata;
+            last_req_wstrb <= req_wstrb;
 
-            if (!req_is_bram && gpio_led_sel && mmio_write_en) begin
+            if (!req_is_bram && !req_is_replay && gpio_led_sel && mmio_write_en) begin
                 led <= req_wdata[3:0];
             end
         end else if (start_req) begin
             pending <= 1'b1;
             req_is_bram <= start_is_bram;
+            req_is_replay <= same_as_last_req;
             req_addr <= mem_addr;
             req_wdata <= mem_wdata;
             req_wstrb <= mem_wstrb;

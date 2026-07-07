@@ -10,6 +10,7 @@ module tb_minisoc #(
     parameter integer REQUIRE_UART_WRITE = 0,
     parameter integer REQUIRE_LED_WRITE = 0,
     parameter integer REQUIRE_EXIT_WRITE = 0,
+    parameter integer EXPECT_UART_FIRE_COUNT = -1,
     parameter integer TIMEOUT_CYCLES = 2000000
 );
 
@@ -20,6 +21,7 @@ reg [3:0] key;
 reg uart_written;
 reg led_written;
 reg exit_written;
+integer uart_fire_count;
 
 wire [3:0] led;
 wire uart_txd;
@@ -50,6 +52,7 @@ initial begin
     uart_written = 1'b0;
     led_written = 1'b0;
     exit_written = 1'b0;
+    uart_fire_count = 0;
 
     $dumpfile("sim/build/tb_minisoc.vcd");
     $dumpvars(0, tb_minisoc);
@@ -68,8 +71,10 @@ end
 initial begin
     repeat (TIMEOUT_CYCLES) begin
         @(posedge clk);
-        if (dut.uart_fire)
+        if (dut.uart_fire) begin
             uart_written = 1'b1;
+            uart_fire_count = uart_fire_count + 1;
+        end
         if (dut.gpio_led_sel && (dut.req_wstrb != 4'b0))
             led_written = 1'b1;
         if (dut.test_exit_write)
@@ -87,6 +92,11 @@ initial begin
 
             if (REQUIRE_UART_WRITE != 0 && !uart_written) begin
                 $display("FAIL: No UART write occurred during firmware execution");
+                $finish;
+            end
+
+            if (EXPECT_UART_FIRE_COUNT >= 0 && uart_fire_count !== EXPECT_UART_FIRE_COUNT) begin
+                $display("FAIL: expected %0d UART writes, got %0d", EXPECT_UART_FIRE_COUNT, uart_fire_count);
                 $finish;
             end
 
