@@ -1,13 +1,15 @@
-// MiniSoC board-top smoke test.
-// It runs the same board-level top intended for ISE, then watches the firmware
-// write test_exit. This keeps the simulation path honest: CPU, BRAM, TinyBus,
-// LED, and UART TX are connected through the same wrapper.
+// MiniSoC 通用回归 testbench。
+// 默认只检查最小软件可见结果（test_exit / 最终 LED），
+// 可通过参数把 UART / GPIO / exit write requirement 打开，升级成 board-top smoke。
 `timescale 1ns/1ps
 
 module tb_minisoc #(
     parameter integer CPU_IMPL = 0,
     parameter [31:0] EXPECT_EXIT_CODE = 32'h0000_0001,
     parameter [3:0]  EXPECT_LED = 4'h5,
+    parameter integer REQUIRE_UART_WRITE = 0,
+    parameter integer REQUIRE_LED_WRITE = 0,
+    parameter integer REQUIRE_EXIT_WRITE = 0,
     parameter integer TIMEOUT_CYCLES = 2000000
 );
 
@@ -83,17 +85,17 @@ initial begin
                 $finish;
             end
 
-            if (!uart_written) begin
+            if (REQUIRE_UART_WRITE != 0 && !uart_written) begin
                 $display("FAIL: No UART write occurred during firmware execution");
                 $finish;
             end
 
-            if (!led_written) begin
+            if (REQUIRE_LED_WRITE != 0 && !led_written) begin
                 $display("FAIL: No GPIO LED write occurred during firmware execution");
                 $finish;
             end
 
-            if (!exit_written) begin
+            if (REQUIRE_EXIT_WRITE != 0 && !exit_written) begin
                 $display("FAIL: exited but no exit written");
                 $finish;
             end

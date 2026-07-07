@@ -35,10 +35,15 @@ run_and_check() {
 }
 
 compile_minisoc_tb() {
+    local arg_count=$#
     local out_file="$1"
     local cpu_impl="$2"
     local tb_module="$3"
     local tb_file="$4"
+    local require_uart_write="${5:-}"
+    local require_led_write="${6:-}"
+    local require_exit_write="${7:-}"
+    local extra_params=()
 
     if [ ! -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
         echo "缺少 rtl/core/picorv32.v，无法运行 MiniSoC 板级 top 仿真" >&2
@@ -50,8 +55,17 @@ compile_minisoc_tb() {
         exit 1
     fi
 
+    if [ "$arg_count" -ge 7 ]; then
+        extra_params=(
+            -P "$tb_module.REQUIRE_UART_WRITE=$require_uart_write"
+            -P "$tb_module.REQUIRE_LED_WRITE=$require_led_write"
+            -P "$tb_module.REQUIRE_EXIT_WRITE=$require_exit_write"
+        )
+    fi
+
     iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -I "$REPO_ROOT/rtl/core" \
         -P "$tb_module.CPU_IMPL=$cpu_impl" \
+        "${extra_params[@]}" \
         -o "$out_file" \
         "$tb_file" \
         "$REPO_ROOT/rtl/core/picorv32.v" \
@@ -152,7 +166,7 @@ case "$SIM_KIND" in
         run_and_check "$BUILD_DIR/tb_mmio_test_exit.log" vvp "$BUILD_DIR/tb_mmio_test_exit.out"
         ;;
     minisoc)
-        compile_minisoc_tb "$BUILD_DIR/tb_minisoc.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v"
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
         run_and_check "$BUILD_DIR/tb_minisoc.log" vvp "$BUILD_DIR/tb_minisoc.out"
         ;;
     minisoc_pico)
@@ -162,6 +176,14 @@ case "$SIM_KIND" in
     minisoc_dark)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v"
         run_and_check "$BUILD_DIR/tb_minisoc_dark.log" vvp "$BUILD_DIR/tb_minisoc_dark.out"
+        ;;
+    minisoc_smoke_pico)
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_smoke_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
+        run_and_check "$BUILD_DIR/tb_minisoc_smoke_pico.log" vvp "$BUILD_DIR/tb_minisoc_smoke_pico.out"
+        ;;
+    minisoc_smoke_dark)
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_smoke_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
+        run_and_check "$BUILD_DIR/tb_minisoc_smoke_dark.log" vvp "$BUILD_DIR/tb_minisoc_smoke_dark.out"
         ;;
     minisoc_perf_pico)
         compile_minisoc_perf_tb "$BUILD_DIR/tb_minisoc_perf_pico.out" 0 tb_minisoc_perf "$REPO_ROOT/sim/tb_minisoc_perf.v"
@@ -187,6 +209,14 @@ case "$SIM_KIND" in
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_counter_reset_dark.out" 1 tb_minisoc_counter_reset "$REPO_ROOT/sim/tb_minisoc_counter_reset.v"
         run_and_check "$BUILD_DIR/tb_minisoc_counter_reset_dark.log" vvp "$BUILD_DIR/tb_minisoc_counter_reset_dark.out"
         ;;
+    board_demo_pico)
+        compile_minisoc_tb "$BUILD_DIR/tb_board_demo_pico.out" 0 tb_board_demo "$REPO_ROOT/sim/tb_board_demo.v"
+        run_and_check "$BUILD_DIR/tb_board_demo_pico.log" vvp "$BUILD_DIR/tb_board_demo_pico.out"
+        ;;
+    board_demo_dark)
+        compile_minisoc_tb "$BUILD_DIR/tb_board_demo_dark.out" 1 tb_board_demo "$REPO_ROOT/sim/tb_board_demo.v"
+        run_and_check "$BUILD_DIR/tb_board_demo_dark.log" vvp "$BUILD_DIR/tb_board_demo_dark.out"
+        ;;
     sdram_smoke)
         iverilog -g2001 -o "$BUILD_DIR/tb_sdram_smoke_ctrl.out" \
             "$REPO_ROOT/sim/tb_sdram_smoke_ctrl.v" \
@@ -201,7 +231,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、sdram_smoke、bigboard_tl" >&2
+        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、bigboard_tl" >&2
         exit 1
         ;;
 esac

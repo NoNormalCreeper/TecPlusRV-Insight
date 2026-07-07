@@ -85,12 +85,15 @@ make test-all
 1. 本地工具检查
 2. firmware 构建
 3. RTL 语法烟测
-4. probe / BRAM / MMIO 等关键模块仿真
-5. SDRAM smoke 控制器仿真
-6. bigboard traffic-light 仿真
-7. PicoRV32 MiniSoC 板级 top 仿真
-8. DarkRISCV MiniSoC 板级 top 仿真
-9. 双核 firmware regression
+4. probe / BRAM / MMIO / SDRAM / bigboard 等关键模块仿真
+5. PicoRV32 MiniSoC board-top smoke 仿真
+6. DarkRISCV MiniSoC board-top smoke 仿真
+7. MiniSoC smoke / regression bench 模式检查
+
+`make test-all` 会在此基础上再跑：
+
+1. MiniSoC 通用 regression / counter-source 等 SoC 级仿真
+2. 双核 firmware regression
 
 ## 常用本地命令
 
@@ -136,11 +139,18 @@ make test-platform
 make test-soc
 ```
 
-跑当前分支的全部正确性检查：
+单独跑 MiniSoC 通用 regression bench：
 
 ```bash
 sim/run_sim.sh minisoc_pico
 sim/run_sim.sh minisoc_dark
+```
+
+单独跑 MiniSoC board-top smoke：
+
+```bash
+sim/run_sim.sh minisoc_smoke_pico
+sim/run_sim.sh minisoc_smoke_dark
 ```
 
 单独跑双核性能粗对比：
@@ -154,14 +164,20 @@ make perf
 ```bash
 sim/run_sim.sh minisoc_counter_source_pico
 sim/run_sim.sh minisoc_counter_source_dark
-make test-all
+```
+
+检查 MiniSoC 通用 regression / smoke bench 分层：
+
+```bash
+bash scripts/test_minisoc_tb_modes.sh
 ```
 
 单独跑一个仿真目标：
 
 ```bash
 make sim TARGET=uart_tx
-make sim TARGET=minisoc
+make sim TARGET=minisoc_pico
+make sim TARGET=minisoc_smoke_pico
 ```
 
 如果当前分支提供双核脚本，还可以用：
@@ -187,13 +203,18 @@ make test-smoke
 
 - firmware 构建成功
 - `uart_tx` 仿真输出 `PASS`
-- `minisoc_pico` / `minisoc_dark` 仿真输出 `PASS` / `FAIL` / `TIMEOUT`
+- `minisoc_smoke_pico` / `minisoc_smoke_dark` 仿真输出 `PASS` / `FAIL` / `TIMEOUT`
 
 如果当前分支还有双核 wrapper / regression，再补跑：
 
 ```bash
 make test-all
 ```
+
+其中：
+
+- `minisoc_smoke_*` 是 board-top smoke，默认要求 UART / LED / `test_exit` 路径都真实发生
+- `minisoc_*` 是通用 firmware regression bench，默认只检查最小软件可见结果，不强制所有程序都走 UART
 
 ### 第 2 步：实验室先做 Probe 0
 

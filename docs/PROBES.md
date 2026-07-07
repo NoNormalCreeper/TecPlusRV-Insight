@@ -240,7 +240,7 @@
 ### 对应文件
 
 - testbench：`sim/tb_minisoc.v`
-- 运行脚本：`sim/run_sim.sh minisoc_pico`、`sim/run_sim.sh minisoc_dark`
+- 运行脚本：`sim/run_sim.sh minisoc_smoke_pico`、`sim/run_sim.sh minisoc_smoke_dark`
 - `firmware` 构建脚本：`scripts/build_firmware.sh`
 
 ### 当前行为
@@ -248,7 +248,7 @@
 - 如果 CPU 存在并最终写入 `test_exit = 1`，testbench 输出 `PASS`
 - 如果写入其他退出码，输出 `FAIL`
 - 如果长时间没有写到 `test_exit`，输出 `TIMEOUT`
-- 当前默认期望是：两颗核对同一批 firmware 都能收敛到一致的 SoC 结果
+- 当前默认还要求：UART / LED / `test_exit` 路径都真实发生一次
 
 ### 你在本地应该怎么做
 
@@ -261,8 +261,8 @@ scripts/build_firmware.sh
 2. 再分别运行：
 
 ```bash
-sim/run_sim.sh minisoc_pico
-sim/run_sim.sh minisoc_dark
+sim/run_sim.sh minisoc_smoke_pico
+sim/run_sim.sh minisoc_smoke_dark
 ```
 
 3. 看结果属于哪一种：
@@ -273,13 +273,13 @@ sim/run_sim.sh minisoc_dark
 
 ### 结果应该怎么理解
 
-- `PASS`：当前这颗核的本地最小控制流打通
+- `PASS`：当前这颗核的 board-top smoke 路径打通
 - `FAIL`：CPU 确实跑到了 `test_exit`，但退出码不对
 - `TIMEOUT`：CPU 没有在预期时间内完成，通常表示启动链路或地址映射还有问题
 
 ### 这一步的意义
 
-它不是板级探针，而是 SoC 集成前的本地防线。后面你改 `memory map`、改 `firmware`、改 `mmio_test_exit` 时，都应该继续用它回归。
+它不是通用 firmware regression bench，而是 SoC 集成前的 board-top smoke 防线。后面你改 `memory map`、改 `firmware`、改 `mmio_test_exit` 时，如果只想看软件可见结果是否一致，应优先跑 `minisoc_pico` / `minisoc_dark` 这组通用目标。
 
 ## Probe 4a：SDRAM smoke probe
 

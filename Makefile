@@ -13,6 +13,8 @@ COMPARE_CPU_PERF := $(REPO_ROOT)/scripts/compare_cpu_perf.sh
 PROBE_TARGETS := probe_led_key probe_uart_top uart_tx sdram_smoke bigboard_tl
 PLATFORM_TARGETS := bram tinybus_decode mmio_test_exit
 SOC_TARGETS := minisoc
+SOC_SMOKE_TARGETS := minisoc
+MINISOC_TB_MODE_CHECK := $(REPO_ROOT)/scripts/test_minisoc_tb_modes.sh
 
 ifneq ($(wildcard $(REPO_ROOT)/rtl/soc/bram_dualport.v),)
 PLATFORM_TARGETS += bram_dualport
@@ -20,6 +22,7 @@ endif
 
 ifneq ($(wildcard $(REPO_ROOT)/rtl/core/darkriscv.v),)
 SOC_TARGETS := minisoc_pico minisoc_dark
+SOC_SMOKE_TARGETS := minisoc_smoke_pico minisoc_smoke_dark
 ifneq ($(wildcard $(REPO_ROOT)/sim/tb_minisoc_counter_source.v),)
 SOC_TARGETS += minisoc_counter_source_pico minisoc_counter_source_dark
 endif
@@ -39,11 +42,11 @@ help:
 	@echo "  make check-env                 检查本地工具链"
 	@echo "  make firmware                  构建 firmware 镜像"
 	@echo "  make rtl-syntax                跑 RTL 语法 smoke"
-	@echo "  make sim TARGET=minisoc        单独运行一个仿真目标"
+	@echo "  make sim TARGET=minisoc_pico   单独运行一个仿真目标"
 	@echo "  make test-probe                跑探针类仿真"
 	@echo "  make test-platform             跑平台层仿真"
-	@echo "  make test-soc                  跑 MiniSoC 相关仿真"
-	@echo "  make test-smoke                跑当前分支的基础 smoke"
+	@echo "  make test-soc                  跑 MiniSoC 通用 regression / 专项仿真"
+	@echo "  make test-smoke                跑当前分支的基础 smoke 与 board-top smoke"
 	@echo "  make test-dual-core            跑双核 regression（如果当前分支提供）"
 	@echo "  make test-all                  跑全部正确性检查"
 	@echo "  make ci                        CI 入口，等价于 make test-all"
@@ -75,7 +78,11 @@ test-platform: rtl-syntax
 test-soc: firmware rtl-syntax
 	@$(call run_sim_list,$(SOC_TARGETS))
 
-test-smoke: check-env firmware test-probe test-platform test-soc
+test-smoke: check-env firmware test-probe test-platform
+	@$(call run_sim_list,$(SOC_SMOKE_TARGETS))
+ifneq ($(wildcard $(MINISOC_TB_MODE_CHECK)),)
+	"$(MINISOC_TB_MODE_CHECK)"
+endif
 
 test-dual-core: firmware rtl-syntax
 ifneq ($(wildcard $(DUAL_CORE_REGRESSION)),)
@@ -84,7 +91,7 @@ else
 	@echo "test-dual-core: 当前分支没有 scripts/test_dual_core_regression.sh，跳过。"
 endif
 
-test-all: test-smoke test-dual-core
+test-all: test-smoke test-soc test-dual-core
 
 ci: test-all
 

@@ -395,7 +395,8 @@ make firmware
 make test-soc
 ```
 
-3. 如果改动涉及 `MMIO` 或启动流程，重点看 `PASS / FAIL / TIMEOUT` 是否变化。
+3. 如果改动只影响软件可见结果，重点看通用 `minisoc_*` regression 是否仍然收敛。
+4. 如果改动涉及 board-level UART / LED / `test_exit` 路径，再补跑 `make test-smoke` 或直接跑 `minisoc_smoke_*`。
 
 ### 场景 3：改 board probe
 
@@ -432,9 +433,10 @@ make test-smoke
 3. RTL 语法烟测
 4. probe 类仿真
 5. 平台层仿真
-6. `MiniSoC` / SoC 级仿真
+6. `MiniSoC` board-top smoke
+7. MiniSoC smoke / regression bench 模式检查
 
-如果当前分支还带了双核 regression，再跑：
+如果当前分支还带了通用 SoC regression / 双核 regression，再跑：
 
 ```bash
 make test-all
@@ -610,7 +612,7 @@ scripts/build_firmware.sh
 目的：
 
 - 先看两颗核的资源和时序是否都能接受
-- 先看本地双核最小系统启动路径是否都打通
+- 先看本地双核最小系统启动路径，以及 board-top smoke 路径是否都打通
 
 ### 顺序 3：板级扩展风险
 

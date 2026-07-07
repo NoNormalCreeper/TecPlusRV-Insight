@@ -426,8 +426,8 @@ CPU_IMPL=1
 
 ### 2. 板级双核 smoke
 
-- `sim/run_sim.sh minisoc_pico`
-- `sim/run_sim.sh minisoc_dark`
+- `sim/run_sim.sh minisoc_smoke_pico`
+- `sim/run_sim.sh minisoc_smoke_dark`
 
 两颗核都跑同一个 `tb_minisoc`，验证：
 
@@ -435,6 +435,11 @@ CPU_IMPL=1
 - LED 写入
 - `test_exit`
 - UART 路径连通
+
+这里的 `tb_minisoc` 现在是一个可配置 bench：
+
+- `minisoc_smoke_*`：打开 UART / LED / `test_exit` write requirement，作为 board-top smoke
+- `minisoc_*`：关闭这些额外 requirement，作为通用 firmware regression bench
 
 ### 3. firmware 双核矩阵 regression
 
@@ -457,6 +462,8 @@ CPU_IMPL=1
 
 - PicoRV32
 - DarkRISCV
+
+上运行一遍；这里默认用的是通用 `minisoc_*` 目标，不再要求所有 firmware 都必须顺带触发 UART。
 
 上运行一遍，并在 `sim/build/regression/` 留下对应日志和反汇编产物。
 
@@ -511,8 +518,9 @@ CPU_IMPL=1
 - firmware 默认构建
 - RTL 语法检查
 - 关键模块 testbench
-- PicoRV32 MiniSoC smoke
-- DarkRISCV MiniSoC smoke
+- PicoRV32 MiniSoC board-top smoke
+- DarkRISCV MiniSoC board-top smoke
+- MiniSoC smoke / regression bench 模式检查
 - 双核 firmware regression 矩阵
 
 ## 可信度判断
