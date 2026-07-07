@@ -92,8 +92,11 @@ static unsigned int test_mmio(void)
     mmio_write(TINYBUS_GPIO_LED, 0x0u);
     mmio_write(TINYBUS_GPIO_LED, 0xFu);
 
-    // UART 状态寄存器：bit0 是 TX ready。空闲时应当为就绪(1)，否则说明
-    // 状态回读通路或 UART 有问题。
+    // UART 状态寄存器：bit0 是 TX ready。
+    // 注意：调用方刚用 uart_puts() 打印过日志，最后一个字节可能还在发送，
+    // 此刻直接读 TX_READY 会读到 0 造成误报。先 flush 等 TX 真正空闲，
+    // 再检查“空闲时应当就绪(1)”这个不变量。
+    uart_flush();
     if ((mmio_read(TINYBUS_UART_STATUS) & 0x1u) == 0u) return 0xdead0301u;
 
     // cycle 计数器：连续读两次应当递增（顶层每周期 +1）。

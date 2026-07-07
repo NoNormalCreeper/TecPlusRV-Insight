@@ -42,7 +42,6 @@ $REPO_ROOT/firmware/drivers/gpio.c
 $FIRMWARE_MAIN
 $REPO_ROOT/firmware/drivers/perf.c
 $REPO_ROOT/firmware/tests/selftest.c
-$REPO_ROOT/firmware/main.c
 "
 
 # 不单独生成 .o，保持脚本最薄；后续文件多了再引入 Makefile/CMake。
