@@ -3,10 +3,12 @@
 module tb_minisoc_perf #(
     parameter integer CPU_IMPL = 0,
     parameter [31:0] EXPECT_EXIT_CODE = 32'h0000_0001,
-    parameter [31:0] RESULT_CYCLE_ADDR = 32'h0000_0000,
-    parameter [31:0] RESULT_INSTRET_ADDR = 32'h0000_0004,
+    parameter [31:0] RESULT_CYCLE_ADDR = 32'hffff_ffff,
+    parameter [31:0] RESULT_INSTRET_ADDR = 32'hffff_ffff,
     parameter integer TIMEOUT_CYCLES = 2000000
 );
+
+localparam [31:0] PERF_ADDR_WINDOW_BYTES = 32'd65536;
 
 reg clk;
 reg reset;
@@ -43,6 +45,23 @@ initial begin
 
     repeat (5) @(posedge clk);
     reset = 1'b1;
+end
+
+initial begin
+    if (RESULT_CYCLE_ADDR[1:0] != 2'b00 || RESULT_INSTRET_ADDR[1:0] != 2'b00) begin
+        $display("FAIL: perf 结果地址必须是字对齐地址");
+        $finish;
+    end
+
+    if (RESULT_CYCLE_ADDR >= PERF_ADDR_WINDOW_BYTES || RESULT_INSTRET_ADDR >= PERF_ADDR_WINDOW_BYTES) begin
+        $display("FAIL: perf 结果地址必须显式指向 BRAM 内的结果符号");
+        $finish;
+    end
+
+    if (RESULT_CYCLE_ADDR == RESULT_INSTRET_ADDR) begin
+        $display("FAIL: cycle / instret 结果地址不能相同");
+        $finish;
+    end
 end
 
 initial begin

@@ -483,11 +483,16 @@ module darkriscv
 		reg [63:0] CSRINS = 0;
 		always@(posedge CLK)
 		begin
-			if(!XRES)
+			if(RES || XRES)
 			begin
-				CSRCLK = CSRCLK+1;
+				CSRCLK <= 64'd0;
+				CSRINS <= 64'd0;
+			end
+			else
+			begin
+				CSRCLK <= CSRCLK+1;
 				if(!HLT & !(|FLUSH))
-					CSRINS = CSRINS+1;
+					CSRINS <= CSRINS+1;
 			end
 		end
     `endif

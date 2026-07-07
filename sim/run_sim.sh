@@ -71,8 +71,13 @@ compile_minisoc_perf_tb() {
     local cpu_impl="$2"
     local tb_module="$3"
     local tb_file="$4"
-    local result_cycle_addr="${PERF_RESULT_CYCLE_ADDR:-0}"
-    local result_instret_addr="${PERF_RESULT_INSTRET_ADDR:-4}"
+    local result_cycle_addr="${PERF_RESULT_CYCLE_ADDR:-}"
+    local result_instret_addr="${PERF_RESULT_INSTRET_ADDR:-}"
+
+    if [ -z "$result_cycle_addr" ] || [ -z "$result_instret_addr" ]; then
+        echo "缺少 PERF_RESULT_CYCLE_ADDR / PERF_RESULT_INSTRET_ADDR；请先提供 firmware 中 perf 结果符号地址，或直接运行 scripts/compare_cpu_perf.sh" >&2
+        exit 1
+    fi
 
     if [ ! -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
         echo "缺少 rtl/core/picorv32.v，无法运行 MiniSoC 板级 top 仿真" >&2
@@ -174,6 +179,14 @@ case "$SIM_KIND" in
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_counter_source_dark.out" 1 tb_minisoc_counter_source "$REPO_ROOT/sim/tb_minisoc_counter_source.v"
         run_and_check "$BUILD_DIR/tb_minisoc_counter_source_dark.log" vvp "$BUILD_DIR/tb_minisoc_counter_source_dark.out"
         ;;
+    minisoc_counter_reset_pico)
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_counter_reset_pico.out" 0 tb_minisoc_counter_reset "$REPO_ROOT/sim/tb_minisoc_counter_reset.v"
+        run_and_check "$BUILD_DIR/tb_minisoc_counter_reset_pico.log" vvp "$BUILD_DIR/tb_minisoc_counter_reset_pico.out"
+        ;;
+    minisoc_counter_reset_dark)
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_counter_reset_dark.out" 1 tb_minisoc_counter_reset "$REPO_ROOT/sim/tb_minisoc_counter_reset.v"
+        run_and_check "$BUILD_DIR/tb_minisoc_counter_reset_dark.log" vvp "$BUILD_DIR/tb_minisoc_counter_reset_dark.out"
+        ;;
     sdram_smoke)
         iverilog -g2001 -o "$BUILD_DIR/tb_sdram_smoke_ctrl.out" \
             "$REPO_ROOT/sim/tb_sdram_smoke_ctrl.v" \
@@ -188,7 +201,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、sdram_smoke、bigboard_tl" >&2
+        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、sdram_smoke、bigboard_tl" >&2
         exit 1
         ;;
 esac
