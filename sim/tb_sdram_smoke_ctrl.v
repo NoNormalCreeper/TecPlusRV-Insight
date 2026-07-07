@@ -25,6 +25,8 @@ wire        done_fail;
 reg [3:0]  seen_stage;
 reg [3:0]  read_wait;
 reg        read_armed;
+reg [3:0]  cycles_after_write_ap;
+reg        write_ap_pending;
 
 sdram_smoke_ctrl #(
     // 把真实等待周期缩短，保持状态机顺序不变但让仿真快速结束。
@@ -83,6 +85,8 @@ initial begin
     seen_stage = 4'd0;
     read_wait = 4'd0;
     read_armed = 1'b0;
+    cycles_after_write_ap = 4'd0;
+    write_ap_pending = 1'b0;
 
     $dumpfile("sim/build/tb_sdram_smoke_ctrl.vcd");
     $dumpvars(0, tb_sdram_smoke_ctrl);
@@ -96,6 +100,10 @@ initial begin
 end
 
 always @(posedge clk) begin
+    if (write_ap_pending) begin
+        cycles_after_write_ap <= cycles_after_write_ap + 4'd1;
+    end
+
     if (read_armed) begin
         if (read_wait == 4'd0) begin
             // 模拟 SDRAM 在 CAS latency 后把写入的数据读回来。
@@ -138,6 +146,14 @@ always @(posedge clk) begin
 
     if (!sdram_cs_n && !sdram_ras_n && sdram_cas_n && sdram_we_n) begin
         // RAS=0 CAS=1 WE=1 是 ACTIVE，用于打开 row。
+        if (write_ap_pending) begin
+            // WRITE 用了 auto-precharge，因此再次 ACT 前至少还要等完 tWR+tRP。
+            if (cycles_after_write_ap < 4) begin
+                $display("FAIL: WRITE(auto-precharge) 后过早再次 ACT");
+                $finish;
+            end
+            write_ap_pending <= 1'b0;
+        end
         if (seen_stage == 4'd4) begin
             seen_stage <= 4'd5;
         end else if (seen_stage == 4'd6) begin
@@ -154,10 +170,16 @@ always @(posedge clk) begin
             $display("FAIL: WRITE 顺序错误");
             $finish;
         end
+        if (sdram_addr[10] !== 1'b1) begin
+            $display("FAIL: 当前 smoke probe 预期 WRITE 使用 auto-precharge");
+            $finish;
+        end
         if (!dq_oe || dq_out !== 16'hA55A) begin
             $display("FAIL: WRITE 数据或方向错误");
             $finish;
         end
+        cycles_after_write_ap <= 4'd0;
+        write_ap_pending <= 1'b1;
         seen_stage <= 4'd6;
     end
 
