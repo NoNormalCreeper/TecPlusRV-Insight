@@ -8,7 +8,7 @@ TecPlusRV 对应北京邮电大学《项目式课程阶段 2》题目 B：基于
 
 ## 基础目标
 
-- 跑通一个最小 RV32I 级别 CPU，优先考虑 PicoRV32 的精简配置
+- 跑通一个最小 RV32I 级别 CPU，优先建立 PicoRV32 baseline，并保留切换到 DarkRISCV 的能力
 - 从片上 BRAM 启动
 - 提供 TinyBus 风格 MMIO 译码
 - 接入 LED、KEY、UART 和 `test_exit`
@@ -19,6 +19,7 @@ TecPlusRV 对应北京邮电大学《项目式课程阶段 2》题目 B：基于
 
 - 在选定 CPU 核外构建完整小型 SoC
 - 增加 cycle / instret 计数器
+- 在同一 SoC 外壳下做非流水线 / 流水线双核对比
 - 先做薄版 `Probe 4a`，再做更完整的独立 SDRAM tester，并考虑接入 SoC
 - 将 UART 作为主要可观测出口
 - 在 Spartan-6 资源限制下比较资源与性能权衡
@@ -43,9 +44,9 @@ TecPlusRV 对应北京邮电大学《项目式课程阶段 2》题目 B：基于
 
 重点不是一开始堆功能，而是在 XC6SLX9 上把 bring-up 和调试难度控制住。
 
-## PicoRV32 / 开源代码使用边界
+## CPU 核 / 开源代码使用边界
 
-PicoRV32 或其他开源 RTL 可以参考、审阅并 vendored 进仓库。这里的 `vendored` 指手工引入、自己审阅、随仓库一起管理的第三方源码。课程工作本身仍需要独立完成以下决策：
+PicoRV32、DarkRISCV 或其他开源 RTL 可以参考、审阅并 vendored 进仓库。这里的 `vendored` 指手工引入、自己审阅、随仓库一起管理的第三方源码。课程工作本身仍需要独立完成以下决策：
 
 - 地址映射
 - 外设接口
@@ -54,7 +55,7 @@ PicoRV32 或其他开源 RTL 可以参考、审阅并 vendored 进仓库。这�
 - 实验室 bring-up 流程
 - 系统验证和调试策略
 
-当前仓库已经把 PicoRV32 作为 vendored 源码放在 `rtl/core/picorv32.v`，但 SoC 集成、地址图、约束和验证仍然是本项目自己的工程内容。
+当前仓库已经把 PicoRV32 和 DarkRISCV 作为 vendored 源码放在 `rtl/core/` 下，但 SoC 集成、地址图、wrapper、约束和验证仍然是本项目自己的工程内容。
 
 ## 开发策略：本地优先，实验室验证收口
 
