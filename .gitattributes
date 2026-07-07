@@ -1,0 +1,10 @@
+# 让 git 自动处理文本文件换行，但对必须用 LF 的文件强制锁定，
+# 避免在 Windows 上因 core.autocrlf=true 被转成 CRLF 后无法在 Linux/WSL 运行。
+* text=auto
+
+# Shell 脚本必须是 LF，否则 /usr/bin/env bash 会因行尾的 \r 报错。
+*.sh text eol=lf
+
+# 其他常见的、需要 LF 的构建/工具文件。
+Makefile text eol=lf
+*.mk text eol=lf
