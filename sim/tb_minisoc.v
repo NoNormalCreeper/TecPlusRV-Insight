@@ -15,8 +15,13 @@ reg clk;
 reg reset;
 reg [3:0] key;
 
+reg uart_written;
+reg led_written;
+reg exit_written;
+
 wire [3:0] led;
 wire uart_txd;
+
 
 tecplus_minisoc_top #(
     .CLK_FREQ(1000000),
@@ -40,6 +45,10 @@ initial begin
     reset = 1'b0;
     key = 4'b1111;
 
+    uart_written = 1'b0;
+    led_written = 1'b0;
+    exit_written = 1'b0;
+
     $dumpfile("sim/build/tb_minisoc.vcd");
     $dumpvars(0, tb_minisoc);
 
@@ -57,6 +66,12 @@ end
 initial begin
     repeat (TIMEOUT_CYCLES) begin
         @(posedge clk);
+        if (dut.uart_fire)
+            uart_written = 1'b1;
+        if (dut.gpio_led_sel && (dut.req_wstrb != 4'b0))
+            led_written = 1'b1;
+        if (dut.test_exit_write)
+            exit_written = 1'b1;
         if (dut.test_exited) begin
             if (dut.test_exit_code !== EXPECT_EXIT_CODE) begin
                 $display("FAIL: test_exit=0x%08x", dut.test_exit_code);
@@ -65,6 +80,21 @@ initial begin
 
             if (led !== EXPECT_LED) begin
                 $display("FAIL: firmware LED write did not reach board pins, led=0x%0x", led);
+                $finish;
+            end
+
+            if (!uart_written) begin
+                $display("FAIL: No UART write occurred during firmware execution");
+                $finish;
+            end
+
+            if (!led_written) begin
+                $display("FAIL: No GPIO LED write occurred during firmware execution");
+                $finish;
+            end
+
+            if (!exit_written) begin
+                $display("FAIL: exited but no exit written");
                 $finish;
             end
 
