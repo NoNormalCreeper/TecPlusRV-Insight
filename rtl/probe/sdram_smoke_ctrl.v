@@ -48,7 +48,7 @@ localparam [4:0]
     ST_WAIT_TRCD1 = 5'd10,
     ST_WRITE      = 5'd11,
     ST_WAIT_TWR   = 5'd12,
-    ST_WAIT_WRITE_TRP = 5'd13,
+    ST_WAIT_WTRP  = 5'd13,
     ST_ACT_READ   = 5'd14,
     ST_WAIT_TRCD2 = 5'd15,
     ST_READ       = 5'd16,
@@ -216,15 +216,14 @@ always @(posedge clk) begin
                 status_led <= 4'b0010;
                 if (wait_count >= TWR_CYCLES - 1) begin
                     wait_count <= 16'd0;
-                    state <= ST_WAIT_WRITE_TRP;
+                    state <= ST_WAIT_WTRP;
                 end else begin
                     wait_count <= wait_count + 16'd1;
                 end
             end
 
-            ST_WAIT_WRITE_TRP: begin
+            ST_WAIT_WTRP: begin
                 status_led <= 4'b0010;
-                // WRITE 用了 auto-precharge，恢复到下一次 ACT 之前还要补完 tRP。
                 if (wait_count >= TRP_CYCLES - 1) begin
                     wait_count <= 16'd0;
                     state <= ST_ACT_READ;
