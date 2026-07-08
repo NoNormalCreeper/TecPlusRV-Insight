@@ -46,6 +46,17 @@ iverilog -g2001 -s probe_sdram_tester_top -o "$BUILD_DIR/probe_sdram_tester_top.
     "$REPO_ROOT/rtl/probe/probe_sdram_tester_top.v" \
     "$REPO_ROOT/rtl/probe/sdram_tester_ctrl.v"
 
+echo "语法检查：sdram_tester_uart_reporter"
+iverilog -g2001 -s sdram_tester_uart_reporter -o "$BUILD_DIR/sdram_tester_uart_reporter.syntax.out" \
+    "$REPO_ROOT/rtl/probe/sdram_tester_uart_reporter.v"
+
+echo "语法检查：probe_sdram_tester_uart_top"
+iverilog -g2001 -s probe_sdram_tester_uart_top -o "$BUILD_DIR/probe_sdram_tester_uart_top.syntax.out" \
+    "$REPO_ROOT/rtl/probe/probe_sdram_tester_uart_top.v" \
+    "$REPO_ROOT/rtl/probe/sdram_tester_ctrl.v" \
+    "$REPO_ROOT/rtl/probe/sdram_tester_uart_reporter.v" \
+    "$REPO_ROOT/rtl/periph/uart_tx.v"
+
 echo "语法检查：probe_bigboard_tl_top"
 iverilog -g2001 -s probe_bigboard_tl_top -o "$BUILD_DIR/probe_bigboard_tl_top.syntax.out" \
     "$REPO_ROOT/rtl/probe/probe_bigboard_tl_top.v"

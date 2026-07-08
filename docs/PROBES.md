@@ -354,11 +354,14 @@ sim/run_sim.sh minisoc_smoke_dark
 ### 对应文件
 
 - 顶层：`rtl/probe/probe_sdram_tester_top.v`
+- UART debug 顶层：`rtl/probe/probe_sdram_tester_uart_top.v`
 - 控制器：`rtl/probe/sdram_tester_ctrl.v`
 - 约束：`constraints/tecplus_sdram_tester.ucf`
+- UART debug 约束：`constraints/tecplus_sdram_tester_uart.ucf`
 - 本地 testbench：`sim/tb_sdram_tester_ctrl.v`
 - 受控失败 testbench：`sim/tb_sdram_tester_fail.v`
 - reset 重复 testbench：`sim/tb_sdram_tester_reset.v`
+- UART reporter testbench：`sim/tb_sdram_tester_uart_reporter.v`
 
 ### 设计行为
 
@@ -404,9 +407,28 @@ sim/run_sim.sh sdram_tester_reset
 scripts/check_rtl_syntax.sh
 ```
 
+### UART debug 变体
+
+如果需要在板上直接观察 `error_count` 和首错锁存信息，可以使用 `probe_sdram_tester_uart_top`。它与普通 tester 使用同一个 `sdram_tester_ctrl`，但额外接入 UART TX 和 KEY。
+
+- 顶层：`rtl/probe/probe_sdram_tester_uart_top.v`
+- 约束：`constraints/tecplus_sdram_tester_uart.ucf`
+- 依赖：`rtl/probe/sdram_tester_uart_reporter.v`、`rtl/periph/uart_tx.v`
+- 串口参数：`9600 8N1`
+- 板载 KEY1：对应 RTL 里的 `key[0]`，按住时开启受控注错
+
+使用方式：
+
+1. ISE 顶层设为 `probe_sdram_tester_uart_top`。
+2. 加入 `probe_sdram_tester_uart_top.v`、`sdram_tester_ctrl.v`、`sdram_tester_uart_reporter.v`、`uart_tx.v`。
+3. 加入 `constraints/tecplus_sdram_tester_uart.ucf`。
+4. 打开串口工具，参数设为 `9600 8N1`。
+5. 不按 KEY1 运行，应看到类似 `PASS err=0000`。
+6. 按住 KEY1 再释放 reset，应看到类似 `FAIL err=0001 idx=003 pat=02 exp=... act=...`，并且 LED 停在 `1111`。
+
 ### 这一步的边界
 
-它是独立 SDRAM tester，不是 SoC 可复用的 SDRAM slave。当前实现优先验证 U2 SDRAM 的初始化、单字写读、DQ 三态、地址/数据/control/UCF 链路，以及“地址 + 轮次”pattern 的读回一致性。它还没有提供 CPU 总线接口、刷新仲裁、burst 访问、完整地址空间遍历或错误地址 UART 打印。
+它是独立 SDRAM tester，不是 SoC 可复用的 SDRAM slave。当前实现优先验证 U2 SDRAM 的初始化、单字写读、DQ 三态、地址/数据/control/UCF 链路，以及“地址 + 轮次”pattern 的读回一致性。普通顶层不提供 UART 输出；如需板级查看错误细节，使用 UART debug 变体。它还没有提供 CPU 总线接口、刷新仲裁、burst 访问或完整地址空间遍历。
 
 ## Probe 5a：bigboard traffic-light thin probe
 

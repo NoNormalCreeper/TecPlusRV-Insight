@@ -280,6 +280,7 @@ make test-all
 
 - `Probe 4a`：`rtl/probe/probe_sdram_smoke_top.v`
 - `Probe 4`：`rtl/probe/probe_sdram_tester_top.v`
+- `Probe 4 UART debug`：`rtl/probe/probe_sdram_tester_uart_top.v`
 - `Probe 5a`：`rtl/probe/probe_bigboard_tl_top.v`
 - `Probe 5b`：`rtl/probe/probe_vga_top.v`
 - `Probe 5`：`rtl/probe/probe_vga_text_top.v`
@@ -288,6 +289,7 @@ make test-all
 
 - `Probe 4a` 不是通用 `SDRAM controller`，只是一个脚本式 `write -> read back -> compare` smoke probe
 - `Probe 4` 是独立 SDRAM tester，会对一段地址窗口和多组 pattern 重复写入、读回、校验，但仍不接 MiniSoC
+- `Probe 4 UART debug` 是可选验证顶层，用板载 KEY1，也就是 RTL 的 `key[0]`，做受控注错，并通过 UART 输出 `error_count` 和首错信息
 - `Probe 5a` 不是完整显示/大板外设系统，只是交通灯输出存在性探针
 - `Probe 5b` 不是字符系统，只是 VGA 链路存在性探针
 - `Probe 5` 当前只是独立字符型 VGA 骨架，还不接 `TinyBus` / `MiniSoC`
@@ -317,10 +319,11 @@ rtl/core/picorv32.v
 3. CPU minimal 综合/资源探针（PicoRV32 / DarkRISCV）
 4. `probe_sdram_smoke_top` + `constraints/tecplus_sdram_smoke.ucf`
 5. `probe_sdram_tester_top` + `constraints/tecplus_sdram_tester.ucf`
-6. `probe_bigboard_tl_top` + `constraints/tecplus_bigboard_tl.ucf`
-7. `probe_vga_top` + `constraints/tecplus_vga.ucf`
-8. `probe_vga_text_top` + `constraints/tecplus_vga.ucf`
-9. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`
+6. 可选：`probe_sdram_tester_uart_top` + `constraints/tecplus_sdram_tester_uart.ucf`
+7. `probe_bigboard_tl_top` + `constraints/tecplus_bigboard_tl.ucf`
+8. `probe_vga_top` + `constraints/tecplus_vga.ucf`
+9. `probe_vga_text_top` + `constraints/tecplus_vga.ucf`
+10. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`
 
 这里要区分两层：
 
@@ -362,6 +365,7 @@ rtl/core/picorv32.v
 - SDRAM smoke 控制器命令序列仿真
 - SDRAM tester 多地址写读控制流仿真
 - SDRAM tester 受控失败与 reset 重复仿真
+- SDRAM tester UART reporter 格式化仿真
 - bigboard traffic-light 图样仿真
 - VGA 彩条 probe 同步与颜色输出仿真
 - 字符型 VGA 骨架 banner / 写口仿真
