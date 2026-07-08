@@ -1,6 +1,6 @@
 firmware/build/
 sim/build/
+build/ise-export/
 *.vcd
 *.lst
 *.log
-

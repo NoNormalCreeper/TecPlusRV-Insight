@@ -461,6 +461,15 @@ ISE 自己做：
 - 设对 top module
 - 加入对应 `.ucf`
 
+如果只是想先拿到一个便于复制的最小文件包，现在可以直接用：
+
+```bash
+make ise-export ISE_TARGET=minisoc
+make ise-export ISE_TARGET=probe_uart
+```
+
+导出目录默认是 `build/ise-export/<target>/`。其中 `.v` / `.vh` / `.ucf` 会摊平到导出目录根部，便于 ISE 直接导入；只有 `firmware/build/firmware.mem` 这类路径敏感文件继续保留目录结构，避免 `$readmemh` 路径失效。
+
 ### ISE 一般真正需要的输入
 
 - `rtl/**/*.v`

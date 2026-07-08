@@ -9,6 +9,7 @@ CHECK_RTL_SYNTAX := $(REPO_ROOT)/scripts/check_rtl_syntax.sh
 RUN_SIM := $(REPO_ROOT)/sim/run_sim.sh
 DUAL_CORE_REGRESSION := $(REPO_ROOT)/scripts/test_dual_core_regression.sh
 COMPARE_CPU_PERF := $(REPO_ROOT)/scripts/compare_cpu_perf.sh
+EXPORT_ISE_PROJECT := $(REPO_ROOT)/scripts/export_ise_project.sh
 
 PROBE_TARGETS := probe_led_key probe_uart_top uart_tx sdram_smoke bigboard_tl
 PLATFORM_TARGETS := bram tinybus_decode mmio_test_exit
@@ -35,7 +36,7 @@ for target in $(1); do \
 done
 endef
 
-.PHONY: help check-env firmware rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf
+.PHONY: help check-env firmware rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf ise-export
 
 help:
 	@echo "常用目标："
@@ -51,6 +52,7 @@ help:
 	@echo "  make test-all                  跑全部正确性检查"
 	@echo "  make ci                        CI 入口，等价于 make test-all"
 	@echo "  make perf                      跑双核性能对比（如果当前分支提供）"
+	@echo "  make ise-export ISE_TARGET=minisoc   导出 ISE 工程所需文件到新目录"
 
 check-env:
 	"$(CHECK_ENV)"
@@ -98,11 +100,17 @@ ci: test-all
 perf: firmware rtl-syntax
 ifneq ($(wildcard $(COMPARE_CPU_PERF)),)
 ifdef PERF_MAIN
-	"$(COMPARE_CPU_PERF)" "$(PERF_MAIN)"
+		"$(COMPARE_CPU_PERF)" "$(PERF_MAIN)"
 else
-	"$(COMPARE_CPU_PERF)"
+		"$(COMPARE_CPU_PERF)"
 endif
 else
 	@echo "perf: 当前分支没有 scripts/compare_cpu_perf.sh"
 	@exit 1
 endif
+
+ISE_TARGET ?= minisoc
+ISE_EXPORT_DIR ?= $(REPO_ROOT)/build/ise-export/$(ISE_TARGET)
+
+ise-export:
+	"$(EXPORT_ISE_PROJECT)" "$(ISE_TARGET)" "$(ISE_EXPORT_DIR)"

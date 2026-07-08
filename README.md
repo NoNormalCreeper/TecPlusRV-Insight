@@ -187,6 +187,15 @@ make test-dual-core
 make perf
 ```
 
+导出一个可直接复制到 ISE 工程旁边的最小文件包：
+
+```bash
+make ise-export ISE_TARGET=minisoc
+make ise-export ISE_TARGET=probe_uart
+```
+
+默认会生成到 `build/ise-export/<target>/`。其中 `.v` / `.vh` / `.ucf` 会摊平到导出目录根部，便于在 ISE 里直接 Import Sources；只有 `firmware/build/firmware.mem` 这类路径敏感文件继续保留目录结构。导出目录里还会附带 `files.list` 和 `README.txt`。
+
 底层脚本 `scripts/*.sh` 和 `sim/run_sim.sh` 仍然保留，但推荐优先从 `make` 入口进入。
 
 ## 第一次上手怎么做
