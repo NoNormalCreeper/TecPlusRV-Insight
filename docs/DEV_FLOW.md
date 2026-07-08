@@ -175,6 +175,13 @@
 - 让日常本地回归变成固定命令
 - 不依赖手工重复操作
 
+补充约定：
+
+- `scripts/test_catalog.json` 是测试编排的单一真相源。
+- 新增或挂载测试时，优先改 catalog，再由 `scripts/test_runner.py` 统一编排执行。
+- `sim/run_sim.sh` 和 `scripts/rtl_syntax_case.sh` 仍然保留，但只负责最底层的单 case 配方。
+- `scripts/check_rtl_syntax.sh` 和 `scripts/test_local.sh` 仍然可用，但只是兼容壳，不再承担测试编排职责。
+
 ## 整个项目怎么从“零散文件”集合起来
 
 需要分成两条线理解：
@@ -375,7 +382,7 @@ ISE 不关心的通常是：
 3. 再跑：
 
 ```bash
-make rtl-syntax
+python3 scripts/test_runner.py run-suite rtl_syntax_internal
 ```
 
 4. 如果该模块影响系统行为，再跑：
@@ -408,7 +415,7 @@ make test-soc
 ```
 
 3. 如果改动只影响软件可见结果，重点看通用 `minisoc_*` regression 是否仍然收敛。
-4. 如果改动涉及 board-level UART / LED / `test_exit` 路径，再补跑 `make test-smoke` 或直接跑 `minisoc_smoke_*`。
+4. 如果改动涉及 board-level UART / LED / `test_exit` 路径，再补跑 `python3 scripts/test_runner.py run-suite smoke`，或者直接跑对应的 `minisoc_smoke_*`。
 
 ### 场景 3：改 board probe
 
@@ -425,7 +432,7 @@ make test-soc
 2. 再跑：
 
 ```bash
-make rtl-syntax
+python3 scripts/test_runner.py run-suite rtl_syntax_internal
 ```
 
 3. 最后再在实验室验证对应 `.ucf` 和真实现象。
@@ -435,8 +442,10 @@ make rtl-syntax
 直接跑整套本地 smoke：
 
 ```bash
-make test-smoke
+python3 scripts/test_runner.py run-suite smoke
 ```
+
+这些 suite 的覆盖关系由 `scripts/test_catalog.json` 决定。
 
 当前它覆盖：
 
@@ -448,10 +457,16 @@ make test-smoke
 6. `MiniSoC` board-top smoke
 7. MiniSoC smoke / regression bench 模式检查
 
+如果当前改动范围更大，可以再跑完整本地集合：
+
+```bash
+python3 scripts/test_runner.py run-suite local
+```
+
 如果当前分支还带了通用 SoC regression / 双核 regression，再跑：
 
 ```bash
-make test-all
+python3 scripts/test_runner.py run-suite all
 ```
 
 ## 从本地文件到 ISE 工程，应该怎么转换
@@ -594,7 +609,7 @@ scripts/build_firmware.sh
 
 ### 代码侧
 
-- `scripts/test_local.sh` 通过
+- `scripts/test_local.sh` 当前会卡在既有的 `sdram_data_ctrl`，报 `FAIL: init PRECHARGE not ALL banks`
 - 新增 RTL 已通过 `iverilog -g2001`
 - `firmware.mem` 已重新生成（如果本次目标需要）
 - 文档中的地址图、寄存器语义和代码一致

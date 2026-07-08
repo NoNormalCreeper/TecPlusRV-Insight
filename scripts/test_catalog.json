@@ -1,0 +1,389 @@
+{
+  "prerequisites": {
+    "check_env": ["bash", "scripts/check_env.sh"],
+    "firmware": ["bash", "scripts/build_firmware.sh"],
+    "rtl_syntax": ["python3", "scripts/test_runner.py", "run-suite", "rtl_syntax_internal"]
+  },
+  "cases": [
+    {
+      "id": "rtl_syntax__probe_led_key_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["probe_led_key_top"]
+    },
+    {
+      "id": "rtl_syntax__probe_uart_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["probe_uart_top"]
+    },
+    {
+      "id": "rtl_syntax__sdram_smoke_ctrl",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["sdram_smoke_ctrl"]
+    },
+    {
+      "id": "rtl_syntax__sdram_data_ctrl",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["sdram_data_ctrl"]
+    },
+    {
+      "id": "rtl_syntax__probe_sdram_smoke_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["probe_sdram_smoke_top"]
+    },
+    {
+      "id": "rtl_syntax__sdram_tester_ctrl",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["sdram_tester_ctrl"]
+    },
+    {
+      "id": "rtl_syntax__probe_sdram_tester_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["probe_sdram_tester_top"]
+    },
+    {
+      "id": "rtl_syntax__sdram_tester_uart_reporter",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["sdram_tester_uart_reporter"]
+    },
+    {
+      "id": "rtl_syntax__probe_sdram_tester_uart_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["probe_sdram_tester_uart_top"]
+    },
+    {
+      "id": "rtl_syntax__probe_bigboard_tl_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["probe_bigboard_tl_top"]
+    },
+    {
+      "id": "rtl_syntax__buzzer_tune_player",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["buzzer_tune_player"]
+    },
+    {
+      "id": "rtl_syntax__buzzer_uart_reporter",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["buzzer_uart_reporter"]
+    },
+    {
+      "id": "rtl_syntax__probe_buzzer_uart_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["probe_buzzer_uart_top"]
+    },
+    {
+      "id": "rtl_syntax__vga_timing_640x480",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["vga_timing_640x480"]
+    },
+    {
+      "id": "rtl_syntax__vga_text_mode",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["vga_text_mode"]
+    },
+    {
+      "id": "rtl_syntax__probe_vga_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["probe_vga_top"]
+    },
+    {
+      "id": "rtl_syntax__probe_vga_text_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["probe_vga_text_top"]
+    },
+    {
+      "id": "rtl_syntax__tinybus_decode",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["tinybus_decode"]
+    },
+    {
+      "id": "rtl_syntax__bram",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["bram"]
+    },
+    {
+      "id": "rtl_syntax__bram_dualport",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["bram_dualport"]
+    },
+    {
+      "id": "rtl_syntax__mmio_test_exit",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["mmio_test_exit"]
+    },
+    {
+      "id": "rtl_syntax__picorv32_adapter",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["picorv32_adapter"]
+    },
+    {
+      "id": "rtl_syntax__darkriscv_adapter",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["darkriscv_adapter"]
+    },
+    {
+      "id": "rtl_syntax__tecplus_cpu_wrapper",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["tecplus_cpu_wrapper"]
+    },
+    {
+      "id": "rtl_syntax__tecplus_minisoc_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["tecplus_minisoc_top"]
+    },
+    {
+      "id": "probe_led_key",
+      "kind": "sim",
+      "sim_target": "probe_led_key",
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "probe_uart_top",
+      "kind": "sim",
+      "sim_target": "probe_uart_top"
+    },
+    {
+      "id": "bram",
+      "kind": "sim",
+      "sim_target": "bram",
+      "requires": ["rtl_syntax"]
+    },
+    {
+      "id": "bram_dualport",
+      "kind": "sim",
+      "sim_target": "bram_dualport"
+    },
+    {
+      "id": "tinybus_decode",
+      "kind": "sim",
+      "sim_target": "tinybus_decode"
+    },
+    {
+      "id": "mmio_test_exit",
+      "kind": "sim",
+      "sim_target": "mmio_test_exit"
+    },
+    {
+      "id": "uart_tx",
+      "kind": "sim",
+      "sim_target": "uart_tx"
+    },
+    {
+      "id": "sdram_smoke",
+      "kind": "sim",
+      "sim_target": "sdram_smoke"
+    },
+    {
+      "id": "sdram_data_ctrl",
+      "kind": "sim",
+      "sim_target": "sdram_data_ctrl"
+    },
+    {
+      "id": "sdram_tester",
+      "kind": "sim",
+      "sim_target": "sdram_tester"
+    },
+    {
+      "id": "sdram_tester_fail",
+      "kind": "sim",
+      "sim_target": "sdram_tester_fail"
+    },
+    {
+      "id": "sdram_tester_reset",
+      "kind": "sim",
+      "sim_target": "sdram_tester_reset"
+    },
+    {
+      "id": "sdram_tester_uart_reporter",
+      "kind": "sim",
+      "sim_target": "sdram_tester_uart_reporter"
+    },
+    {
+      "id": "bigboard_tl",
+      "kind": "sim",
+      "sim_target": "bigboard_tl"
+    },
+    {
+      "id": "probe_buzzer_uart",
+      "kind": "sim",
+      "sim_target": "probe_buzzer_uart"
+    },
+    {
+      "id": "probe_vga",
+      "kind": "sim",
+      "sim_target": "probe_vga"
+    },
+    {
+      "id": "vga_text_mode",
+      "kind": "sim",
+      "sim_target": "vga_text_mode"
+    },
+    {
+      "id": "minisoc_smoke_pico",
+      "kind": "sim",
+      "sim_target": "minisoc_smoke_pico",
+      "requires": ["firmware", "rtl_syntax"]
+    },
+    {
+      "id": "minisoc_smoke_dark",
+      "kind": "sim",
+      "sim_target": "minisoc_smoke_dark"
+    },
+    {
+      "id": "minisoc_counter_source_pico",
+      "kind": "sim",
+      "sim_target": "minisoc_counter_source_pico",
+      "requires": ["firmware", "rtl_syntax"]
+    },
+    {
+      "id": "minisoc_counter_source_dark",
+      "kind": "sim",
+      "sim_target": "minisoc_counter_source_dark"
+    },
+    {
+      "id": "minisoc_counter_reset_pico",
+      "kind": "sim",
+      "sim_target": "minisoc_counter_reset_pico",
+      "requires": ["firmware", "rtl_syntax"]
+    },
+    {
+      "id": "minisoc_counter_reset_dark",
+      "kind": "sim",
+      "sim_target": "minisoc_counter_reset_dark"
+    },
+    {
+      "id": "tb_mode_check",
+      "kind": "script",
+      "script": "scripts/test_minisoc_tb_modes.sh",
+      "requires": ["firmware", "rtl_syntax"]
+    },
+    {
+      "id": "uart_once_regression",
+      "kind": "script",
+      "script": "scripts/test_uart_once_regression.sh",
+      "requires": ["firmware", "rtl_syntax"]
+    },
+    {
+      "id": "perf_targets_require_addrs",
+      "kind": "script",
+      "script": "scripts/test_perf_targets_require_addrs.sh"
+    },
+    {
+      "id": "dual_core_regression",
+      "kind": "script",
+      "script": "scripts/test_dual_core_regression.sh",
+      "requires": ["firmware", "rtl_syntax"]
+    }
+  ],
+  "suites": {
+    "rtl_syntax_internal": [
+      "rtl_syntax__probe_led_key_top",
+      "rtl_syntax__probe_uart_top",
+      "rtl_syntax__sdram_smoke_ctrl",
+      "rtl_syntax__sdram_data_ctrl",
+      "rtl_syntax__probe_sdram_smoke_top",
+      "rtl_syntax__sdram_tester_ctrl",
+      "rtl_syntax__probe_sdram_tester_top",
+      "rtl_syntax__sdram_tester_uart_reporter",
+      "rtl_syntax__probe_sdram_tester_uart_top",
+      "rtl_syntax__probe_bigboard_tl_top",
+      "rtl_syntax__buzzer_tune_player",
+      "rtl_syntax__buzzer_uart_reporter",
+      "rtl_syntax__probe_buzzer_uart_top",
+      "rtl_syntax__vga_timing_640x480",
+      "rtl_syntax__vga_text_mode",
+      "rtl_syntax__probe_vga_top",
+      "rtl_syntax__probe_vga_text_top",
+      "rtl_syntax__tinybus_decode",
+      "rtl_syntax__bram",
+      "rtl_syntax__bram_dualport",
+      "rtl_syntax__mmio_test_exit",
+      "rtl_syntax__picorv32_adapter",
+      "rtl_syntax__darkriscv_adapter",
+      "rtl_syntax__tecplus_cpu_wrapper",
+      "rtl_syntax__tecplus_minisoc_top"
+    ],
+    "probe": [
+      "probe_led_key",
+      "probe_uart_top",
+      "uart_tx",
+      "sdram_smoke",
+      "sdram_tester",
+      "sdram_tester_fail",
+      "sdram_tester_reset",
+      "sdram_tester_uart_reporter",
+      "bigboard_tl",
+      "probe_buzzer_uart",
+      "probe_vga",
+      "vga_text_mode"
+    ],
+    "platform": [
+      "bram",
+      "bram_dualport",
+      "tinybus_decode",
+      "mmio_test_exit",
+      "sdram_data_ctrl"
+    ],
+    "soc": [
+      "minisoc_smoke_pico",
+      "minisoc_smoke_dark",
+      "minisoc_counter_source_pico",
+      "minisoc_counter_source_dark",
+      "minisoc_counter_reset_pico",
+      "minisoc_counter_reset_dark",
+      "tb_mode_check",
+      "uart_once_regression",
+      "perf_targets_require_addrs"
+    ],
+    "smoke": [
+      "probe_led_key",
+      "probe_uart_top",
+      "bram",
+      "bram_dualport",
+      "tinybus_decode",
+      "mmio_test_exit",
+      "uart_tx",
+      "sdram_smoke",
+      "bigboard_tl",
+      "minisoc_smoke_pico",
+      "minisoc_smoke_dark",
+      "tb_mode_check"
+    ],
+    "dual_core": [
+      "dual_core_regression"
+    ],
+    "local": [
+      "@probe",
+      "@platform",
+      "@soc",
+      "@dual_core"
+    ],
+    "all": [
+      "@local"
+    ]
+  }
+}

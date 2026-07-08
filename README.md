@@ -72,6 +72,28 @@ make check-env
 
 ### 3. 跑一遍本地 smoke
 
+推荐直接用测试编排器：
+
+```bash
+python3 scripts/test_runner.py run-suite smoke
+```
+
+如果要看完整本地集合，可以跑：
+
+```bash
+python3 scripts/test_runner.py run-suite local
+```
+
+如果当前分支还带了双核 regression，可以再跑：
+
+```bash
+python3 scripts/test_runner.py run-suite all
+```
+
+`make` 的目标名保持不变，`make test-smoke`、`make test-all`、`make rtl-syntax` 这些入口仍然可用，只是内部已经转调到 runner。`scripts/check_rtl_syntax.sh` 和 `scripts/test_local.sh` 也仍然可用，但它们只是兼容壳。
+
+如果你更习惯旧入口，也可以继续用：
+
 ```bash
 make test-smoke
 ```
@@ -82,15 +104,7 @@ make test-smoke
 make test-all
 ```
 
-`make test-smoke` 会顺序执行：
-
-1. 本地工具检查
-2. firmware 构建
-3. RTL 语法烟测
-4. probe / BRAM / MMIO / SDRAM / bigboard / buzzer / VGA 等关键模块仿真
-5. PicoRV32 MiniSoC board-top smoke 仿真
-6. DarkRISCV MiniSoC board-top smoke 仿真
-7. MiniSoC smoke / regression bench 模式检查
+`make test-smoke` 的前置顺序固定为 `check_env -> firmware -> rtl_syntax`；当前 suite/case 覆盖关系以 `scripts/test_catalog.json` 和 `python3 scripts/test_runner.py list` 为准，不再在 README 里手抄一份 case 列表。
 
 `make test-all` 会在此基础上再跑：
 
@@ -114,8 +128,10 @@ make help
 检查 RTL 语法：
 
 ```bash
-make rtl-syntax
+python3 scripts/test_runner.py run-suite rtl_syntax_internal
 ```
+
+`make rtl-syntax` 和 `bash scripts/check_rtl_syntax.sh` 仍然保留，但只是兼容入口。
 
 单独构建 firmware：
 
@@ -198,7 +214,7 @@ make ise-export ISE_TARGET=probe_uart
 
 默认会生成到 `build/ise-export/<target>/`。其中 `.v` / `.vh` / `.ucf` 会摊平到导出目录根部，便于在 ISE 里直接 Import Sources；只有 `firmware/build/firmware.mem` 这类路径敏感文件继续保留目录结构。导出目录里还会附带 `files.list` 和 `README.txt`。
 
-底层脚本 `scripts/*.sh` 和 `sim/run_sim.sh` 仍然保留，但推荐优先从 `make` 入口进入。
+`sim/run_sim.sh` 和 `scripts/rtl_syntax_case.sh` 是底层 recipe；`scripts/check_rtl_syntax.sh` 和 `scripts/test_local.sh` 是兼容壳。推荐优先从 `python3 scripts/test_runner.py ...` 入口进入；`make` 和旧脚本名只是兼容层。
 
 ## 第一次上手怎么做
 
