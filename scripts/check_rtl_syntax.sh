@@ -32,6 +32,10 @@ echo "语法检查：sdram_smoke_ctrl"
 iverilog -g2001 -s sdram_smoke_ctrl -o "$BUILD_DIR/sdram_smoke_ctrl.syntax.out" \
     "$REPO_ROOT/rtl/probe/sdram_smoke_ctrl.v"
 
+echo "语法检查：sdram_data_ctrl"
+iverilog -g2001 -s sdram_data_ctrl -o "$BUILD_DIR/sdram_data_ctrl.syntax.out" \
+    "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v"
+
 echo "语法检查：probe_sdram_smoke_top"
 iverilog -g2001 -s probe_sdram_smoke_top -o "$BUILD_DIR/probe_sdram_smoke_top.syntax.out" \
     "$REPO_ROOT/rtl/probe/probe_sdram_smoke_top.v" \
