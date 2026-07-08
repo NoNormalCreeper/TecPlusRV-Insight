@@ -13,7 +13,9 @@ NET "led[1]" LOC = "M13" | IOSTANDARD = "LVCMOS33";
 NET "led[2]" LOC = "L13" | IOSTANDARD = "LVCMOS33";
 NET "led[3]" LOC = "L12" | IOSTANDARD = "LVCMOS33";
 
-# tl[11:0] 当前只做单 1 轮转，用来快速确认 12 路输出是否能被观察到。
+# 交通灯实验文档中 TL0..TL11 位于绿色区域，需要排线或 #1 线连接到大板交通灯。
+# tl[11:0] 输出全 0、全 1、单 1 轮转、单 0 轮转，用来确认 12 路输出、
+# 管脚顺序、外部连接和大板交通灯有效电平。
 NET "tl[0]"  LOC = "M11" | IOSTANDARD = "LVCMOS33";
 NET "tl[1]"  LOC = "M10" | IOSTANDARD = "LVCMOS33";
 NET "tl[2]"  LOC = "M9"  | IOSTANDARD = "LVCMOS33";
