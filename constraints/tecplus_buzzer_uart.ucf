@@ -1,0 +1,38 @@
+# TEC-PLUS 蜂鸣器 UART debug probe 约束草案。
+# 对应顶层：rtl/probe/probe_buzzer_uart_top.v
+#
+# 当前设计只明确使用：
+# - Spk
+# - uart_txd / uart_rxd
+# - 板载 LED
+# - Mf / Clr / S1..S8 的默认输出
+#
+# 已知不确定点：
+# 1. 文档列出了 Mf / Clr / S1..S8，但没有把它们和“最小出声”之间的逻辑关系写清。
+# 2. 所以当前 RTL 只把它们当成可参数化默认电平；如果板上无声，优先回头试这些控制脚。
+
+NET "clk"   LOC = "T8" | IOSTANDARD = "LVCMOS33";
+NET "reset" LOC = "L3" | IOSTANDARD = "LVCMOS33";
+NET "clk" TNM_NET = "clk_grp";
+TIMESPEC "TS_clk_grp" = PERIOD "clk_grp" 20 ns HIGH 50%;
+
+NET "led[0]" LOC = "M14" | IOSTANDARD = "LVCMOS33";
+NET "led[1]" LOC = "M13" | IOSTANDARD = "LVCMOS33";
+NET "led[2]" LOC = "L13" | IOSTANDARD = "LVCMOS33";
+NET "led[3]" LOC = "L12" | IOSTANDARD = "LVCMOS33";
+
+NET "uart_txd" LOC = "D6" | IOSTANDARD = "LVCMOS33";
+NET "uart_rxd" LOC = "D5" | IOSTANDARD = "LVCMOS33";
+
+NET "mf"  LOC = "A10" | IOSTANDARD = "LVCMOS33";
+NET "clr" LOC = "F6"  | IOSTANDARD = "LVCMOS33";
+NET "spk" LOC = "P4"  | IOSTANDARD = "LVCMOS33";
+
+NET "s[7]" LOC = "P5" | IOSTANDARD = "LVCMOS33";  # S8
+NET "s[6]" LOC = "P6" | IOSTANDARD = "LVCMOS33";  # S7
+NET "s[5]" LOC = "P7" | IOSTANDARD = "LVCMOS33";  # S6
+NET "s[4]" LOC = "P8" | IOSTANDARD = "LVCMOS33";  # S5
+NET "s[3]" LOC = "P9" | IOSTANDARD = "LVCMOS33";  # S4
+NET "s[2]" LOC = "G6" | IOSTANDARD = "LVCMOS33";  # S3
+NET "s[1]" LOC = "R5" | IOSTANDARD = "LVCMOS33";  # S2
+NET "s[0]" LOC = "R7" | IOSTANDARD = "LVCMOS33";  # S1

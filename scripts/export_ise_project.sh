@@ -120,6 +120,22 @@ package_probe_bigboard_tl() {
     write_readme "$top" "$(basename "$ucf")" "这是 Probe 5a 最小工程，不需要 firmware.mem。"
 }
 
+package_probe_buzzer_uart() {
+    local top="probe_buzzer_uart_top"
+    local ucf="constraints/tecplus_buzzer_uart.ucf"
+    need_file "rtl/probe/probe_buzzer_uart_top.v"
+    need_file "rtl/probe/buzzer_tune_player.v"
+    need_file "rtl/probe/buzzer_uart_reporter.v"
+    need_file "rtl/periph/uart_tx.v"
+    need_file "$ucf"
+    copy_flat "rtl/probe/probe_buzzer_uart_top.v"
+    copy_flat "rtl/probe/buzzer_tune_player.v"
+    copy_flat "rtl/probe/buzzer_uart_reporter.v"
+    copy_flat "rtl/periph/uart_tx.v"
+    copy_flat "$ucf"
+    write_readme "$top" "$(basename "$ucf")" "这是蜂鸣器 UART debug probe 最小工程，不需要 firmware.mem。当前旋律、时值近似和 Mf/Clr/S 默认电平都写死在参数与注释里；若板上无声或音高异常，请先检查这些假设。"
+}
+
 package_probe_vga() {
     local top="probe_vga_top"
     local ucf="constraints/tecplus_vga.ucf"
@@ -200,6 +216,9 @@ case "$ISE_TARGET" in
     probe_bigboard_tl|bigboard_tl|probe5a)
         package_probe_bigboard_tl
         ;;
+    probe_buzzer_uart|buzzer_uart|probe5c)
+        package_probe_buzzer_uart
+        ;;
     probe_vga|vga|probe5b)
         package_probe_vga
         ;;
@@ -211,7 +230,7 @@ case "$ISE_TARGET" in
         ;;
     *)
         echo "未知 ISE 导出目标：$ISE_TARGET" >&2
-        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_bigboard_tl, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark" >&2
+        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark" >&2
         exit 1
         ;;
 esac

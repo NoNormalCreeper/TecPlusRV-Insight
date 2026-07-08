@@ -7,10 +7,13 @@ rtl/soc/bram.v
 rtl/soc/tinybus_decode.v
 rtl/soc/mmio_test_exit.v
 rtl/soc/tecplus_minisoc_top.v
+rtl/probe/buzzer_tune_player.v
+rtl/probe/buzzer_uart_reporter.v
 rtl/probe/sdram_smoke_ctrl.v
 rtl/probe/probe_led_key_top.v
 rtl/probe/probe_uart_top.v
 rtl/probe/probe_sdram_smoke_top.v
 rtl/probe/probe_bigboard_tl_top.v
+rtl/probe/probe_buzzer_uart_top.v
 rtl/probe/probe_vga_top.v
 rtl/probe/probe_vga_text_top.v

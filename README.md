@@ -7,6 +7,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 工程目录骨架
 - 早期板级探针
 - 可复用的 UART TX RTL
+- 蜂鸣器 UART debug probe
 - 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架
 - 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
 - 裸机 firmware 骨架
@@ -86,7 +87,7 @@ make test-all
 1. 本地工具检查
 2. firmware 构建
 3. RTL 语法烟测
-4. probe / BRAM / MMIO / SDRAM / bigboard / VGA 等关键模块仿真
+4. probe / BRAM / MMIO / SDRAM / bigboard / buzzer / VGA 等关键模块仿真
 5. PicoRV32 MiniSoC board-top smoke 仿真
 6. DarkRISCV MiniSoC board-top smoke 仿真
 7. MiniSoC smoke / regression bench 模式检查
@@ -282,6 +283,7 @@ make test-all
 - `Probe 4`：`rtl/probe/probe_sdram_tester_top.v`
 - `Probe 4 UART debug`：`rtl/probe/probe_sdram_tester_uart_top.v`
 - `Probe 5a`：`rtl/probe/probe_bigboard_tl_top.v`
+- `Probe 5c`：`rtl/probe/probe_buzzer_uart_top.v`
 - `Probe 5b`：`rtl/probe/probe_vga_top.v`
 - `Probe 5`：`rtl/probe/probe_vga_text_top.v`
 
@@ -291,6 +293,7 @@ make test-all
 - `Probe 4` 是独立 SDRAM tester，会对一段地址窗口和多组 pattern 重复写入、读回、校验，但仍不接 MiniSoC
 - `Probe 4 UART debug` 是可选验证顶层，用板载 KEY1，也就是 RTL 的 `key[0]`，做受控注错，并通过 UART 输出 `error_count` 和首错信息
 - `Probe 5a` 不是完整显示/大板外设系统，只是交通灯输出存在性探针
+- `Probe 5c` 是蜂鸣器 thin probe 的 UART debug 变体，主要拿来做“听到什么”和“RTL 认为自己在播什么”的对照
 - `Probe 5b` 不是字符系统，只是 VGA 链路存在性探针
 - `Probe 5` 当前只是独立字符型 VGA 骨架，还不接 `TinyBus` / `MiniSoC`
 
@@ -321,9 +324,10 @@ rtl/core/picorv32.v
 5. `probe_sdram_tester_top` + `constraints/tecplus_sdram_tester.ucf`
 6. 可选：`probe_sdram_tester_uart_top` + `constraints/tecplus_sdram_tester_uart.ucf`
 7. `probe_bigboard_tl_top` + `constraints/tecplus_bigboard_tl.ucf`
-8. `probe_vga_top` + `constraints/tecplus_vga.ucf`
-9. `probe_vga_text_top` + `constraints/tecplus_vga.ucf`
-10. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`
+8. `probe_buzzer_uart_top` + `constraints/tecplus_buzzer_uart.ucf`
+9. `probe_vga_top` + `constraints/tecplus_vga.ucf`
+10. `probe_vga_text_top` + `constraints/tecplus_vga.ucf`
+11. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`
 
 这里要区分两层：
 
@@ -367,6 +371,7 @@ rtl/core/picorv32.v
 - SDRAM tester 受控失败与 reset 重复仿真
 - SDRAM tester UART reporter 格式化仿真
 - bigboard traffic-light 图样仿真
+- 蜂鸣器 probe 的音符 token / 方波切换仿真
 - VGA 彩条 probe 同步与颜色输出仿真
 - 字符型 VGA 骨架 banner / 写口仿真
 - MiniSoC 板级 top 控制流

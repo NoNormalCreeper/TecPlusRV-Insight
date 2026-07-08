@@ -49,6 +49,7 @@
 - `probe_uart_top.v`
 - `probe_sdram_smoke_top.v`
 - `probe_bigboard_tl_top.v`
+- `probe_buzzer_uart_top.v`
 - `probe_vga_top.v`
 - `probe_vga_text_top.v`
 - `sdram_smoke_ctrl.v`
@@ -66,6 +67,8 @@
 当前典型文件：
 
 - `uart_tx.v`
+- `buzzer_tune_player.v`
+- `buzzer_uart_reporter.v`
 - `vga_timing_640x480.v`
 - `vga_text_mode.v`
 
@@ -258,13 +261,15 @@ ISE 不关心的通常是：
 1. `CPU Minimal synthesis probe`（`Probe 2a / 2b`）
 2. `Probe 4a`：`SDRAM smoke probe`
 3. `Probe 5a`：`bigboard traffic-light thin probe`
-4. `Probe 5b`：`VGA thin probe`
+4. `Probe 5c`：`buzzer UART debug probe`
+5. `Probe 5b`：`VGA thin probe`
 
 此时要能回答的问题是：
 
 - 两颗 CPU 最小配置能不能放下
 - SDRAM 最小命令链路是不是活的
 - 核心板到大板某一组最小输出链路是不是活的
+- 蜂鸣器与串口联合调试链路是不是活的
 - VGA 最小显示链路是不是活的
 
 ### 阶段 3：完整 MiniSoC bring-up

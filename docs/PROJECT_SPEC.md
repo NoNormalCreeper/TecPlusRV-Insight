@@ -78,6 +78,7 @@ PicoRV32、DarkRISCV 或其他开源 RTL 可以参考、审阅并 vendored 进�
 - `Probe 4a` 的 SDRAM smoke 现象验证
 - `Probe 4` 的独立 SDRAM tester 现象验证
 - `Probe 5a` 的 bigboard traffic-light 现象验证
+- `Probe 5c` 的蜂鸣器与 UART 联合调试现象验证
 - `Probe 5b` 的 VGA 彩条现象验证
 - `Probe 5` 的字符型 VGA 骨架现象验证
 - `tecplus_minisoc_top` 集成后的资源适配验证

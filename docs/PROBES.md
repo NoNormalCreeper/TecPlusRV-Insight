@@ -19,15 +19,17 @@
 | Probe 4a | `SDRAM smoke probe` | 已实现 | 是 |
 | Probe 4 | `SDRAM standalone tester` | 独立 tester 初版已实现 | 是 |
 | Probe 5a | `bigboard traffic-light thin probe` | 已实现 | 是 |
+| Probe 5c | `buzzer UART debug probe` | 已实现 | 是 |
 | Probe 5b | `VGA thin probe` | 已实现 | 是 |
 | Probe 5 | `字符型 VGA 显示骨架` | 独立骨架初版已实现 | 是 |
 
-这里要特别说明五点：
+这里要特别说明六点：
 
-- `Probe 4a`、`Probe 5a` 和 `Probe 5b` 都是 thin probe，目标是提早排雷，不是假装 full 功能已经完成。
+- `Probe 4a`、`Probe 5a`、`Probe 5b` 和 `Probe 5c` 都是 thin probe，目标是提早排雷，不是假装 full 功能已经完成。
 - `Probe 4` 已有独立 tester 初版，但仍然不是 SoC 级通用 SDRAM controller。
 - `Probe 5` 当前已经有独立字符型 VGA 骨架，但它仍然不是 SoC 级显示外设。
 - 任务说明明确要求不要伪造 `SDRAM controller`，因此当前 `Probe 4` 只宣称“独立 tester”，不宣称已经能给 MiniSoC 当 SDRAM 子系统。
+- `Probe 5c` 虽然用了 `uart_tx` 做辅助调试，但它仍然是 probe，不是 SoC 串口外设方案。
 - 当前 `Probe 5` 只提供 banner 和最小写口，不承诺 `Mf / Clr / Qd` 的真实板级语义已经完全收敛。
 
 ## 先做什么，不要先做什么
@@ -42,8 +44,9 @@
 6. `Probe 4a`
 7. `Probe 4`
 8. `Probe 5a`
-9. `Probe 5b`
-10. `Probe 5`
+9. `Probe 5c`
+10. `Probe 5b`
+11. `Probe 5`
 
 不建议的顺序：
 
@@ -473,6 +476,37 @@ scripts/check_rtl_syntax.sh
 ### 这一步的边界
 
 它不是完整显示/大板外设系统，也不验证复杂时序外设。它只是回答“这组最小外设输出链路是不是活的”。
+
+## Probe 5c：buzzer UART debug probe
+
+### 目标
+
+先确认蜂鸣器最小输出链路是否可用，并且用 UART 同步输出音符 token，减少“板上听到的”和“RTL 以为自己在播的”之间的信息断层。
+
+### 对应文件
+
+- 顶层：`rtl/probe/probe_buzzer_uart_top.v`
+- 旋律播放器：`rtl/probe/buzzer_tune_player.v`
+- UART token 报告器：`rtl/probe/buzzer_uart_reporter.v`
+- 依赖：`rtl/periph/uart_tx.v`
+- 约束：`constraints/tecplus_buzzer_uart.ucf`
+- 本地 testbench：`sim/tb_probe_buzzer_uart_top.v`
+
+### 设计行为
+
+- 循环播放短句：`3 2_ 1 2_ 3_ 4__ 3_ 2-`
+- 调号按 `1 = B`，统一取高音区：`1/2/3/4 = B5/C#6/D#6/E6`
+- 时值近似规则固定为：
+  - 裸数字：`1` 拍
+  - `_`：半拍
+  - `__`：`1/4` 拍
+  - `-`：额外延长 `1` 拍
+- 每次进入新音符时，通过 UART 输出对应 token，例如 `3`、`2_`、`4__`、`2-`
+- `Mf / Clr / S1..S8` 当前只作为参数化默认电平输出，等待上板确认真实语义
+
+### 这一步的边界
+
+它不是通用音频模块，也不是 SoC 级蜂鸣器外设。当前没有音量控制、没有多声部、没有 MMIO 接口，旋律也是写死的。如果板上无声，第一优先级不是怀疑 `uart_tx`，而是先回到 `Spk / Mf / Clr / S1..S8` 的板级语义。
 
 ## Probe 5b：VGA thin probe
 

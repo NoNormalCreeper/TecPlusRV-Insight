@@ -268,6 +268,15 @@ case "$SIM_KIND" in
             "$REPO_ROOT/rtl/probe/probe_bigboard_tl_top.v"
         run_and_check "$BUILD_DIR/tb_bigboard_tl.log" vvp "$BUILD_DIR/tb_bigboard_tl.out"
         ;;
+    probe_buzzer_uart)
+        iverilog -g2001 -o "$BUILD_DIR/tb_probe_buzzer_uart_top.out" \
+            "$REPO_ROOT/sim/tb_probe_buzzer_uart_top.v" \
+            "$REPO_ROOT/rtl/probe/probe_buzzer_uart_top.v" \
+            "$REPO_ROOT/rtl/probe/buzzer_tune_player.v" \
+            "$REPO_ROOT/rtl/probe/buzzer_uart_reporter.v" \
+            "$REPO_ROOT/rtl/periph/uart_tx.v"
+        run_and_check "$BUILD_DIR/tb_probe_buzzer_uart_top.log" vvp "$BUILD_DIR/tb_probe_buzzer_uart_top.out"
+        ;;
     probe_vga)
         iverilog -g2001 -o "$BUILD_DIR/tb_probe_vga_top.out" \
             "$REPO_ROOT/sim/tb_probe_vga_top.v" \
@@ -284,7 +293,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、bigboard_tl、probe_vga、vga_text_mode" >&2
+        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、bigboard_tl、probe_buzzer_uart、probe_vga、vga_text_mode" >&2
         exit 1
         ;;
 esac

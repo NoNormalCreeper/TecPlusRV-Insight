@@ -61,6 +61,21 @@ echo "语法检查：probe_bigboard_tl_top"
 iverilog -g2001 -s probe_bigboard_tl_top -o "$BUILD_DIR/probe_bigboard_tl_top.syntax.out" \
     "$REPO_ROOT/rtl/probe/probe_bigboard_tl_top.v"
 
+echo "语法检查：buzzer_tune_player"
+iverilog -g2001 -s buzzer_tune_player -o "$BUILD_DIR/buzzer_tune_player.syntax.out" \
+    "$REPO_ROOT/rtl/probe/buzzer_tune_player.v"
+
+echo "语法检查：buzzer_uart_reporter"
+iverilog -g2001 -s buzzer_uart_reporter -o "$BUILD_DIR/buzzer_uart_reporter.syntax.out" \
+    "$REPO_ROOT/rtl/probe/buzzer_uart_reporter.v"
+
+echo "语法检查：probe_buzzer_uart_top"
+iverilog -g2001 -s probe_buzzer_uart_top -o "$BUILD_DIR/probe_buzzer_uart_top.syntax.out" \
+    "$REPO_ROOT/rtl/probe/probe_buzzer_uart_top.v" \
+    "$REPO_ROOT/rtl/probe/buzzer_tune_player.v" \
+    "$REPO_ROOT/rtl/probe/buzzer_uart_reporter.v" \
+    "$REPO_ROOT/rtl/periph/uart_tx.v"
+
 echo "语法检查：vga_timing_640x480"
 iverilog -g2001 -s vga_timing_640x480 -o "$BUILD_DIR/vga_timing_640x480.syntax.out" \
     "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
