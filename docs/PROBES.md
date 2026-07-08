@@ -19,14 +19,16 @@
 | Probe 4a | `SDRAM smoke probe` | 已实现 | 是 |
 | Probe 4 | `SDRAM standalone tester` | 独立 tester 初版已实现 | 是 |
 | Probe 5a | `bigboard traffic-light thin probe` | 已实现 | 是 |
-| Probe 5 | `显示 / 大板外设探针` | 计划中，full 版未实现 | 否 |
+| Probe 5b | `VGA thin probe` | 已实现 | 是 |
+| Probe 5 | `字符型 VGA 显示骨架` | 独立骨架初版已实现 | 是 |
 
-这里要特别说明四点：
+这里要特别说明五点：
 
-- `Probe 4a` 和 `Probe 5a` 是 thin probe，目标是提早排雷，不是假装 full 功能已经完成。
+- `Probe 4a`、`Probe 5a` 和 `Probe 5b` 都是 thin probe，目标是提早排雷，不是假装 full 功能已经完成。
 - `Probe 4` 已有独立 tester 初版，但仍然不是 SoC 级通用 SDRAM controller。
-- `Probe 5` 的 full 版现在仍然没有对应 RTL 顶层，不是漏做，而是当前任务边界故意停在“基础框架 + 探针测试”。
+- `Probe 5` 当前已经有独立字符型 VGA 骨架，但它仍然不是 SoC 级显示外设。
 - 任务说明明确要求不要伪造 `SDRAM controller`，因此当前 `Probe 4` 只宣称“独立 tester”，不宣称已经能给 MiniSoC 当 SDRAM 子系统。
+- 当前 `Probe 5` 只提供 banner 和最小写口，不承诺 `Mf / Clr / Qd` 的真实板级语义已经完全收敛。
 
 ## 先做什么，不要先做什么
 
@@ -40,6 +42,8 @@
 6. `Probe 4a`
 7. `Probe 4`
 8. `Probe 5a`
+9. `Probe 5b`
+10. `Probe 5`
 
 不建议的顺序：
 
@@ -448,25 +452,51 @@ scripts/check_rtl_syntax.sh
 
 它不是完整显示/大板外设系统，也不验证复杂时序外设。它只是回答“这组最小外设输出链路是不是活的”。
 
-## Probe 5：显示 / 大板外设探针
+## Probe 5b：VGA thin probe
+
+### 目标
+
+先确认 VGA 这组最小显示链路是否真的有稳定现象，不把字符渲染、SoC 接口或复杂图形逻辑一起绑上。
+
+### 对应文件
+
+- 顶层：`rtl/probe/probe_vga_top.v`
+- 共享时序：`rtl/periph/vga_timing_640x480.v`
+- 约束：`constraints/tecplus_vga.ucf`
+- 本地 testbench：`sim/tb_probe_vga_top.v`
+
+### 设计行为
+
+- 默认按 `50MHz -> 25MHz` 级像素节拍输出 `640x480@60` 风格同步
+- 活动显示区输出四段彩条：红、绿、蓝、白
+- 板载 `LED` 作为辅助心跳
+- `Mf / Clr / Qd` 当前只给出参数化默认值，等待上板确认
+
+### 这一步的边界
+
+它只是回答“VGA 链路是不是活的”。它不负责字符、framebuffer、SoC 集成，也不保证当前默认的 `Mf / Clr / Qd` 就是最终板级正确值。
+
+## Probe 5：字符型 VGA 显示骨架
 
 ### 当前状态
 
-计划中，full 版当前仍未实现。
+独立字符型 VGA 骨架初版已实现。
 
-### 为什么现在没有
+### 对应文件
 
-- 第一阶段最关键的是把核心板最小链路打通
-- 显示和大板外设 bring-up 会显著增加 UCF、时序、接口和现象判断复杂度
-- 如果 `Probe 0` 和 `Probe 1` 还没稳定，就提前接显示类外设，排障成本会迅速失控
-- 当前已经先落了 `Probe 5a`，full 版没有必要在第一阶段一起完成
+- 顶层：`rtl/probe/probe_vga_text_top.v`
+- 渲染器：`rtl/periph/vga_text_mode.v`
+- 共享时序：`rtl/periph/vga_timing_640x480.v`
+- 约束：`constraints/tecplus_vga.ucf`
+- 本地 testbench：`sim/tb_vga_text_mode.v`
 
-### 这类 Probe 以后应该覆盖什么
+### 设计行为
 
-- 数码管 / 显示接口
-- 更复杂的 GPIO 扩展
-- 与大板连接后的额外外设链路
+- reset 后先清空字符 RAM，再写入默认 banner：`TECPLUSRV VGA`
+- 当前字符 cell 按 `16x16` 使用，内部是放大后的 `8x8` 字模
+- 提供一个单拍写口，方便后续在外面包一层 `TinyBus/MMIO`
+- 当前字模只覆盖本阶段需要的一小部分字符；未支持字符会显示为空
 
-### 当前建议
+### 这一步的边界
 
-先把 `LED`、`KEY`、`UART`、双核资源可行性和 `MiniSoC dual-core simulation probe` 稳住，再决定要不要引入这类外设。
+它不是完整 VGA 子系统，也还不是 SoC 外设。当前没有 `TinyBus` 地址、没有 framebuffer、没有颜色属性 RAM，也没有证明 `Mf / Clr / Qd` 已经板上完全收敛。

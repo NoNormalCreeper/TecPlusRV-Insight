@@ -7,6 +7,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 工程目录骨架
 - 早期板级探针
 - 可复用的 UART TX RTL
+- 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架
 - 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
 - 裸机 firmware 骨架
 - 本地构建和仿真入口
@@ -85,7 +86,7 @@ make test-all
 1. 本地工具检查
 2. firmware 构建
 3. RTL 语法烟测
-4. probe / BRAM / MMIO / SDRAM / bigboard 等关键模块仿真
+4. probe / BRAM / MMIO / SDRAM / bigboard / VGA 等关键模块仿真
 5. PicoRV32 MiniSoC board-top smoke 仿真
 6. DarkRISCV MiniSoC board-top smoke 仿真
 7. MiniSoC smoke / regression bench 模式检查
@@ -280,12 +281,16 @@ make test-all
 - `Probe 4a`：`rtl/probe/probe_sdram_smoke_top.v`
 - `Probe 4`：`rtl/probe/probe_sdram_tester_top.v`
 - `Probe 5a`：`rtl/probe/probe_bigboard_tl_top.v`
+- `Probe 5b`：`rtl/probe/probe_vga_top.v`
+- `Probe 5`：`rtl/probe/probe_vga_text_top.v`
 
 其中：
 
 - `Probe 4a` 不是通用 `SDRAM controller`，只是一个脚本式 `write -> read back -> compare` smoke probe
 - `Probe 4` 是独立 SDRAM tester，会对一段地址窗口和多组 pattern 重复写入、读回、校验，但仍不接 MiniSoC
 - `Probe 5a` 不是完整显示/大板外设系统，只是交通灯输出存在性探针
+- `Probe 5b` 不是字符系统，只是 VGA 链路存在性探针
+- `Probe 5` 当前只是独立字符型 VGA 骨架，还不接 `TinyBus` / `MiniSoC`
 
 这些 probe 的意义是先回答“最小链路是不是活的”，再把风险逐步推到 SoC 集成层。
 
@@ -313,7 +318,9 @@ rtl/core/picorv32.v
 4. `probe_sdram_smoke_top` + `constraints/tecplus_sdram_smoke.ucf`
 5. `probe_sdram_tester_top` + `constraints/tecplus_sdram_tester.ucf`
 6. `probe_bigboard_tl_top` + `constraints/tecplus_bigboard_tl.ucf`
-7. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`
+7. `probe_vga_top` + `constraints/tecplus_vga.ucf`
+8. `probe_vga_text_top` + `constraints/tecplus_vga.ucf`
+9. `tecplus_minisoc_top` + `constraints/tecplus_minisoc.ucf`
 
 这里要区分两层：
 
@@ -356,6 +363,8 @@ rtl/core/picorv32.v
 - SDRAM tester 多地址写读控制流仿真
 - SDRAM tester 受控失败与 reset 重复仿真
 - bigboard traffic-light 图样仿真
+- VGA 彩条 probe 同步与颜色输出仿真
+- 字符型 VGA 骨架 banner / 写口仿真
 - MiniSoC 板级 top 控制流
 
 这些仍然必须在实验室验证：

@@ -120,6 +120,32 @@ package_probe_bigboard_tl() {
     write_readme "$top" "$(basename "$ucf")" "这是 Probe 5a 最小工程，不需要 firmware.mem。"
 }
 
+package_probe_vga() {
+    local top="probe_vga_top"
+    local ucf="constraints/tecplus_vga.ucf"
+    need_file "rtl/probe/probe_vga_top.v"
+    need_file "rtl/periph/vga_timing_640x480.v"
+    need_file "$ucf"
+    copy_flat "rtl/probe/probe_vga_top.v"
+    copy_flat "rtl/periph/vga_timing_640x480.v"
+    copy_flat "$ucf"
+    write_readme "$top" "$(basename "$ucf")" "这是 VGA thin probe 最小工程，不需要 firmware.mem。Mf/Clr/Qd 当前只是参数化默认值，若无显示请优先回头检查它们。"
+}
+
+package_probe_vga_text() {
+    local top="probe_vga_text_top"
+    local ucf="constraints/tecplus_vga.ucf"
+    need_file "rtl/probe/probe_vga_text_top.v"
+    need_file "rtl/periph/vga_text_mode.v"
+    need_file "rtl/periph/vga_timing_640x480.v"
+    need_file "$ucf"
+    copy_flat "rtl/probe/probe_vga_text_top.v"
+    copy_flat "rtl/periph/vga_text_mode.v"
+    copy_flat "rtl/periph/vga_timing_640x480.v"
+    copy_flat "$ucf"
+    write_readme "$top" "$(basename "$ucf")" "这是字符型 VGA 骨架的独立上板工程，不接 SoC。默认会显示一行 banner；支持的字模仍是最小子集。"
+}
+
 package_minisoc() {
     local top="tecplus_minisoc_top"
     local ucf="constraints/tecplus_minisoc.ucf"
@@ -174,12 +200,18 @@ case "$ISE_TARGET" in
     probe_bigboard_tl|bigboard_tl|probe5a)
         package_probe_bigboard_tl
         ;;
+    probe_vga|vga|probe5b)
+        package_probe_vga
+        ;;
+    probe_vga_text|vga_text|probe5)
+        package_probe_vga_text
+        ;;
     minisoc|minisoc_pico|minisoc_dark)
         package_minisoc
         ;;
     *)
         echo "未知 ISE 导出目标：$ISE_TARGET" >&2
-        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_bigboard_tl, minisoc, minisoc_pico, minisoc_dark" >&2
+        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_bigboard_tl, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark" >&2
         exit 1
         ;;
 esac

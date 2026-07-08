@@ -262,9 +262,23 @@ case "$SIM_KIND" in
             "$REPO_ROOT/rtl/probe/probe_bigboard_tl_top.v"
         run_and_check "$BUILD_DIR/tb_bigboard_tl.log" vvp "$BUILD_DIR/tb_bigboard_tl.out"
         ;;
+    probe_vga)
+        iverilog -g2001 -o "$BUILD_DIR/tb_probe_vga_top.out" \
+            "$REPO_ROOT/sim/tb_probe_vga_top.v" \
+            "$REPO_ROOT/rtl/probe/probe_vga_top.v" \
+            "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
+        run_and_check "$BUILD_DIR/tb_probe_vga_top.log" vvp "$BUILD_DIR/tb_probe_vga_top.out"
+        ;;
+    vga_text_mode)
+        iverilog -g2001 -o "$BUILD_DIR/tb_vga_text_mode.out" \
+            "$REPO_ROOT/sim/tb_vga_text_mode.v" \
+            "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+            "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
+        run_and_check "$BUILD_DIR/tb_vga_text_mode.log" vvp "$BUILD_DIR/tb_vga_text_mode.out"
+        ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_tester、sdram_tester_fail、sdram_tester_reset、bigboard_tl" >&2
+        echo "支持的目标：uart_tx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_tester、sdram_tester_fail、sdram_tester_reset、bigboard_tl、probe_vga、vga_text_mode" >&2
         exit 1
         ;;
 esac

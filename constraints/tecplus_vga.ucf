@@ -1,0 +1,28 @@
+# TEC-PLUS VGA probe / text-mode 约束草案。
+# 当前同时服务：
+# - rtl/probe/probe_vga_top.v
+# - rtl/probe/probe_vga_text_top.v
+#
+# 已知不确定点：
+# 1. 引脚定义文档除了 R/G/B/HS/VS，还列了 Mf / Clr / Qd。
+# 2. 文档没有给出这三个控制脚的明确极性和必须行为。
+# 所以当前 RTL 只先给出参数化默认值；如果上板无显示，优先回到这三个脚做实验。
+
+NET "clk"   LOC = "T8" | IOSTANDARD = "LVCMOS33";
+NET "reset" LOC = "L3" | IOSTANDARD = "LVCMOS33";
+NET "clk" TNM_NET = "clk_grp";
+TIMESPEC "TS_clk_grp" = PERIOD "clk_grp" 20 ns HIGH 50%;
+
+NET "led[0]" LOC = "M14" | IOSTANDARD = "LVCMOS33";
+NET "led[1]" LOC = "M13" | IOSTANDARD = "LVCMOS33";
+NET "led[2]" LOC = "L13" | IOSTANDARD = "LVCMOS33";
+NET "led[3]" LOC = "L12" | IOSTANDARD = "LVCMOS33";
+
+NET "vga_mf"  LOC = "A10" | IOSTANDARD = "LVCMOS33";
+NET "vga_clr" LOC = "F6"  | IOSTANDARD = "LVCMOS33";
+NET "vga_qd"  LOC = "J16" | IOSTANDARD = "LVCMOS33";
+NET "vga_r"   LOC = "T4"  | IOSTANDARD = "LVCMOS33";
+NET "vga_g"   LOC = "T5"  | IOSTANDARD = "LVCMOS33";
+NET "vga_b"   LOC = "T6"  | IOSTANDARD = "LVCMOS33";
+NET "vga_hs"  LOC = "T7"  | IOSTANDARD = "LVCMOS33";
+NET "vga_vs"  LOC = "T9"  | IOSTANDARD = "LVCMOS33";

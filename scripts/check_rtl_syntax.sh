@@ -50,6 +50,26 @@ echo "语法检查：probe_bigboard_tl_top"
 iverilog -g2001 -s probe_bigboard_tl_top -o "$BUILD_DIR/probe_bigboard_tl_top.syntax.out" \
     "$REPO_ROOT/rtl/probe/probe_bigboard_tl_top.v"
 
+echo "语法检查：vga_timing_640x480"
+iverilog -g2001 -s vga_timing_640x480 -o "$BUILD_DIR/vga_timing_640x480.syntax.out" \
+    "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
+
+echo "语法检查：vga_text_mode"
+iverilog -g2001 -s vga_text_mode -o "$BUILD_DIR/vga_text_mode.syntax.out" \
+    "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+    "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
+
+echo "语法检查：probe_vga_top"
+iverilog -g2001 -s probe_vga_top -o "$BUILD_DIR/probe_vga_top.syntax.out" \
+    "$REPO_ROOT/rtl/probe/probe_vga_top.v" \
+    "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
+
+echo "语法检查：probe_vga_text_top"
+iverilog -g2001 -s probe_vga_text_top -o "$BUILD_DIR/probe_vga_text_top.syntax.out" \
+    "$REPO_ROOT/rtl/probe/probe_vga_text_top.v" \
+    "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+    "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
+
 echo "语法检查：tinybus_decode"
 iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -s tinybus_decode \
     -o "$BUILD_DIR/tinybus_decode.syntax.out" \

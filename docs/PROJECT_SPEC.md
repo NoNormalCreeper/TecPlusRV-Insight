@@ -30,6 +30,7 @@ TecPlusRV 对应北京邮电大学《项目式课程阶段 2》题目 B：基于
 - 增加更丰富的调试/可观测机制
 - 尝试 Flash / EEPROM 相关启动或配置功能
 - 如果时间允许，再增加显示类可观测外设
+- 显示类外设优先走 thin probe / 独立骨架，再考虑 SoC 级集成
 
 ## 资源受限下的设计权衡
 
@@ -77,6 +78,8 @@ PicoRV32、DarkRISCV 或其他开源 RTL 可以参考、审阅并 vendored 进�
 - `Probe 4a` 的 SDRAM smoke 现象验证
 - `Probe 4` 的独立 SDRAM tester 现象验证
 - `Probe 5a` 的 bigboard traffic-light 现象验证
+- `Probe 5b` 的 VGA 彩条现象验证
+- `Probe 5` 的字符型 VGA 骨架现象验证
 - `tecplus_minisoc_top` 集成后的资源适配验证
 
 第一版骨架的目标是减少实验室盲调时间，而不是替代实验室验证。
