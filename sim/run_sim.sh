@@ -44,6 +44,8 @@ compile_minisoc_tb() {
     local require_led_write="${6:-}"
     local require_exit_write="${7:-}"
     local expect_uart_fire_count="${8:-}"
+    local expect_exit_code="${9:-}"
+    local expect_led="${10:-}"
     local extra_params=()
 
     if [ ! -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
@@ -67,6 +69,18 @@ compile_minisoc_tb() {
     if [ "$arg_count" -ge 8 ]; then
         extra_params+=(
             -P "$tb_module.EXPECT_UART_FIRE_COUNT=$expect_uart_fire_count"
+        )
+    fi
+
+    if [ "$arg_count" -ge 9 ]; then
+        extra_params+=(
+            -P "$tb_module.EXPECT_EXIT_CODE=$expect_exit_code"
+        )
+    fi
+
+    if [ "$arg_count" -ge 10 ]; then
+        extra_params+=(
+            -P "$tb_module.EXPECT_LED=$expect_led"
         )
     fi
 
@@ -223,6 +237,14 @@ case "$SIM_KIND" in
     minisoc_counter_reset_dark)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_counter_reset_dark.out" 1 tb_minisoc_counter_reset "$REPO_ROOT/sim/tb_minisoc_counter_reset.v"
         run_and_check "$BUILD_DIR/tb_minisoc_counter_reset_dark.log" vvp "$BUILD_DIR/tb_minisoc_counter_reset_dark.out"
+        ;;
+    minisoc_rvtest_pico)
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_rvtest_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 0 0 0 -1 1 0
+        run_and_check "$BUILD_DIR/tb_minisoc_rvtest_pico.log" vvp "$BUILD_DIR/tb_minisoc_rvtest_pico.out"
+        ;;
+    minisoc_rvtest_dark)
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_rvtest_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 0 0 0 -1 1 0
+        run_and_check "$BUILD_DIR/tb_minisoc_rvtest_dark.log" vvp "$BUILD_DIR/tb_minisoc_rvtest_dark.out"
         ;;
     board_demo_pico)
         compile_minisoc_tb "$BUILD_DIR/tb_board_demo_pico.out" 0 tb_board_demo "$REPO_ROOT/sim/tb_board_demo.v"

@@ -1,0 +1,4 @@
+[submodule "tests/riscv_tests/riscv-tests"]
+	path = tests/riscv_tests/riscv-tests
+	url = https://github.com/riscv-software-src/riscv-tests.git
+	branch = master

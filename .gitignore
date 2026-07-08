@@ -1,6 +1,11 @@
 firmware/build/
 sim/build/
-build/ise-export/
+build/
 *.vcd
 *.lst
 *.log
+**/__pycache__/
+*.pyc
+!tests/riscv_tests/tecplus_p/
+!tests/riscv_tests/tecplus_p/**
+!tests/riscv_tests/riscv-tests

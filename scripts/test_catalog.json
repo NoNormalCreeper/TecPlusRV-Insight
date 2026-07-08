@@ -297,6 +297,27 @@
       "kind": "script",
       "script": "scripts/test_dual_core_regression.sh",
       "requires": ["firmware", "rtl_syntax"]
+    },
+    {
+      "id": "rv32ui_safe",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["safe"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32ui_extra",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["extra"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32ui_trapish",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["trapish"],
+      "requires": ["check_env", "rtl_syntax"]
     }
   ],
   "suites": {
@@ -376,10 +397,18 @@
     "dual_core": [
       "dual_core_regression"
     ],
+    "rv32i_safe": [
+      "rv32ui_safe"
+    ],
+    "rv32i_optional": [
+      "rv32ui_extra",
+      "rv32ui_trapish"
+    ],
     "local": [
       "@probe",
       "@platform",
       "@soc",
+      "@rv32i_safe",
       "@dual_core"
     ],
     "all": [
