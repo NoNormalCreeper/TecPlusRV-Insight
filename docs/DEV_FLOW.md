@@ -182,6 +182,22 @@
 - `sim/run_sim.sh` 和 `scripts/rtl_syntax_case.sh` 仍然保留，但只负责最底层的单 case 配方。
 - `scripts/check_rtl_syntax.sh` 和 `scripts/test_local.sh` 仍然可用，但只是兼容壳，不再承担测试编排职责。
 
+### `tests/riscv_tests/`
+
+用途：放官方 `riscv-tests` 资产和本仓库自己的适配层。
+
+当前典型内容：
+
+- `riscv-tests/`：官方上游 submodule
+- `riscv-tests/env/`：上游环境子模块
+- `tecplus_p/`：本仓库自己的最小 `MiniSoC` 适配环境
+
+设计原则：
+
+- 官方 case 尽量保持原样，不直接改测试本体
+- 本地差异优先收敛在 `tecplus_p` 这种 target environment 里
+- 第一阶段先只覆盖基础 `rv32ui`，不把 trap / `tohost` / `signature` 判定混进主回归
+
 ## 整个项目怎么从“零散文件”集合起来
 
 需要分成两条线理解：
@@ -416,6 +432,11 @@ make test-soc
 
 3. 如果改动只影响软件可见结果，重点看通用 `minisoc_*` regression 是否仍然收敛。
 4. 如果改动涉及 board-level UART / LED / `test_exit` 路径，再补跑 `python3 scripts/test_runner.py run-suite smoke`，或者直接跑对应的 `minisoc_smoke_*`。
+5. 如果改动会影响指令执行结果、加载存储、分支跳转或启动布局，再补跑：
+
+```bash
+python3 scripts/test_runner.py run-suite rv32i_safe
+```
 
 ### 场景 3：改 board probe
 
@@ -456,6 +477,7 @@ python3 scripts/test_runner.py run-suite smoke
 5. 平台层仿真
 6. `MiniSoC` board-top smoke
 7. MiniSoC smoke / regression bench 模式检查
+8. 官方 `rv32i_safe` 基线
 
 如果当前改动范围更大，可以再跑完整本地集合：
 
@@ -468,6 +490,13 @@ python3 scripts/test_runner.py run-suite local
 ```bash
 python3 scripts/test_runner.py run-suite all
 ```
+
+补充说明：
+
+- `rv32i_safe` 是当前第一阶段必须稳定通过的官方 `RV32I` 子集。
+- `rv32i_optional` 暂时只放边界 case，例如 `fence_i` 和 `ma_data`。
+- `fence_i` 当前不纳入基线，因为这份 `PicoRV32` RTL 不支持 `fence.i`。
+- `ma_data` 当前不纳入基线，因为它会开始要求明确的 misaligned / trap 语义。
 
 ## 从本地文件到 ISE 工程，应该怎么转换
 

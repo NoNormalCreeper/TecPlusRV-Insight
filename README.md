@@ -30,6 +30,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - `firmware/`：裸机启动代码、链接脚本、驱动和测试
 - `sim/`：本地 testbench
 - `scripts/`：本地构建和检查脚本
+- `tests/riscv_tests/`：官方 `riscv-tests` submodule 和本地 `tecplus_p` 适配层
 
 ## 推荐先读
 
@@ -69,6 +70,12 @@ make check-env
 ```
 
 如果环境正常，应该能看到这些工具都显示为 `[ok]`。
+
+如果准备跑官方 `rv32ui` 回归，还需要初始化 submodule：
+
+```bash
+git submodule update --init --recursive
+```
 
 ### 3. 跑一遍本地 smoke
 
@@ -110,6 +117,38 @@ make test-all
 
 1. MiniSoC 通用 regression / counter-source 等 SoC 级仿真
 2. 双核 firmware regression
+
+## 官方 `RV32I` 回归
+
+当前仓库已经接入一条独立的官方 `riscv-tests` 验证支线，用来验证基础 `RV32I` 指令语义，而不影响默认 `firmware/main.c` 主线。
+
+目录约定：
+
+- `tests/riscv_tests/riscv-tests/`：官方上游 `riscv-tests` submodule
+- `tests/riscv_tests/riscv-tests/env/`：上游自带环境子模块
+- `tests/riscv_tests/tecplus_p/`：本仓库自己的最小适配层，负责把 `RVTEST_PASS/FAIL` 映射到 `TINYBUS_TEST_EXIT`
+
+推荐入口：
+
+```bash
+python3 scripts/test_runner.py run-suite rv32i_safe
+```
+
+这条 suite 当前代表第一阶段必达的基础 `RV32I` 子集，会同时在 `PicoRV32` 和 `DarkRISCV` MiniSoC 上跑通。
+
+如果只想单独跑一个 case 或直接用批处理脚本，也可以用：
+
+```bash
+bash scripts/test_riscv_test_case.sh add
+bash scripts/test_riscv_test_case.sh safe
+```
+
+边界说明：
+
+- `rv32i_safe`：当前第一阶段主回归，默认纳入 `local` suite
+- `rv32i_optional`：当前单独保留的边界 case，不纳入第一阶段必达
+- `fence_i`：当前 `PicoRV32` 这份 RTL 不支持 `fence.i`，因此不并入基线
+- `ma_data`：会开始触碰 misaligned / trap 语义，因此单独保留到后续阶段
 
 ## 常用本地命令
 
