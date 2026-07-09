@@ -16,6 +16,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # rv32i 官方回归依赖 tests/riscv_tests/riscv-tests 及其 env 子模块。
+          submodules: recursive
 
       - name: Setup dependencies
         run: |
