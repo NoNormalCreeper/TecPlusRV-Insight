@@ -16,7 +16,8 @@ module tecplus_minisoc_top #(
     output reg [3:0] led,
     input        uart_rxd,
     output       uart_txd,
-    output [11:0] tl
+    output [11:0] tl,
+    output       spk
 );
 
 localparam [31:0] BRAM_BYTES = (32'd1 << BRAM_ADDR_WIDTH) * 32'd4;
@@ -70,6 +71,8 @@ wire [31:0] uart_status_rdata;
 wire [31:0] cycle_rdata;
 wire [31:0] instret_rdata;
 wire [31:0] traffic_rdata;
+wire [31:0] buzzer_ctrl_rdata;
+wire [31:0] buzzer_period_rdata;
 wire [31:0] cpu_cycle_count;
 wire [31:0] cpu_instret_count;
 wire [31:0] mmio_rdata;
@@ -79,6 +82,8 @@ wire        uart_data_sel;
 wire        uart_status_sel;
 wire        test_exit_sel;
 wire        traffic_sel;
+wire        buzzer_ctrl_sel;
+wire        buzzer_period_sel;
 wire        uart_tx_ready;
 wire        uart_fire;
 wire [7:0]  uart_rx_data;
@@ -90,6 +95,10 @@ wire        uart_overrun_clear;
 wire        uart_framing_error_clear;
 wire        test_exit_write;
 wire        traffic_write;
+wire        buzzer_ctrl_write;
+wire        buzzer_period_write;
+wire        buzzer_enabled;
+wire [31:0] buzzer_half_period;
 wire        mmio_stall;
 //wire        respond;
 
@@ -145,6 +154,8 @@ assign uart_status_rdata = {
 assign cycle_rdata = cpu_cycle_count;
 assign instret_rdata = cpu_instret_count;
 assign traffic_rdata = {20'h00000, tl};
+assign buzzer_ctrl_rdata = {31'h00000000, buzzer_enabled};
+assign buzzer_period_rdata = buzzer_half_period;
 
 assign same_as_last_req =
     last_req_valid &&
@@ -162,8 +173,15 @@ assign uart_overrun_clear =
 assign uart_framing_error_clear =
     respond && req_is_mmio && !req_is_replay &&
     uart_status_sel && mmio_write_en && req_wdata[3];
+<<<<<<< HEAD
 assign test_exit_write = respond && req_is_mmio && !req_is_replay && test_exit_sel && mmio_write_en;
 assign traffic_write = respond && req_is_mmio && !req_is_replay && traffic_sel && mmio_write_en;
+=======
+assign test_exit_write = respond && !req_is_bram && !req_is_replay && test_exit_sel && mmio_write_en;
+assign traffic_write = respond && !req_is_bram && !req_is_replay && traffic_sel && mmio_write_en;
+assign buzzer_ctrl_write = respond && !req_is_bram && !req_is_replay && buzzer_ctrl_sel && mmio_write_en;
+assign buzzer_period_write = respond && !req_is_bram && !req_is_replay && buzzer_period_sel && mmio_write_en;
+>>>>>>> 409508855a3913eef0a665254ff1f8e22dffe3e4
 
 tecplus_cpu_wrapper #(
     .CPU_IMPL(CPU_IMPL),
@@ -251,6 +269,8 @@ tinybus_decode u_decode (
     .cycle_rdata(cycle_rdata),
     .instret_rdata(instret_rdata),
     .traffic_rdata(traffic_rdata),
+    .buzzer_ctrl_rdata(buzzer_ctrl_rdata),
+    .buzzer_period_rdata(buzzer_period_rdata),
     .accel_rdata(32'h0000_0000),
     .rdata(mmio_rdata),
     .ready(),
@@ -263,6 +283,8 @@ tinybus_decode u_decode (
     .instret_sel(),
     .test_exit_sel(test_exit_sel),
     .traffic_sel(traffic_sel),
+    .buzzer_ctrl_sel(buzzer_ctrl_sel),
+    .buzzer_period_sel(buzzer_period_sel),
     .accel_sel(),
     .write_data()
 );
@@ -302,6 +324,18 @@ traffic_light_gpio u_traffic_light (
     .write_data(req_wdata),
     .write_strobe(req_wstrb),
     .tl(tl)
+);
+
+buzzer_pwm u_buzzer (
+    .clk(clk),
+    .reset(rst),
+    .ctrl_write_en(buzzer_ctrl_write),
+    .period_write_en(buzzer_period_write),
+    .write_data(req_wdata),
+    .write_strobe(req_wstrb),
+    .enabled(buzzer_enabled),
+    .half_period(buzzer_half_period),
+    .spk(spk)
 );
 
 mmio_test_exit u_test_exit (

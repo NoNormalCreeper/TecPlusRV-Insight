@@ -76,6 +76,10 @@ case "$CASE_ID" in
         run_iverilog traffic_light_gpio \
             "$REPO_ROOT/rtl/periph/traffic_light_gpio.v"
         ;;
+    buzzer_pwm)
+        run_iverilog buzzer_pwm \
+            "$REPO_ROOT/rtl/periph/buzzer_pwm.v"
+        ;;
     sdram_smoke_ctrl)
         run_iverilog sdram_smoke_ctrl \
             "$REPO_ROOT/rtl/probe/sdram_smoke_ctrl.v"
@@ -109,6 +113,22 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/probe/sdram_tester_uart_reporter.v" \
             "$REPO_ROOT/rtl/periph/uart_tx.v"
         ;;
+    sdram_data_ctrl_probe_runner)
+        run_iverilog sdram_data_ctrl_probe_runner \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_runner.v"
+        ;;
+    sdram_data_ctrl_probe_reporter)
+        run_iverilog sdram_data_ctrl_probe_reporter \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_reporter.v"
+        ;;
+    probe_sdram_data_ctrl_top)
+        run_iverilog probe_sdram_data_ctrl_top \
+            "$REPO_ROOT/rtl/probe/probe_sdram_data_ctrl_top.v" \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_runner.v" \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_reporter.v" \
+            "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
+            "$REPO_ROOT/rtl/periph/uart_tx.v"
+        ;;
     probe_bigboard_tl_top)
         run_iverilog probe_bigboard_tl_top \
             "$REPO_ROOT/rtl/probe/probe_bigboard_tl_top.v"
@@ -132,9 +152,14 @@ case "$CASE_ID" in
         run_iverilog vga_timing_640x480 \
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         ;;
+    font_rom_8x8)
+        run_iverilog font_rom_8x8 \
+            "$REPO_ROOT/rtl/periph/font_rom_8x8.v"
+        ;;
     vga_text_mode)
         run_iverilog vga_text_mode \
             "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+            "$REPO_ROOT/rtl/periph/font_rom_8x8.v" \
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         ;;
     probe_vga_top)
@@ -146,6 +171,7 @@ case "$CASE_ID" in
         run_iverilog probe_vga_text_top \
             "$REPO_ROOT/rtl/probe/probe_vga_text_top.v" \
             "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+            "$REPO_ROOT/rtl/periph/font_rom_8x8.v" \
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         ;;
     tinybus_decode)
@@ -215,7 +241,8 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/periph/uart_tx.v" \
             "$REPO_ROOT/rtl/periph/uart_rx.v" \
             "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
-            "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v"
+            "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
+            "$REPO_ROOT/rtl/periph/buzzer_pwm.v"
         ;;
     *)
         echo "未知 RTL syntax case: $CASE_ID" >&2

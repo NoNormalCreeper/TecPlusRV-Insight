@@ -47,11 +47,14 @@ ACT → tRCD → (READ/WRITE beats) → (tWR for write) → PRECHARGE → tRP �
 不实现 open‑page、行保持或仲裁。
 
 2.4 刷新策略
-使用固定周期计数器 refresh_count，到达 REFI_CYCLES 时置位 refresh_pending。
+使用 refresh_age 统计距离上一次“实际发出 AUTO REFRESH”已经过去的周期数。
+当 refresh_age 到达 REFI_CYCLES 时置位 refresh_pending。
 
 刷新仅在 ST_IDLE 状态启动，不会抢占正在进行的访问（符合单请求模型）。
 
-新增 强制刷新 机制：若连续忙碌时间（busy_cycles）超过 (REFI_CYCLES - 4) 个周期，则强制插入刷新，防止因长时间连续访问而错过刷新窗口。
+允许在持续流量下对周期 refresh 做有限延期；当 refresh_age 超过
+(REFI_CYCLES + REFRESH_DEFER_CYCLES) 的 overdue 窗口后，会置位 force_refresh，
+保证下一次回到 ST_IDLE 时必须先 refresh，避免长期饥饿。
 
 刷新命令发出后进入 ST_REF_TRFC 等待 tRFC，完成后返回 IDLE。
 
@@ -74,9 +77,14 @@ text
   → ST_IDLE
 
 空闲与刷新：
-  ST_IDLE         → 若无刷新请求且无有效主机请求，则置 req_ready=1
-                   若 refresh_pending 或 force_refresh，则执行：
+  ST_IDLE         → 若 force_refresh，则先执行：
                      ST_REF_TRFC  → 发出 AUTO REFRESH 并等待 tRFC → ST_IDLE
+                   若无 force_refresh 且有有效主机请求，则优先接收该请求
+                   若无 force_refresh、无有效主机请求但 refresh_pending=1，则执行：
+                     ST_REF_TRFC  → 发出 AUTO REFRESH 并等待 tRFC → ST_IDLE
+                   若以上条件都不满足，则置 req_ready=1
+  其中 refresh_pending 表示已到周期 refresh 点，force_refresh 表示已经超过允许延期窗口；
+  前者可在持续流量下短暂延后，后者必须在下一次回到 IDLE 时先 refresh。
 
 读操作路径：
   ST_IDLE 接收读请求 → 发出 ACT → ST_TRCD (等待 tRCD)
@@ -175,4 +183,4 @@ MODE_REG_VALUE	13'h220	模式寄存器值（BL=1, 顺序, CL=2）
 
 ✅ 读数据在 CAS 延迟后正确返回。
 
-✅ 强制刷新机制在长时间忙碌时插入刷新（通过 busy_cycles 观察）。
+✅ 强制刷新机制在长时间忙碌时插入刷新（基于 refresh_age 与延期窗口观察）。

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# 导出一个可直接拷走的新目录，只保留 ISE 工程真正需要的输入文件。
-# .v / .vh / .ucf 会摊平到导出目录根部，便于在 ISE 里直接 Import Sources；
+# 导出一个可直接拷走的新目录。
+# 默认 minimal 模式只保留当前 ISE 目标真正需要的输入文件；
+# full 模式会把仓库内全部 .v / .vh / .ucf 摊平到导出目录根部，便于一次性导入后在 ISE 里自行选择 top 和约束。
 # 只有 firmware.mem 这类路径敏感文件继续保留相对目录结构。
 set -eu
 
@@ -10,6 +11,7 @@ BUILD_FIRMWARE_SCRIPT="$REPO_ROOT/scripts/build_firmware.sh"
 
 ISE_TARGET=${1:-minisoc}
 EXPORT_DIR=${2:-$REPO_ROOT/build/ise-export/$ISE_TARGET}
+ISE_EXPORT_MODE=${ISE_EXPORT_MODE:-minimal}
 
 need_file() {
     local rel="$1"
@@ -34,6 +36,10 @@ copy_flat() {
     local base
     base=$(basename "$rel")
     local dst="$EXPORT_DIR/$base"
+    if [ -e "$dst" ] && ! cmp -s "$src" "$dst"; then
+        echo "导出时发现同名冲突：$rel -> $base" >&2
+        exit 1
+    fi
     cp "$src" "$dst"
     printf '%s\n' "$base" >>"$EXPORT_DIR/files.list"
 }
@@ -56,24 +62,57 @@ write_readme() {
     local top_module="$1"
     local ucf_file="$2"
     local notes="$3"
+    local mode_note
+    local step_two
+    local step_three
+    local final_notes="$notes"
+
+    if [ "$ISE_EXPORT_MODE" = "full" ]; then
+        final_notes=${final_notes//最小工程/推荐组合}
+        mode_note='导出模式：full（根目录包含仓库内全部 .v / .vh / .ucf）'
+        step_two='2. 把导出目录根部的 .v / .vh / .ucf 加入工程；如果目录里存在 firmware/build/firmware.mem，也把它加入工程并保持相对路径不变。'
+        step_three='3. 在 ISE 里自行选择需要的 top module 和 .ucf；上面的 top / 约束文件只是当前目标的推荐组合。'
+        final_notes="full 模式会额外导出仓库内全部可直接 Import 的 RTL/约束文件；当前目标对应的 top / .ucf 仍然是上面的推荐组合。"$'\n'"$final_notes"
+    else
+        mode_note='导出模式：minimal（只包含当前目标直接需要的文件）'
+        step_two='2. 把导出目录根部的 .v / .vh / .ucf 加入工程；如果目录里存在 firmware/build/firmware.mem，也把它加入工程并保持相对路径不变。'
+        step_three="3. 把 top module 设为：$top_module"
+    fi
 
     printf '%s\n' \
         'ISE 导出包' \
         '==========' \
         '' \
         "导出目标：$ISE_TARGET" \
+        "$mode_note" \
         "建议 top module：$top_module" \
         "约束文件：$ucf_file" \
         '' \
         '使用方式：' \
         '1. 在 ISE 14.7 里新建工程，工程目录直接选这个导出目录或其副本。' \
-        '2. 把导出目录根部的 .v / .vh / .ucf 加入工程；如果目录里存在 firmware/build/firmware.mem，也把它加入工程并保持相对路径不变。' \
-        "3. 把 top module 设为：$top_module" \
+        "$step_two" \
+        "$step_three" \
         '4. 跑 Synthesize / Implement Design / Generate Programming File' \
         '' \
         '附加说明：' \
-        "$notes" \
+        "$final_notes" \
         >"$EXPORT_DIR/README.txt"
+}
+
+export_full_importable_sources() {
+    local rel
+
+    while IFS= read -r rel; do
+        copy_flat "$rel"
+    done <<EOF
+$(cd "$REPO_ROOT" && find rtl -type f \( -name '*.v' -o -name '*.vh' \) | LC_ALL=C sort)
+EOF
+
+    while IFS= read -r rel; do
+        copy_flat "$rel"
+    done <<EOF
+$(cd "$REPO_ROOT" && find constraints -type f -name '*.ucf' | LC_ALL=C sort)
+EOF
 }
 
 package_probe_led_key() {
@@ -153,10 +192,12 @@ package_probe_vga_text() {
     local ucf="constraints/tecplus_vga.ucf"
     need_file "rtl/probe/probe_vga_text_top.v"
     need_file "rtl/periph/vga_text_mode.v"
+    need_file "rtl/periph/font_rom_8x8.v"
     need_file "rtl/periph/vga_timing_640x480.v"
     need_file "$ucf"
     copy_flat "rtl/probe/probe_vga_text_top.v"
     copy_flat "rtl/periph/vga_text_mode.v"
+    copy_flat "rtl/periph/font_rom_8x8.v"
     copy_flat "rtl/periph/vga_timing_640x480.v"
     copy_flat "$ucf"
     write_readme "$top" "$(basename "$ucf")" "这是字符型 VGA 骨架的独立上板工程，不接 SoC。默认会显示一行 banner；支持的字模仍是最小子集。"
@@ -172,6 +213,7 @@ package_minisoc() {
     need_file "rtl/periph/uart_tx.v"
     need_file "rtl/periph/uart_rx.v"
     need_file "rtl/periph/traffic_light_gpio.v"
+    need_file "rtl/periph/buzzer_pwm.v"
     need_file "rtl/soc/tinybus_decode.v"
     need_file "rtl/soc/mmio_test_exit.v"
     need_file "rtl/soc/tecplus_minisoc_top.v"
@@ -181,6 +223,7 @@ package_minisoc() {
     copy_flat "rtl/periph/uart_tx.v"
     copy_flat "rtl/periph/uart_rx.v"
     copy_flat "rtl/periph/traffic_light_gpio.v"
+    copy_flat "rtl/periph/buzzer_pwm.v"
     copy_flat "rtl/soc/tinybus_decode.v"
     copy_flat "rtl/soc/mmio_test_exit.v"
     copy_flat "rtl/soc/tecplus_minisoc_top.v"
@@ -206,6 +249,16 @@ package_minisoc() {
 rm -rf "$EXPORT_DIR"
 mkdir -p "$EXPORT_DIR"
 : >"$EXPORT_DIR/files.list"
+
+case "$ISE_EXPORT_MODE" in
+    minimal|full)
+        ;;
+    *)
+        echo "未知 ISE 导出模式：$ISE_EXPORT_MODE" >&2
+        echo "支持：minimal, full" >&2
+        exit 1
+        ;;
+esac
 
 case "$ISE_TARGET" in
     probe_led_key|led_key|probe0)
@@ -238,6 +291,10 @@ case "$ISE_TARGET" in
         exit 1
         ;;
 esac
+
+if [ "$ISE_EXPORT_MODE" = "full" ]; then
+    export_full_importable_sources
+fi
 
 sort -u "$EXPORT_DIR/files.list" -o "$EXPORT_DIR/files.list"
 

@@ -1,6 +1,11 @@
     # RISC-V 裸机启动代码。
-    # 复位后先设置栈，再清零 .bss，最后跳到 C 的 main()。
+    # 复位后：设栈 -> 清 .bss -> 搬运 .sdram_data -> 清 .sdram_bss -> 跳 main()。
     # 这里没有 C runtime，也没有中断/异常入口；它只是最薄的启动骨架。
+    #
+    # M3 新增两段：
+    #   - .sdram_data 拷贝：SDRAM 上电内容随机，不像 BRAM 由 firmware.mem 初始化，
+    #     所以有初值、运行地址在 SDRAM 的对象必须在这里从加载地址（BRAM）拷到运行地址。
+    #   - .sdram_bss 清零：与 .bss 同理，运行时清零。
     .section .init
     .globl _start
 
@@ -19,8 +24,34 @@ _start:
     j 1b
 
 2:
+    # 搬运 .sdram_data：从加载地址（LMA，在 BRAM）逐字拷到运行地址（VMA，在 SDRAM）。
+    # t0=源(load)，t1=目的(run 起点)，t2=目的结束。逐字拷贝，段边界已按 4 字节对齐。
+    la t0, _sdram_data_load_start
+    la t1, _sdram_data_start
+    la t2, _sdram_data_end
+
+3:
+    bgeu t1, t2, 4f
+    lw   t3, 0(t0)
+    sw   t3, 0(t1)
+    addi t0, t0, 4
+    addi t1, t1, 4
+    j 3b
+
+4:
+    # 清 .sdram_bss：运行时清零，语义同 .bss。
+    la t0, _sdram_bss_start
+    la t1, _sdram_bss_end
+
+5:
+    bgeu t0, t1, 6f
+    sw zero, 0(t0)
+    addi t0, t0, 4
+    j 5b
+
+6:
     # call 会把返回地址写入 ra；如果 main 意外返回，下面会进入死循环。
     call main
 
-3:
-    j 3b
+7:
+    j 7b

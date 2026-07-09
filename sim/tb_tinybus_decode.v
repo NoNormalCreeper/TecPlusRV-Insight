@@ -16,6 +16,8 @@ reg [31:0] uart_status_rdata;
 reg [31:0] cycle_rdata;
 reg [31:0] instret_rdata;
 reg [31:0] traffic_rdata;
+reg [31:0] buzzer_ctrl_rdata;
+reg [31:0] buzzer_period_rdata;
 reg [31:0] accel_rdata;
 
 wire [31:0] rdata;
@@ -29,6 +31,8 @@ wire        cycle_sel;
 wire        instret_sel;
 wire        test_exit_sel;
 wire        traffic_sel;
+wire        buzzer_ctrl_sel;
+wire        buzzer_period_sel;
 wire        accel_sel;
 wire [31:0] write_data;
 
@@ -43,6 +47,8 @@ tinybus_decode dut (
     .cycle_rdata(cycle_rdata),
     .instret_rdata(instret_rdata),
     .traffic_rdata(traffic_rdata),
+    .buzzer_ctrl_rdata(buzzer_ctrl_rdata),
+    .buzzer_period_rdata(buzzer_period_rdata),
     .accel_rdata(accel_rdata),
     .rdata(rdata),
     .ready(ready),
@@ -55,6 +61,8 @@ tinybus_decode dut (
     .instret_sel(instret_sel),
     .test_exit_sel(test_exit_sel),
     .traffic_sel(traffic_sel),
+    .buzzer_ctrl_sel(buzzer_ctrl_sel),
+    .buzzer_period_sel(buzzer_period_sel),
     .accel_sel(accel_sel),
     .write_data(write_data)
 );
@@ -70,6 +78,8 @@ initial begin
     cycle_rdata = 32'h1234_5678;
     instret_rdata = 32'h8765_4321;
     traffic_rdata = 32'h0000_0A55;
+    buzzer_ctrl_rdata = 32'h0000_0001;
+    buzzer_period_rdata = 32'h0000_1388;
     accel_rdata = 32'hCAFE_BABE;
 
     #1;
@@ -113,6 +123,20 @@ initial begin
     #1;
     if (!traffic_sel || write_en || rdata !== traffic_rdata) begin
         $display("FAIL: TRAFFIC DATA 译码或读回错误");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_BUZZER_CTRL;
+    #1;
+    if (!buzzer_ctrl_sel || rdata !== buzzer_ctrl_rdata) begin
+        $display("FAIL: BUZZER CTRL 译码或读回错误");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_BUZZER_PERIOD;
+    #1;
+    if (!buzzer_period_sel || rdata !== buzzer_period_rdata) begin
+        $display("FAIL: BUZZER PERIOD 译码或读回错误");
         $finish;
     end
 

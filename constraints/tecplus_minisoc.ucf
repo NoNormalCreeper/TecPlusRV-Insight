@@ -34,3 +34,6 @@ NET "tl[8]"  LOC = "N8"  | IOSTANDARD = "LVCMOS33";
 NET "tl[9]"  LOC = "N6"  | IOSTANDARD = "LVCMOS33";
 NET "tl[10]" LOC = "N5"  | IOSTANDARD = "LVCMOS33";
 NET "tl[11]" LOC = "N4"  | IOSTANDARD = "LVCMOS33";
+
+# Probe 5c confirmed that the minimum buzzer path only requires SPK.
+NET "spk" LOC = "P4" | IOSTANDARD = "LVCMOS33";

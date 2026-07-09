@@ -18,6 +18,7 @@
 | Probe 3 | `MiniSoC dual-core simulation probe` | 已实现 | 是 |
 | Probe 4a | `SDRAM smoke probe` | 已实现 | 是 |
 | Probe 4 | `SDRAM standalone tester` | 独立 tester 初版已实现 | 是 |
+| M2a probe | `sdram_data_ctrl contract probe` | 已实现 | 是 |
 | Probe 5a | `bigboard traffic-light thin probe` | 已实现 | 是 |
 | Probe 5c | `buzzer UART debug probe` | 已实现 | 是 |
 | Probe 5b | `VGA thin probe` | 已实现 | 是 |
@@ -27,6 +28,7 @@
 
 - `Probe 4a`、`Probe 5a`、`Probe 5b` 和 `Probe 5c` 都是 thin probe，目标是提早排雷，不是假装 full 功能已经完成。
 - `Probe 4` 已有独立 tester 初版，但仍然不是 SoC 级通用 SDRAM controller。
+- `M2a probe` 跑的是真实 `sdram_data_ctrl` contract，自检目标是控制器核心，不是 `M2b` 的 SoC 集成。
 - `Probe 5` 当前已经有独立字符型 VGA 骨架，但它仍然不是 SoC 级显示外设。
 - 任务说明明确要求不要伪造 `SDRAM controller`，因此当前 `Probe 4` 只宣称“独立 tester”，不宣称已经能给 MiniSoC 当 SDRAM 子系统。
 - `Probe 5c` 虽然用了 `uart_tx` 做辅助调试，但它仍然是 probe，不是 SoC 串口外设方案。
@@ -43,10 +45,11 @@
 5. `Probe 3` 对照本地结果做联调
 6. `Probe 4a`
 7. `Probe 4`
-8. `Probe 5a`
-9. `Probe 5c`
-10. `Probe 5b`
-11. `Probe 5`
+8. `M2a probe`
+9. `Probe 5a`
+10. `Probe 5c`
+11. `Probe 5b`
+12. `Probe 5`
 
 不建议的顺序：
 
@@ -432,6 +435,69 @@ scripts/check_rtl_syntax.sh
 ### 这一步的边界
 
 它是独立 SDRAM tester，不是 SoC 可复用的 SDRAM slave。当前实现优先验证 U2 SDRAM 的初始化、单字写读、DQ 三态、地址/数据/control/UCF 链路，以及“地址 + 轮次”pattern 的读回一致性。普通顶层不提供 UART 输出；如需板级查看错误细节，使用 UART debug 变体。它还没有提供 CPU 总线接口、刷新仲裁、burst 访问或完整地址空间遍历。
+
+## M2a probe：`sdram_data_ctrl` contract probe
+
+### 目标
+
+在真实 SDRAM 上直接跑 `rtl/soc/sdram_data_ctrl.v`，把模块级 testbench 里的关键 contract 变成板级自检，而不是只看“仿真曾经跑通一次”。
+
+### 对应文件
+
+- 顶层：`rtl/probe/probe_sdram_data_ctrl_top.v`
+- runner：`rtl/probe/sdram_data_ctrl_probe_runner.v`
+- UART reporter：`rtl/probe/sdram_data_ctrl_probe_reporter.v`
+- 被测控制器：`rtl/soc/sdram_data_ctrl.v`
+- 约束：`constraints/tecplus_sdram_data_ctrl_probe.ucf`
+- 集成 testbench：`sim/tb_probe_sdram_data_ctrl_top.v`
+- reporter testbench：`sim/tb_sdram_data_ctrl_probe_reporter.v`
+
+### 自检覆盖
+
+- 初始化完成后 `req_ready` 变为可接收
+- aligned `32-bit` 全字写读
+- `wstrb` 部分写
+- 非零 `bank/row` 地址访问
+- misaligned `read/write` 返回 `resp_err`
+- 持续 `req_valid=1` 压力下至少插入一次 refresh
+- 写事务中途触发 probe 内部 `local reset`，随后重新 init 并恢复可用
+
+### LED 状态建议
+
+- `0001`：初始化 / local reset 后重新 init
+- `0010`：普通读写类 case
+- `0100`：refresh pressure case
+- `1000`：PASS
+- `1111`：FAIL
+
+### UART 输出格式
+
+- `PASS c=07 i=xxxxxxxx`
+- `FAIL c=cc s=ss e=ee i=xxxxxxxx x=xxxxxxxx a=xxxxxxxx`
+
+这里的 `c/s/e` 分别是 case id、step id、error code，后面的 `i/x/a` 分别是附加信息、期望值、实际值。当前 PASS 的 `info` 低 16 位记录观测到的 refresh 命令计数，方便确认 pressure case 不是空跑。
+
+### 你在实验室里应该怎么做
+
+1. ISE 顶层设为 `probe_sdram_data_ctrl_top`。
+2. 加入 `probe_sdram_data_ctrl_top.v`、`sdram_data_ctrl_probe_runner.v`、`sdram_data_ctrl_probe_reporter.v`、`sdram_data_ctrl.v`、`uart_tx.v`。
+3. 加入 `constraints/tecplus_sdram_data_ctrl_probe.ucf`。
+4. 打开串口工具，参数设为 `9600 8N1`。
+5. 下载 bitstream 后先看 LED 是否从 `0001` 进入 `0010/0100`，最后稳定到 `1000` 或 `1111`。
+6. 如果 UART 打印 `PASS c=07 ...`，说明当前固定 contract 全部跑完；如果打印 `FAIL ...`，直接按字段定位是哪个 case / step 出的问题。
+
+### 本地验证
+
+```bash
+sim/run_sim.sh sdram_data_ctrl
+sim/run_sim.sh sdram_data_ctrl_probe_reporter
+sim/run_sim.sh probe_sdram_data_ctrl
+scripts/check_rtl_syntax.sh
+```
+
+### 这一步的边界
+
+它仍然只是 `M2a` 控制器核心的 board-side contract probe，不是 `M2b` 的 SoC 集成。它不负责把 SDRAM 接进 `MiniSoC`，也不替代后续的 runtime / memtest / benchmark 路线。
 
 ## Probe 5a：bigboard traffic-light thin probe
 

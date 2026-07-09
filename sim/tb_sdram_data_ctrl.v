@@ -41,7 +41,12 @@ localparam integer TMRD_CYCLES        = 2;
 localparam integer TRCD_CYCLES        = 2;
 localparam integer TWR_CYCLES         = 2;
 localparam integer CAS_LATENCY_CYCLES = 2;
-localparam integer REFI_CYCLES        = 20;
+// 这里故意把 REFI 设得明显大于单次 read/write 事务长度，
+// 这样能看出“周期点已到但允许有限延期”和“真正 overdue 必须 refresh”的区别。
+localparam integer REFI_CYCLES        = 64;
+localparam integer REFRESH_DEFER_CYCLES = 24;
+localparam integer PRESSURE_REFRESH_MAX_CYCLES =
+    REFI_CYCLES + REFRESH_DEFER_CYCLES + 64;
 
 sdram_data_ctrl #(
     .PWRUP_WAIT_CYCLES(PWRUP_WAIT_CYCLES),
@@ -52,6 +57,7 @@ sdram_data_ctrl #(
     .TWR_CYCLES(TWR_CYCLES),
     .CAS_LATENCY_CYCLES(CAS_LATENCY_CYCLES),
     .REFI_CYCLES(REFI_CYCLES),
+    .REFRESH_DEFER_CYCLES(REFRESH_DEFER_CYCLES),
     .MODE_REG_VALUE(13'h220)
 ) dut (
     .clk(clk),
@@ -197,13 +203,16 @@ initial begin
     end
     saw_misaligned_resp = 1;
 
-    // 6) 持续 req_valid=1 的流量下，仍然必须插入 refresh
+    // 6) 持续 req_valid=1 的流量下，refresh 可以有限延期：
+    // 先观察到 refresh_pending 之后仍能继续服务请求，
+    // 然后必须在 overdue 窗口内插入 refresh，不能无限饿死。
     refresh_before_pressure = refresh_seen;
     start_read_pressure(32'h0012_0440);
-    repeat (120) @(posedge clk);
+    wait_for_deferred_service_before_refresh(PRESSURE_REFRESH_MAX_CYCLES);
+    wait_for_refresh_under_pressure(PRESSURE_REFRESH_MAX_CYCLES);
     stop_read_pressure();
     if ((refresh_seen - refresh_before_pressure) == 0) begin
-        $display("FAIL: refresh missing under continuous req_valid pressure");
+        $display("FAIL: refresh missing under bounded continuous req_valid pressure");
         $finish;
     end
 
@@ -340,6 +349,62 @@ begin
     req_wstrb = 4'b0000;
     while (dut.busy) @(posedge clk);
     @(posedge clk);
+end
+endtask
+
+task wait_for_refresh_under_pressure;
+    input integer max_cycles;
+    integer pressure_cycles;
+begin
+    pressure_cycles = 0;
+    while ((refresh_seen - refresh_before_pressure) == 0 &&
+           pressure_cycles < max_cycles) begin
+        @(posedge clk);
+        pressure_cycles = pressure_cycles + 1;
+    end
+
+    if ((refresh_seen - refresh_before_pressure) == 0) begin
+        $display("FAIL: refresh missing within bounded defer window while req_valid stayed high (max_cycles=%0d refresh_before=%0d refresh_now=%0d)",
+                 max_cycles, refresh_before_pressure, refresh_seen);
+        $finish;
+    end
+end
+endtask
+
+task wait_for_deferred_service_before_refresh;
+    input integer max_cycles;
+    integer pressure_cycles;
+    reg saw_pending;
+    reg saw_service_after_pending;
+begin
+    pressure_cycles = 0;
+    saw_pending = 1'b0;
+    saw_service_after_pending = 1'b0;
+
+    while (!saw_service_after_pending &&
+           (refresh_seen - refresh_before_pressure) == 0 &&
+           pressure_cycles < max_cycles) begin
+        @(posedge clk);
+        if (dbg_refresh_pending) begin
+            saw_pending = 1'b1;
+        end
+        // ST_TRCD 表示在 pending 之后又接受并启动了一笔新请求，
+        // 这正是“允许 defer，而不是一到 pending 就立刻 refresh”的观测点。
+        if (saw_pending && (dut.state == 6'd13)) begin
+            saw_service_after_pending = 1'b1;
+        end
+        pressure_cycles = pressure_cycles + 1;
+    end
+
+    if (!saw_pending) begin
+        $display("FAIL: refresh_pending never asserted under pressure");
+        $finish;
+    end
+
+    if (!saw_service_after_pending) begin
+        $display("FAIL: controller did not defer service after refresh_pending before refresh");
+        $finish;
+    end
 end
 endtask
 

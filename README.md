@@ -8,8 +8,9 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 早期板级探针
 - 可复用的 UART TX / RX RTL
 - CPU 可读写的 12 位交通灯 MMIO 外设
+- CPU 可编程频率与启停的蜂鸣器 MMIO 外设
 - 蜂鸣器 UART debug probe
-- 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架
+- 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架 / 独立 8x8 字模
 - 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
 - 裸机 firmware 骨架
 - 本地构建和仿真入口
@@ -236,6 +237,8 @@ bash scripts/test_minisoc_tb_modes.sh
 make sim TARGET=uart_tx
 make sim TARGET=uart_rx
 make sim TARGET=traffic_light_gpio
+make sim TARGET=buzzer_pwm
+make sim TARGET=font_rom_8x8
 make sim TARGET=minisoc_pico
 make sim TARGET=minisoc_smoke_pico
 ```
@@ -245,6 +248,7 @@ make sim TARGET=minisoc_smoke_pico
 ```bash
 scripts/test_uart_echo_regression.sh
 scripts/test_traffic_light_regression.sh
+scripts/test_buzzer_regression.sh
 ```
 
 如果当前分支提供双核脚本，还可以用：
@@ -259,6 +263,7 @@ make perf
 ```bash
 make ise-export ISE_TARGET=minisoc
 make ise-export ISE_TARGET=probe_uart
+make ise-export ISE_TARGET=probe_uart ISE_EXPORT_MODE=full
 ```
 
 导出交通灯 MMIO 上板测试固件：
@@ -268,7 +273,17 @@ FIRMWARE_MAIN="$PWD/firmware/tests/traffic_light_mmio.c" \
 make ise-export ISE_TARGET=minisoc
 ```
 
+导出蜂鸣器 1 kHz 持续音示例：
+
+```bash
+FIRMWARE_MAIN="$PWD/firmware/tests/buzzer_tone.c" \
+make ise-export ISE_TARGET=minisoc
+```
+
 默认会生成到 `build/ise-export/<target>/`。其中 `.v` / `.vh` / `.ucf` 会摊平到导出目录根部，便于在 ISE 里直接 Import Sources；只有 `firmware/build/firmware.mem` 这类路径敏感文件继续保留目录结构。导出目录里还会附带 `files.list` 和 `README.txt`。
+
+- 默认 `ISE_EXPORT_MODE=minimal`：只导出当前 `ISE_TARGET` 直接需要的 `.v` / `.vh` / `.ucf`
+- `ISE_EXPORT_MODE=full`：额外把仓库内全部 `.v` / `.vh` / `.ucf` 也摊平导出，适合一次性导入后在 ISE 里自己选择 top 和 `.ucf`
 
 `sim/run_sim.sh` 和 `scripts/rtl_syntax_case.sh` 是底层 recipe；`scripts/check_rtl_syntax.sh` 和 `scripts/test_local.sh` 是兼容壳。推荐优先从 `python3 scripts/test_runner.py ...` 入口进入；`make` 和旧脚本名只是兼容层。
 
