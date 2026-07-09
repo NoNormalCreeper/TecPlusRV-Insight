@@ -393,10 +393,10 @@ always @(posedge clk) begin
     //debug
 //$display("DBG CMD t=%0t st=%0d busy=%b req_valid=%b dq_oe=%b dq_out=%h RAS=%b CAS=%b WE=%b A10=%b A=%h",
 //$time, init_stage,dut.busy, req_valid, dq_oe, dq_out, sdram_ras_n, sdram_cas_n, sdram_we_n, sdram_addr[10], sdram_addr);
-if (!sdram_cs_n && !sdram_ras_n && sdram_cas_n && sdram_we_n) begin  // ACT 命令
-    $display("ACT: ba=%b, row=%h, req_addr=%h, latched_addr=%h, haddr=%h",
-             sdram_ba, sdram_addr, req_addr, dut.latched_addr, dut.haddr);
-end
+//if (!sdram_cs_n && !sdram_ras_n && sdram_cas_n && sdram_we_n) begin  // ACT 命令
+//    $display("ACT: ba=%b, row=%h, req_addr=%h, latched_addr=%h, haddr=%h",
+//             sdram_ba, sdram_addr, req_addr, dut.latched_addr, dut.haddr);
+//end
     if (reset) begin
         row_open <= 1'b0;
         open_ba <= 2'b00;

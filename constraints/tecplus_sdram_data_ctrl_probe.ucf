@@ -1,0 +1,63 @@
+# M2a / sdram_data_ctrl 板级 probe 约束。
+# 对应顶层：rtl/probe/probe_sdram_data_ctrl_top.v。
+# 该 probe 通过 LED 给粗状态，通过 UART 输出 PASS/FAIL 与失败细节。
+
+NET "clk"   LOC = "T8" | IOSTANDARD = "LVCMOS33";
+NET "reset" LOC = "L3" | IOSTANDARD = "LVCMOS33";
+NET "clk" TNM_NET = "clk_grp";
+TIMESPEC "TS_clk_grp" = PERIOD "clk_grp" 20 ns HIGH 50%;
+
+NET "led[0]" LOC = "M14" | IOSTANDARD = "LVCMOS33";
+NET "led[1]" LOC = "M13" | IOSTANDARD = "LVCMOS33";
+NET "led[2]" LOC = "L13" | IOSTANDARD = "LVCMOS33";
+NET "led[3]" LOC = "L12" | IOSTANDARD = "LVCMOS33";
+
+NET "key[0]" LOC = "T13" | IOSTANDARD = "LVCMOS33";
+NET "key[1]" LOC = "R12" | IOSTANDARD = "LVCMOS33";
+NET "key[2]" LOC = "T12" | IOSTANDARD = "LVCMOS33";
+NET "key[3]" LOC = "P11" | IOSTANDARD = "LVCMOS33";
+
+NET "uart_txd" LOC = "D6" | IOSTANDARD = "LVCMOS33";
+NET "uart_rxd" LOC = "D5" | IOSTANDARD = "LVCMOS33";
+
+NET "sh_clk"    LOC = "H4" | IOSTANDARD = "LVCMOS33";
+NET "sh_cke"    LOC = "C1" | IOSTANDARD = "LVCMOS33";
+NET "sh_ncs"    LOC = "M3" | IOSTANDARD = "LVCMOS33";
+NET "sh_nwe"    LOC = "L1" | IOSTANDARD = "LVCMOS33";
+NET "sh_ncas"   LOC = "M1" | IOSTANDARD = "LVCMOS33";
+NET "sh_nras"   LOC = "M2" | IOSTANDARD = "LVCMOS33";
+NET "sh_dqm[0]" LOC = "K2" | IOSTANDARD = "LVCMOS33";
+NET "sh_dqm[1]" LOC = "D3" | IOSTANDARD = "LVCMOS33";
+NET "sh_ba[0]"  LOC = "N1" | IOSTANDARD = "LVCMOS33";
+NET "sh_ba[1]"  LOC = "N3" | IOSTANDARD = "LVCMOS33";
+
+NET "sh_a[0]"  LOC = "P2" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[1]"  LOC = "R1" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[2]"  LOC = "R2" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[3]"  LOC = "J4" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[4]"  LOC = "C2" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[5]"  LOC = "B1" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[6]"  LOC = "B2" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[7]"  LOC = "A2" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[8]"  LOC = "C3" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[9]"  LOC = "A3" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[10]" LOC = "P1" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[11]" LOC = "B3" | IOSTANDARD = "LVCMOS33";
+NET "sh_a[12]" LOC = "A4" | IOSTANDARD = "LVCMOS33";
+
+NET "sh_db[0]"  LOC = "G1" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[1]"  LOC = "H2" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[2]"  LOC = "H1" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[3]"  LOC = "H3" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[4]"  LOC = "J1" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[5]"  LOC = "J3" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[6]"  LOC = "K1" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[7]"  LOC = "K3" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[8]"  LOC = "D1" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[9]"  LOC = "E2" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[10]" LOC = "E4" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[11]" LOC = "E1" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[12]" LOC = "F2" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[13]" LOC = "F1" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[14]" LOC = "F3" | IOSTANDARD = "LVCMOS33";
+NET "sh_db[15]" LOC = "G3" | IOSTANDARD = "LVCMOS33";

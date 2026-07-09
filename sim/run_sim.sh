@@ -367,6 +367,22 @@ case "$SIM_KIND" in
             "$REPO_ROOT/rtl/probe/sdram_tester_uart_reporter.v"
         run_and_check "$BUILD_DIR/tb_sdram_tester_uart_reporter.log" vvp "$BUILD_DIR/tb_sdram_tester_uart_reporter.out"
         ;;
+    sdram_data_ctrl_probe_reporter)
+        iverilog -g2001 -o "$BUILD_DIR/tb_sdram_data_ctrl_probe_reporter.out" \
+            "$REPO_ROOT/sim/tb_sdram_data_ctrl_probe_reporter.v" \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_reporter.v"
+        run_and_check "$BUILD_DIR/tb_sdram_data_ctrl_probe_reporter.log" vvp "$BUILD_DIR/tb_sdram_data_ctrl_probe_reporter.out"
+        ;;
+    probe_sdram_data_ctrl)
+        iverilog -g2001 -o "$BUILD_DIR/tb_probe_sdram_data_ctrl_top.out" \
+            "$REPO_ROOT/sim/tb_probe_sdram_data_ctrl_top.v" \
+            "$REPO_ROOT/rtl/probe/probe_sdram_data_ctrl_top.v" \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_runner.v" \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_reporter.v" \
+            "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
+            "$REPO_ROOT/rtl/periph/uart_tx.v"
+        run_and_check "$BUILD_DIR/tb_probe_sdram_data_ctrl_top.log" vvp "$BUILD_DIR/tb_probe_sdram_data_ctrl_top.out"
+        ;;
     bigboard_tl)
         iverilog -g2001 -o "$BUILD_DIR/tb_bigboard_tl.out" \
             "$REPO_ROOT/sim/tb_bigboard_tl.v" \
@@ -389,16 +405,23 @@ case "$SIM_KIND" in
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         run_and_check "$BUILD_DIR/tb_probe_vga_top.log" vvp "$BUILD_DIR/tb_probe_vga_top.out"
         ;;
+    font_rom_8x8)
+        iverilog -g2001 -o "$BUILD_DIR/tb_font_rom_8x8.out" \
+            "$REPO_ROOT/sim/tb_font_rom_8x8.v" \
+            "$REPO_ROOT/rtl/periph/font_rom_8x8.v"
+        run_and_check "$BUILD_DIR/tb_font_rom_8x8.log" vvp "$BUILD_DIR/tb_font_rom_8x8.out"
+        ;;
     vga_text_mode)
         iverilog -g2001 -o "$BUILD_DIR/tb_vga_text_mode.out" \
             "$REPO_ROOT/sim/tb_vga_text_mode.v" \
             "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+            "$REPO_ROOT/rtl/periph/font_rom_8x8.v" \
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         run_and_check "$BUILD_DIR/tb_vga_text_mode.log" vvp "$BUILD_DIR/tb_vga_text_mode.out"
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、bigboard_tl、probe_buzzer_uart、probe_vga、vga_text_mode" >&2
+        echo "支持的目标：uart_tx、uart_rx、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
         exit 1
         ;;
 esac

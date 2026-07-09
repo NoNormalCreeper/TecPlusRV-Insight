@@ -78,6 +78,24 @@
       "args": ["probe_sdram_tester_uart_top"]
     },
     {
+      "id": "rtl_syntax__sdram_data_ctrl_probe_runner",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["sdram_data_ctrl_probe_runner"]
+    },
+    {
+      "id": "rtl_syntax__sdram_data_ctrl_probe_reporter",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["sdram_data_ctrl_probe_reporter"]
+    },
+    {
+      "id": "rtl_syntax__probe_sdram_data_ctrl_top",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["probe_sdram_data_ctrl_top"]
+    },
+    {
       "id": "rtl_syntax__probe_bigboard_tl_top",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -106,6 +124,12 @@
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
       "args": ["vga_timing_640x480"]
+    },
+    {
+      "id": "rtl_syntax__font_rom_8x8",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["font_rom_8x8"]
     },
     {
       "id": "rtl_syntax__vga_text_mode",
@@ -256,6 +280,16 @@
       "sim_target": "sdram_tester_uart_reporter"
     },
     {
+      "id": "sdram_data_ctrl_probe_reporter",
+      "kind": "sim",
+      "sim_target": "sdram_data_ctrl_probe_reporter"
+    },
+    {
+      "id": "probe_sdram_data_ctrl",
+      "kind": "sim",
+      "sim_target": "probe_sdram_data_ctrl"
+    },
+    {
       "id": "bigboard_tl",
       "kind": "sim",
       "sim_target": "bigboard_tl"
@@ -274,6 +308,11 @@
       "id": "vga_text_mode",
       "kind": "sim",
       "sim_target": "vga_text_mode"
+    },
+    {
+      "id": "font_rom_8x8",
+      "kind": "sim",
+      "sim_target": "font_rom_8x8"
     },
     {
       "id": "minisoc_smoke_pico",
@@ -385,11 +424,15 @@
       "rtl_syntax__probe_sdram_tester_top",
       "rtl_syntax__sdram_tester_uart_reporter",
       "rtl_syntax__probe_sdram_tester_uart_top",
+      "rtl_syntax__sdram_data_ctrl_probe_runner",
+      "rtl_syntax__sdram_data_ctrl_probe_reporter",
+      "rtl_syntax__probe_sdram_data_ctrl_top",
       "rtl_syntax__probe_bigboard_tl_top",
       "rtl_syntax__buzzer_tune_player",
       "rtl_syntax__buzzer_uart_reporter",
       "rtl_syntax__probe_buzzer_uart_top",
       "rtl_syntax__vga_timing_640x480",
+      "rtl_syntax__font_rom_8x8",
       "rtl_syntax__vga_text_mode",
       "rtl_syntax__probe_vga_top",
       "rtl_syntax__probe_vga_text_top",
@@ -411,6 +454,8 @@
       "sdram_tester_fail",
       "sdram_tester_reset",
       "sdram_tester_uart_reporter",
+      "sdram_data_ctrl_probe_reporter",
+      "probe_sdram_data_ctrl",
       "bigboard_tl",
       "probe_buzzer_uart",
       "probe_vga",
@@ -424,6 +469,7 @@
       "uart_rx",
       "traffic_light_gpio",
       "buzzer_pwm",
+      "font_rom_8x8",
       "sdram_data_ctrl"
     ],
     "soc": [
