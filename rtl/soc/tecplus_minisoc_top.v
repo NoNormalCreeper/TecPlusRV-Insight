@@ -20,6 +20,7 @@ module tecplus_minisoc_top #(
 );
 
 localparam [31:0] BRAM_BYTES = (32'd1 << BRAM_ADDR_WIDTH) * 32'd4;
+localparam [31:0] SDRAM_SIZE = 32'h0200_0000; // 256Mbit = 32MB，要不要乘2？
 
 wire resetn;
 wire rst;
@@ -51,6 +52,9 @@ wire [31:0] ifetch_bram_rdata;
 reg         pending;
 reg         ifetch_pending;
 reg         req_is_bram;
+reg         req_is_sdram;
+reg         req_is_mmio;
+reg         req_we_reg;     //SDRAM写使能
 reg         req_is_replay;
 reg  [31:0] req_addr;
 reg  [31:0] req_wdata;
@@ -87,18 +91,39 @@ wire        uart_framing_error_clear;
 wire        test_exit_write;
 wire        traffic_write;
 wire        mmio_stall;
-wire        respond;
+//wire        respond;
+
+// SDRAM内部
+wire        sdram_req_ready;
+wire        sdram_resp_valid;
+wire [31:0] sdram_resp_rdata;
+wire        sdram_resp_err;
+wire [15:0] sdram_dq_in  = 16'h0000;   // 仿真占位，板级需连到引脚
+wire [15:0] sdram_dq_out;
+wire        sdram_dq_oe;
+wire [1:0]  sdram_dqm;
+wire        sdram_cke, sdram_cs_n, sdram_ras_n, sdram_cas_n, sdram_we_n;
+wire [1:0]  sdram_ba;
+wire [12:0] sdram_addr;
 
 wire        test_exited;
 wire [31:0] test_exit_code;
 wire        same_as_last_req;
 
+wire bram_done   = req_is_bram;
+wire mmio_done   = req_is_mmio && !mmio_stall;
+wire sdram_done  = req_is_sdram && sdram_resp_valid;
+wire respond     = pending && (bram_done || mmio_done || sdram_done);
+
 assign resetn = reset;
 assign rst = !reset;
 
 assign start_req = mem_valid && !pending && !mem_ready;
-assign start_is_bram = (mem_addr < BRAM_BYTES);
-assign bram_en = start_req && start_is_bram;
+wire is_bram   = (mem_addr < BRAM_BYTES);
+wire is_sdram  = (mem_addr >= `TINYBUS_ADDR_SDRAM_BASE && mem_addr < `TINYBUS_ADDR_SDRAM_BASE + SDRAM_SIZE);
+wire is_mmio   = !(is_bram || is_sdram);   // 包括 0x1000_0000 和 0x2000_0000 等
+//assign start_is_bram = (mem_addr < BRAM_BYTES);
+assign bram_en = start_req && is_bram;
 assign bram_addr = mem_addr[BRAM_ADDR_WIDTH+1:2];
 assign ifetch_is_bram = (ifetch_addr < BRAM_BYTES);
 assign ifetch_en = ifetch_valid && !ifetch_pending && ifetch_is_bram;
@@ -127,18 +152,18 @@ assign same_as_last_req =
     (mem_wdata == last_req_wdata) &&
     (mem_wstrb == last_req_wstrb);
 
-assign mmio_stall = pending && !req_is_bram && !req_is_replay && uart_data_sel && mmio_write_en && !uart_tx_ready;
-assign respond = pending && !mmio_stall;
-assign uart_fire = respond && !req_is_bram && !req_is_replay && uart_data_sel && mmio_write_en;
-assign uart_rx_consume = respond && !req_is_bram && !req_is_replay && uart_data_sel && !mmio_write_en;
+assign mmio_stall = pending && req_is_mmio && !req_is_replay && uart_data_sel && mmio_write_en && !uart_tx_ready;
+//assign respond = pending && !mmio_stall;
+assign uart_fire = respond && req_is_mmio && !req_is_replay && uart_data_sel && mmio_write_en;
+assign uart_rx_consume = respond && req_is_mmio && !req_is_replay && uart_data_sel && !mmio_write_en;
 assign uart_overrun_clear =
-    respond && !req_is_bram && !req_is_replay &&
+    respond && req_is_mmio && !req_is_replay &&
     uart_status_sel && mmio_write_en && req_wdata[2];
 assign uart_framing_error_clear =
-    respond && !req_is_bram && !req_is_replay &&
+    respond && req_is_mmio && !req_is_replay &&
     uart_status_sel && mmio_write_en && req_wdata[3];
-assign test_exit_write = respond && !req_is_bram && !req_is_replay && test_exit_sel && mmio_write_en;
-assign traffic_write = respond && !req_is_bram && !req_is_replay && traffic_sel && mmio_write_en;
+assign test_exit_write = respond && req_is_mmio && !req_is_replay && test_exit_sel && mmio_write_en;
+assign traffic_write = respond && req_is_mmio && !req_is_replay && traffic_sel && mmio_write_en;
 
 tecplus_cpu_wrapper #(
     .CPU_IMPL(CPU_IMPL),
@@ -178,8 +203,45 @@ bram_dualport #(
     .rdata_b(ifetch_bram_rdata)
 );
 
+sdram_data_ctrl #(
+    .PWRUP_WAIT_CYCLES(10000),
+    .TRP_CYCLES(3),
+    .TRFC_CYCLES(7),
+    .TMRD_CYCLES(2),
+    .TRCD_CYCLES(3),
+    .TWR_CYCLES(3),
+    .CAS_LATENCY_CYCLES(2),
+    .REFI_CYCLES(780),
+    .MODE_REG_VALUE(13'h220)
+) u_sdram (
+    .clk(clk),
+    .reset(rst),
+    .req_valid(pending && req_is_sdram),   // req_is_sdram 将在状态机中定义
+    .req_ready(sdram_req_ready),
+    .req_we(req_we_reg),                  // req_we_reg 将在状态机中定义
+    .req_addr(req_addr),
+    .req_wdata(req_wdata),
+    .req_wstrb(req_wstrb),
+    .resp_valid(sdram_resp_valid),
+    .resp_rdata(sdram_resp_rdata),
+    .resp_err(sdram_resp_err),
+    .dq_in(sdram_dq_in),
+    .dq_oe(sdram_dq_oe),
+    .dq_out(sdram_dq_out),
+    .sdram_cke(sdram_cke),
+    .sdram_cs_n(sdram_cs_n),
+    .sdram_ras_n(sdram_ras_n),
+    .sdram_cas_n(sdram_cas_n),
+    .sdram_we_n(sdram_we_n),
+    .sdram_ba(sdram_ba),
+    .sdram_addr(sdram_addr),
+    .sdram_dqm(sdram_dqm),
+    .dbg_state(),
+    .dbg_refresh_pending()
+);
+
 tinybus_decode u_decode (
-    .valid(pending && !req_is_bram),
+    .valid(pending && req_is_mmio),
     .addr(req_addr),
     .wdata(req_wdata),
     .wstrb(req_wstrb),
@@ -256,6 +318,9 @@ always @(posedge clk) begin
         pending <= 1'b0;
         ifetch_pending <= 1'b0;
         req_is_bram <= 1'b0;
+        req_is_sdram <= 1'b0;
+        req_is_mmio  <= 1'b0;
+        req_we_reg   <= 1'b0;
         req_is_replay <= 1'b0;
         req_addr <= 32'h0000_0000;
         req_wdata <= 32'h0000_0000;
@@ -283,7 +348,13 @@ always @(posedge clk) begin
         if (respond) begin
             pending <= 1'b0;
             mem_ready <= 1'b1;
-            mem_rdata <= req_is_bram ? bram_data_rdata : mmio_rdata;
+            
+            if (req_is_bram)
+                mem_rdata <= bram_data_rdata;
+            else if (req_is_sdram)
+                mem_rdata <= sdram_resp_rdata;
+            else // MMIO
+                mem_rdata <= mmio_rdata;
             last_req_valid <= 1'b1;
             last_req_addr <= req_addr;
             last_req_wdata <= req_wdata;
@@ -294,11 +365,13 @@ always @(posedge clk) begin
             end
         end else if (start_req) begin
             pending <= 1'b1;
-            req_is_bram <= start_is_bram;
-            req_is_replay <= same_as_last_req;
-            req_addr <= mem_addr;
-            req_wdata <= mem_wdata;
-            req_wstrb <= mem_wstrb;
+            req_is_bram  <= is_bram;
+            req_is_sdram <= is_sdram;
+            req_is_mmio  <= is_mmio;
+            req_we_reg   <= (mem_wstrb != 4'b0);   // 只要有任一字节有效，即视为写操作
+            req_addr     <= mem_addr;
+            req_wdata    <= mem_wdata;
+            req_wstrb    <= mem_wstrb;
         end
     end
 end

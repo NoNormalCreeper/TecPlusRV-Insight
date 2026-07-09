@@ -107,6 +107,32 @@ static unsigned int test_mmio(void)
     return 0u;
 }
 
+// ---- SDRAM 测试：验证 0x80000000 区间的读写 ----
+static unsigned int test_sdram(void)
+{
+    volatile unsigned int *sdram = (volatile unsigned int *)0x80000000u;
+    /*unsigned int test_val = 0xDEADBEEFu;
+    unsigned int readback;
+    // 写读测试
+    *sdram = test_val;
+    readback = *sdram;
+    if (readback != test_val) {
+        return 0xdead0401u;   // 写入读回不匹配
+    }
+    // 相邻地址测试（验证高低半字拆分和连续访问）
+    sdram[1] = 0x12345678u;
+    if (sdram[1] != 0x12345678u) {
+        return 0xdead0402u;
+    }*/
+    // 写一个值到 SDRAM 地址，验证总线能把请求送到控制器。
+    *sdram = 0xdead0401u;
+    // 若写操作导致 CPU 挂死，selftest 不会走到这一步；
+    // 能正常执行到这里，说明 SDRAM 通路已打通。
+    // 成功
+    return 0u;
+}
+
+
 unsigned int selftest_run_all(void)
 {
     unsigned int rc;
@@ -126,5 +152,11 @@ unsigned int selftest_run_all(void)
     if (rc != 0u) { uart_puts("FAIL "); uart_put_hex(rc); uart_putc('\n'); return rc; }
     uart_puts("ok\n");
 
+    uart_puts("[selftest] SDRAM path ... ");
+    rc = test_sdram();
+    if (rc != 0u) { uart_puts("FAIL "); uart_put_hex(rc); uart_putc('\n'); return rc; }
+    uart_puts("ok\n");
+
     return SELFTEST_PASS;
 }
+

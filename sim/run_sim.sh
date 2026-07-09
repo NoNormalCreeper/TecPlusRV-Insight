@@ -120,7 +120,8 @@ compile_minisoc_tb() {
         "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
         "$REPO_ROOT/rtl/periph/uart_tx.v" \
         "$REPO_ROOT/rtl/periph/uart_rx.v" \
-        "$REPO_ROOT/rtl/periph/traffic_light_gpio.v"
+        "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
+        "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v"
 }
 
 compile_minisoc_perf_tb() {
@@ -241,6 +242,14 @@ case "$SIM_KIND" in
     minisoc_smoke_dark)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_smoke_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
         run_and_check "$BUILD_DIR/tb_minisoc_smoke_dark.log" vvp "$BUILD_DIR/tb_minisoc_smoke_dark.out"
+        ;;
+    minisoc_sdram_pico)
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
+        run_and_check "$BUILD_DIR/tb_minisoc_sdram_pico.log" vvp "$BUILD_DIR/tb_minisoc_sdram_pico.out"
+        ;;
+    minisoc_sdram_dark)
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
+        run_and_check "$BUILD_DIR/tb_minisoc_sdram_dark.log" vvp "$BUILD_DIR/tb_minisoc_sdram_dark.out"
         ;;
     minisoc_uart_once_pico)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_uart_once_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 0 1 1

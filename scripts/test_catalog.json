@@ -30,6 +30,18 @@
       "args": ["traffic_light_gpio"]
     },
     {
+      "id": "minisoc_sdram_pico",
+      "kind": "sim",
+      "sim_target": "minisoc_sdram_pico",
+      "requires": ["firmware", "rtl_syntax"]
+    },
+    {
+      "id": "minisoc_sdram_dark",
+      "kind": "sim",
+      "sim_target": "minisoc_sdram_dark",
+      "requires": ["firmware", "rtl_syntax"]
+    },
+    {
       "id": "rtl_syntax__sdram_smoke_ctrl",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -410,6 +422,8 @@
     "soc": [
       "minisoc_smoke_pico",
       "minisoc_smoke_dark",
+      "minisoc_sdram_pico",
+      "minisoc_sdram_dark",
       "minisoc_counter_source_pico",
       "minisoc_counter_source_dark",
       "minisoc_counter_reset_pico",

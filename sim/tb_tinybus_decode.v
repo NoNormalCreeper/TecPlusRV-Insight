@@ -1,5 +1,5 @@
 // tinybus_decode 的组合逻辑仿真。
-// 重点验证地址命中、写使能、读数据 mux，而不是完整 CPU 总线时序。
+// 重点验证地址命中、写使能、读数据 mux，以及 SDRAM 地址不会误触发。
 `timescale 1ns/1ps
 
 `include "tinybus_defs.vh"
@@ -81,7 +81,6 @@ initial begin
     valid = 1'b1;
     addr = `TINYBUS_ADDR_GPIO_KEY;
     #1;
-    // 组合逻辑需要一个 delta 时间稳定，所以这里用 #1 后再检查。
     if (!gpio_key_sel || rdata !== gpio_key_rdata) begin
         $display("FAIL: GPIO KEY 译码或读回错误");
         $finish;
@@ -125,7 +124,41 @@ initial begin
         $finish;
     end
 
-    $display("PASS: tinybus_decode 基本译码语义符合预期");
+    // 遍历 SDRAM 基地址及边界内一个地址，确保没有任何选择信号激活
+    addr = `TINYBUS_ADDR_SDRAM_BASE;  // 0x8000_0000
+    #1;
+    if (gpio_led_sel || gpio_key_sel || uart_data_sel || uart_status_sel ||
+        cycle_sel || instret_sel || test_exit_sel || traffic_sel || accel_sel) begin
+        $display("FAIL: SDRAM 地址 %h 误触发了 TinyBus 选择信号", addr);
+        $finish;
+    end
+    if (write_en !== 1'b0) begin
+        $display("FAIL: SDRAM 地址 %h 错误地置位 write_en", addr);
+        $finish;
+    end
+    // ready 应为 1（表示已解码，但未命中任何已定义外设）
+    if (ready !== 1'b1) begin
+        $display("FAIL: SDRAM 地址 %h 应返回 ready=1", addr);
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_SDRAM_BASE + 32'h0000_1000;  // 范围内任意地址
+    #1;
+    if (gpio_led_sel || gpio_key_sel || uart_data_sel || uart_status_sel ||
+        cycle_sel || instret_sel || test_exit_sel || traffic_sel || accel_sel) begin
+        $display("FAIL: SDRAM 地址 %h 误触发了 TinyBus 选择信号", addr);
+        $finish;
+    end
+    if (write_en !== 1'b0) begin
+        $display("FAIL: SDRAM 地址 %h 错误地置位 write_en", addr);
+        $finish;
+    end
+    if (ready !== 1'b1) begin
+        $display("FAIL: SDRAM 地址 %h 应返回 ready=1", addr);
+        $finish;
+    end
+
+    $display("PASS: tinybus_decode 译码语义及 SDRAM 地址隔离均符合预期");
     $finish;
 end
 

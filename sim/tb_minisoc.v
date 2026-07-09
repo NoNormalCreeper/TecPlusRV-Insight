@@ -206,5 +206,20 @@ initial begin
         $fflush;
     end
 end
-
+//debug for SDRAM
+// 在 tb_minisoc.v 末尾，endmodule 之前插入
+/*always @(posedge clk) begin
+    if (dut.u_sdram.req_valid && dut.u_sdram.req_ready) begin
+        $display("SDRAM req accepted: addr=%08x, we=%d, wdata=%08x, wstrb=%b",
+                 dut.u_sdram.req_addr, dut.u_sdram.req_we,
+                 dut.u_sdram.req_wdata, dut.u_sdram.req_wstrb);
+    end
+    if (dut.u_sdram.resp_valid) begin
+        $display("SDRAM resp: rdata=%08x, err=%d", dut.u_sdram.resp_rdata, dut.u_sdram.resp_err);
+    end
+    if (dut.u_sdram.dbg_state != 6'd0 && dut.u_sdram.dbg_state !== 6'd9) begin
+        // 打印非空闲状态（dbg_state 9 是 IDLE）
+        // $display("SDRAM state=%d", dut.u_sdram.dbg_state); // 如果太多可注释掉
+    end
+end*/
 endmodule
