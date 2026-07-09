@@ -173,15 +173,10 @@ assign uart_overrun_clear =
 assign uart_framing_error_clear =
     respond && req_is_mmio && !req_is_replay &&
     uart_status_sel && mmio_write_en && req_wdata[3];
-<<<<<<< HEAD
 assign test_exit_write = respond && req_is_mmio && !req_is_replay && test_exit_sel && mmio_write_en;
 assign traffic_write = respond && req_is_mmio && !req_is_replay && traffic_sel && mmio_write_en;
-=======
-assign test_exit_write = respond && !req_is_bram && !req_is_replay && test_exit_sel && mmio_write_en;
-assign traffic_write = respond && !req_is_bram && !req_is_replay && traffic_sel && mmio_write_en;
 assign buzzer_ctrl_write = respond && !req_is_bram && !req_is_replay && buzzer_ctrl_sel && mmio_write_en;
 assign buzzer_period_write = respond && !req_is_bram && !req_is_replay && buzzer_period_sel && mmio_write_en;
->>>>>>> 409508855a3913eef0a665254ff1f8e22dffe3e4
 
 tecplus_cpu_wrapper #(
     .CPU_IMPL(CPU_IMPL),
