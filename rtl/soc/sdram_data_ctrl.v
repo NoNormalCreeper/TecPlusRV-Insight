@@ -54,6 +54,7 @@ module sdram_data_ctrl #(
 
 localparam [5:0]
     ST_PWRUP_WAIT   = 6'd0,
+    ST_WAIT_PWRUP   = 6'd26,
     ST_INIT_PRE     = 6'd1,
     ST_INIT_TRP     = 6'd2,
     ST_INIT_AR1     = 6'd3,
@@ -90,6 +91,8 @@ reg [15:0] wait_count;
 reg [15:0] refresh_count;
 reg        refresh_pending;
 reg        busy;
+reg [15:0] busy_cycles;        // 连续忙碌周期计数
+reg        force_refresh;       // 强制刷新标志
 
 reg [31:0] latched_addr;
 reg [31:0] latched_wdata;
@@ -123,8 +126,8 @@ begin
     sdram_ras_n <= 1'b0;
     sdram_cas_n <= 1'b1;
     sdram_we_n  <= 1'b0;
-    sdram_addr  <= 13'b0010_0000_0000; // A10=1
     sdram_ba    <= 2'b00;
+    sdram_addr  <= 13'b0100_0000_0000; // A10=1, 其他为0
 end
 endtask
 
@@ -135,10 +138,11 @@ begin
     sdram_ras_n <= 1'b0;
     sdram_cas_n <= 1'b1;
     sdram_we_n  <= 1'b0;
-    sdram_addr  <= 13'b0000_0000_0000; // A10=0
     sdram_ba    <= ba;
+    sdram_addr  <= 13'b0000_0000_0000; // A10=0
 end
 endtask
+
 
 task cmd_auto_refresh;
 begin
@@ -210,14 +214,16 @@ always @(posedge clk) begin
         refresh_count <= 16'd0;
         refresh_pending <= 1'b0;
         busy <= 1'b0;
+        busy_cycles <= 16'd0;
+        force_refresh <= 1'b0;
 
         req_ready <= 1'b0;
         resp_valid <= 1'b0;
         resp_rdata <= 32'd0;
         resp_err <= 1'b0;
 
-        dq_oe <= 1'b0;
-        dq_out <= 16'd0;
+        dq_oe = 1'b0;
+        dq_out = 16'd0;
         sdram_dqm <= 2'b00;
 
         sdram_cke <= 1'b1;
@@ -246,9 +252,10 @@ always @(posedge clk) begin
         dbg_refresh_pending <= 1'b0;
     end else begin
         // defaults each cycle
+        req_ready <= 1'b0;
         resp_valid <= 1'b0;
         resp_err   <= 1'b0;
-        dq_oe      <= 1'b0;
+        dq_oe      = 1'b0;
         sdram_dqm  <= 2'b00;
         cmd_nop();
 
@@ -261,15 +268,40 @@ always @(posedge clk) begin
                 refresh_count <= refresh_count + 16'd1;
             end
         end
+        // 忙碌周期计数
+        if (state >= ST_IDLE && state != ST_IDLE && state != ST_REF_TRFC) begin
+            // 忙碌状态（读写操作序列）
+            if (busy_cycles < 16'hFFFF) busy_cycles <= busy_cycles + 16'd1;
+        end else if (state == ST_IDLE || state == ST_REF_TRFC) begin
+            busy_cycles <= 16'd0;
+        end
+
+        // 强制刷新阈值判断（仅当初始化完成）
+        if (state >= ST_IDLE) begin
+            if (busy_cycles >= (REFI_CYCLES - 4)) begin
+                force_refresh <= 1'b1;
+            end
+        end else begin
+            force_refresh <= 1'b0;  // 初始化期间不触发
+        end
 
         case (state)
             ST_PWRUP_WAIT: begin
-                req_ready <= 1'b0;
+                req_ready  <= 1'b0;
                 wait_count <= PWRUP_WAIT_CYCLES[15:0];
-                state <= ST_INIT_PRE;
+                state      <= ST_WAIT_PWRUP;
+            end
+
+            ST_WAIT_PWRUP: begin
+                if (wait_count != 16'd0) begin
+                    wait_count <= wait_count - 16'd1;
+                end else begin
+                    state <= ST_INIT_PRE;
+                end
             end
 
             ST_INIT_PRE: begin
+                // 对齐 probe/smoke：第一条必须 PRECHARGE ALL (A10=1)
                 cmd_precharge_all();
                 wait_count <= TRP_CYCLES[15:0];
                 state <= ST_INIT_TRP;
@@ -279,30 +311,42 @@ always @(posedge clk) begin
                 if (wait_count != 16'd0) begin
                     wait_count <= wait_count - 16'd1;
                 end else begin
-                    cmd_auto_refresh();
-                    wait_count <= TRFC_CYCLES[15:0];
-                    state <= ST_INIT_TRFC1;
+                    state <= ST_INIT_AR1;
                 end
+            end
+
+            ST_INIT_AR1: begin
+                cmd_auto_refresh();
+                wait_count <= TRFC_CYCLES[15:0];
+                state <= ST_INIT_TRFC1;
             end
 
             ST_INIT_TRFC1: begin
                 if (wait_count != 16'd0) begin
                     wait_count <= wait_count - 16'd1;
                 end else begin
-                    cmd_auto_refresh();
-                    wait_count <= TRFC_CYCLES[15:0];
-                    state <= ST_INIT_TRFC2;
+                    state <= ST_INIT_AR2;
                 end
+            end
+
+            ST_INIT_AR2: begin
+                cmd_auto_refresh();
+                wait_count <= TRFC_CYCLES[15:0];
+                state <= ST_INIT_TRFC2;
             end
 
             ST_INIT_TRFC2: begin
                 if (wait_count != 16'd0) begin
                     wait_count <= wait_count - 16'd1;
                 end else begin
-                    cmd_load_mode();
-                    wait_count <= TMRD_CYCLES[15:0];
-                    state <= ST_INIT_TMRD;
+                    state <= ST_INIT_MRS;
                 end
+            end
+
+            ST_INIT_MRS: begin
+                cmd_load_mode();
+                wait_count <= TMRD_CYCLES[15:0];
+                state <= ST_INIT_TMRD;
             end
 
             ST_INIT_TMRD: begin
@@ -316,36 +360,47 @@ always @(posedge clk) begin
             end
 
             ST_IDLE: begin
-                req_ready <= !busy;
-
-                if (!busy && refresh_pending) begin
-                    cmd_auto_refresh();
-                    wait_count <= TRFC_CYCLES[15:0];
-                    refresh_pending <= 1'b0;
-                    state <= ST_REF_TRFC;
-                end else if (!busy && req_valid) begin
-                    latched_addr <= req_addr;
-                    latched_we <= req_we;
-                    latched_wdata <= req_wdata;
-                    latched_wstrb <= req_wstrb;
-                    latched_misaligned <= |req_addr[1:0];
-
-                    busy <= 1'b1;
-                    req_ready <= 1'b0;
-
-                    if (|req_addr[1:0]) begin
-                        state <= ST_RESP; // immediate error response path
-                    end else begin
-                        // mapping (halfword address basis):
-                        // [22:11] row(12), [10:9] bank(2), [8:0] col(9)
-                        row_addr    <= haddr[22:11];
-                        bank_addr   <= haddr[10:9];
-                        col_addr_lo <= haddr[8:0];
-                        col_addr_hi <= haddr[8:0] + 9'd1;
-
-                        cmd_active(haddr[10:9], haddr[22:11]);
-                        wait_count <= TRCD_CYCLES[15:0];
-                        state <= ST_TRCD;
+                req_ready <= 1'b0;
+                
+                if (!busy) begin
+                    if (force_refresh) begin
+                        cmd_auto_refresh();
+                        wait_count <= TRFC_CYCLES[15:0];
+                        refresh_pending <= 1'b0;
+                        force_refresh <= 1'b0;
+                        state <= ST_REF_TRFC;
+                    end
+                    else if (req_valid) begin
+                        // 接受主机请求
+                        latched_addr <= req_addr;
+                        latched_we   <= req_we;
+                        latched_wdata <= req_wdata;
+                        latched_wstrb <= req_wstrb;
+                        latched_misaligned <= |req_addr[1:0];
+                        busy <= 1'b1;
+                        // req_ready 已默认 0，无需额外操作
+                        
+                        if (|req_addr[1:0]) begin
+                            state <= ST_RESP;   // 直接返回错误
+                        end else begin
+                            row_addr    <= req_addr[23:12];
+                            bank_addr   <= req_addr[11:10];
+                            col_addr_lo <= req_addr[9:1];
+                            col_addr_hi <= req_addr[9:1] + 9'd1;
+                            cmd_active(haddr[10:9], haddr[22:11]);
+                            wait_count <= TRCD_CYCLES[15:0];
+                            state <= ST_TRCD;
+                        end
+                    end
+                    else if (refresh_pending) begin
+                        cmd_auto_refresh();
+                        wait_count <= TRFC_CYCLES[15:0];
+                        refresh_pending <= 1'b0;
+                        state <= ST_REF_TRFC;
+                    end
+                    else begin
+                        // 真正空闲，允许新请求
+                        req_ready <= 1'b1;
                     end
                 end
             end
@@ -359,6 +414,10 @@ always @(posedge clk) begin
             end
 
             ST_TRCD: begin
+                if (wait_count == 1 && latched_we) begin
+                    dq_oe = 1'b1;
+                    dq_out = latched_wdata[15:0];   // 低半字提前一个周期准备好
+                end
                 if (wait_count != 16'd0) begin
                     wait_count <= wait_count - 16'd1;
                 end else if (latched_we) begin
@@ -370,12 +429,14 @@ always @(posedge clk) begin
 
             // Read low half
             ST_RD_CMD_LO: begin
+                dq_oe = 1'b0;
                 cmd_read(bank_addr, col_addr_lo);
                 wait_count <= CAS_LATENCY_CYCLES[15:0];
                 state <= ST_RD_CL_LO;
             end
 
             ST_RD_CL_LO: begin
+                dq_oe = 1'b0;
                 if (wait_count != 16'd0) begin
                     wait_count <= wait_count - 16'd1;
                 end else begin
@@ -384,18 +445,21 @@ always @(posedge clk) begin
             end
 
             ST_RD_CAP_LO: begin
+                dq_oe = 1'b0;
                 rd_lo <= dq_in;
                 state <= ST_RD_CMD_HI;
             end
 
             // Read high half
             ST_RD_CMD_HI: begin
+                dq_oe = 1'b0;
                 cmd_read(bank_addr, col_addr_hi);
                 wait_count <= CAS_LATENCY_CYCLES[15:0];
                 state <= ST_RD_CL_HI;
             end
 
             ST_RD_CL_HI: begin
+                dq_oe = 1'b0;
                 if (wait_count != 16'd0) begin
                     wait_count <= wait_count - 16'd1;
                 end else begin
@@ -404,14 +468,14 @@ always @(posedge clk) begin
             end
 
             ST_RD_CAP_HI: begin
+                dq_oe = 1'b0;
                 rd_hi <= dq_in;
                 state <= ST_PRE;
             end
 
-            // Write low half
             ST_WR_CMD_LO: begin
-                dq_oe <= 1'b1;
-                dq_out <= latched_wdata[15:0];
+                dq_oe = 1'b1;                    // 保持
+                //dq_out = latched_wdata[31:16];   // 准备高半字（当前周期低半字已稳定）
                 sdram_dqm <= ~latched_wstrb[1:0];
                 cmd_write(bank_addr, col_addr_lo);
                 state <= ST_WR_CMD_HI;
@@ -419,8 +483,8 @@ always @(posedge clk) begin
 
             // Write high half
             ST_WR_CMD_HI: begin
-                dq_oe <= 1'b1;
-                dq_out <= latched_wdata[31:16];
+                dq_oe = 1'b1;                    // 保持，dq_out 已经是高半字
+                dq_out = latched_wdata[31:16];   // 立即更新为高半字（阻塞）
                 sdram_dqm <= ~latched_wstrb[3:2];
                 cmd_write(bank_addr, col_addr_hi);
                 wait_count <= TWR_CYCLES[15:0];
@@ -428,6 +492,8 @@ always @(posedge clk) begin
             end
 
             ST_TWR: begin
+                dq_oe = 1'b0;                    // 拉低
+                dq_out = 16'd0;
                 if (wait_count != 16'd0) begin
                     wait_count <= wait_count - 16'd1;
                 end else begin
@@ -436,12 +502,14 @@ always @(posedge clk) begin
             end
 
             ST_PRE: begin
+                dq_oe = 1'b0;
                 cmd_precharge_bank(bank_addr);
                 wait_count <= TRP_CYCLES[15:0];
                 state <= ST_TRP;
             end
 
             ST_TRP: begin
+                dq_oe = 1'b0;
                 if (wait_count != 16'd0) begin
                     wait_count <= wait_count - 16'd1;
                 end else begin

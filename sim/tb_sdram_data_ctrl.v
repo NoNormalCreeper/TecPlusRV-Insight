@@ -149,7 +149,7 @@ initial begin
 
     // 1) aligned write request
     host_write32(32'h0000_0040, 32'h1234_ABCD, 4'b1111);
-
+    #1;//wait for a delta
     // 2) aligned read request
     host_read32(32'h0000_0040);
     if (resp_rdata !== 32'h1234_ABCD) begin
@@ -201,15 +201,15 @@ task host_write32;
 begin
     @(posedge clk);
     while (!req_ready) @(posedge clk);
-    req_addr  <= addr;
-    req_wdata <= data;
-    req_wstrb <= wstrb;
-    req_we    <= 1'b1;
-    req_valid <= 1'b1;
-    @(posedge clk);
-    req_valid <= 1'b0;
-    req_we    <= 1'b0;
-    req_wstrb <= 4'b0000;
+    req_addr  = addr;
+    req_wdata = data;
+    req_wstrb = wstrb;
+    req_we    = 1'b1;
+    req_valid = 1'b1;
+    while (req_ready) @(posedge clk);
+    req_valid = 1'b0;
+    req_we    = 1'b0;
+    req_wstrb = 4'b0000;
     wait(resp_valid);
     if (resp_err) begin
         $display("FAIL: unexpected resp_err on write");
@@ -224,21 +224,27 @@ task host_read32;
 begin
     @(posedge clk);
     while (!req_ready) @(posedge clk);
-    req_addr  <= addr;
-    req_wdata <= 32'd0;
-    req_wstrb <= 4'b0000;
-    req_we    <= 1'b0;
-    req_valid <= 1'b1;
-    @(posedge clk);
-    req_valid <= 1'b0;
+    req_addr  = addr;
+    req_wdata = 32'd0;
+    req_wstrb = 4'b0000;
+    req_we    = 1'b0;
+    req_valid = 1'b1;
+    while (req_ready) @(posedge clk);
+    req_valid = 1'b0;
     wait(resp_valid);
     @(posedge clk);
 end
 endtask
 
+
 // decode/observe SDRAM commands and emulate read data latency
 always @(posedge clk) begin
     cycles <= cycles + 1;
+    // wait a delta to observe DUT non-blocking updates from this posedge
+    #1;
+    //debug
+$display("DBG CMD t=%0t st=%0d busy=%b req_valid=%b dq_oe=%b dq_out=%h RAS=%b CAS=%b WE=%b A10=%b A=%h",
+$time, init_stage,dut.busy, req_valid, dq_oe, dq_out, sdram_ras_n, sdram_cas_n, sdram_we_n, sdram_addr[10], sdram_addr);
 
     // emit read data after CL countdown
     if (read_pending) begin
@@ -260,13 +266,20 @@ always @(posedge clk) begin
     // PRECHARGE: RAS=0 CAS=1 WE=0
     if (!sdram_cs_n && !sdram_ras_n && sdram_cas_n && !sdram_we_n) begin
         row_open <= 1'b0;
-        // init sequence expects first PRECHARGE ALL then ARx2 then MRS
-        if (init_stage == 0) begin
-            if (sdram_addr[10] !== 1'b1) begin
-                $display("FAIL: init PRECHARGE not ALL banks");
+
+        if (init_stage < 4) begin
+            // 只允许 init_stage=0 时出现 init 首条 PRECHARGE ALL
+            if (init_stage == 0) begin
+                if (sdram_addr[10] !== 1'b1) begin
+                    $display("FAIL: init PRECHARGE not ALL banks");
+                    $finish;
+                end
+                init_stage <= 1;
+            end else begin
+                // init 尚未结束时又看到 PRE，视为顺序错误
+                $display("FAIL: unexpected PRECHARGE during init, stage=%0d", init_stage);
                 $finish;
             end
-            init_stage <= 1;
         end
     end
 
@@ -274,13 +287,29 @@ always @(posedge clk) begin
     if (!sdram_cs_n && !sdram_ras_n && !sdram_cas_n && sdram_we_n) begin
         saw_refresh_cmd <= 1;
         refresh_seen <= refresh_seen + 1;
-        if (init_stage == 1) init_stage <= 2;
-        else if (init_stage == 2) init_stage <= 3;
+
+        if (init_stage < 4) begin
+            if (init_stage == 1) begin
+                init_stage <= 2;
+            end else if (init_stage == 2) begin
+                init_stage <= 3;
+            end else begin
+                $display("FAIL: init AUTO REFRESH order wrong, stage=%0d", init_stage);
+                $finish;
+            end
+        end
     end
 
     // LOAD MODE: RAS=0 CAS=0 WE=0
     if (!sdram_cs_n && !sdram_ras_n && !sdram_cas_n && !sdram_we_n) begin
-        if (init_stage == 3) init_stage <= 4;
+        if (init_stage < 4) begin
+            if (init_stage == 3) begin
+                init_stage <= 4;
+            end else begin
+                $display("FAIL: init LOAD MODE order wrong, stage=%0d", init_stage);
+                $finish;
+            end
+        end
     end
 
     // WRITE: RAS=1 CAS=0 WE=0
@@ -315,6 +344,11 @@ always @(posedge clk) begin
         read_wait <= CAS_LATENCY_CYCLES;
         read_pending <= 1'b1;
     end
+end
+initial begin
+    #7500; // 足够长
+    $display("TIMEOUT: DUT not ready, state=%0d", dut.dbg_state);
+    $finish;
 end
 
 endmodule
