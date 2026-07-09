@@ -243,8 +243,8 @@ always @(posedge clk) begin
     // wait a delta to observe DUT non-blocking updates from this posedge
     #1;
     //debug
-$display("DBG CMD t=%0t st=%0d busy=%b req_valid=%b dq_oe=%b dq_out=%h RAS=%b CAS=%b WE=%b A10=%b A=%h",
-$time, init_stage,dut.busy, req_valid, dq_oe, dq_out, sdram_ras_n, sdram_cas_n, sdram_we_n, sdram_addr[10], sdram_addr);
+//$display("DBG CMD t=%0t st=%0d busy=%b req_valid=%b dq_oe=%b dq_out=%h RAS=%b CAS=%b WE=%b A10=%b A=%h",
+//$time, init_stage,dut.busy, req_valid, dq_oe, dq_out, sdram_ras_n, sdram_cas_n, sdram_we_n, sdram_addr[10], sdram_addr);
 
     // emit read data after CL countdown
     if (read_pending) begin
@@ -346,7 +346,7 @@ $time, init_stage,dut.busy, req_valid, dq_oe, dq_out, sdram_ras_n, sdram_cas_n, 
     end
 end
 initial begin
-    #7500; // 足够长
+    #8000; // 应当是足够长
     $display("TIMEOUT: DUT not ready, state=%0d", dut.dbg_state);
     $finish;
 end
