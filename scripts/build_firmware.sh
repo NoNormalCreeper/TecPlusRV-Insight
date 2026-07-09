@@ -32,7 +32,10 @@ if [ ! -f "$FIRMWARE_MAIN" ]; then
 fi
 
 # rv32i/ilp32 对齐 PicoRV32 最小配置；freestanding 表示不依赖标准 C runtime。
-CFLAGS="-march=rv32i -mabi=ilp32 -ffreestanding -nostdlib -nostartfiles -Wall -Wextra -Werror -Os"
+# -fno-tree-loop-distribute-patterns：禁止编译器把 rt_memcpy/rt_memset 里的
+# 逐字节循环“优化”成对 memcpy/memset 的库调用——我们 -nostdlib，没有这些符号，
+# 否则会在链接期报 undefined reference to `memcpy`/`memset`。
+CFLAGS="-march=rv32i -mabi=ilp32 -ffreestanding -nostdlib -nostartfiles -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror -Os"
 INCLUDES="-I$REPO_ROOT/firmware"
 LDFLAGS="-T $REPO_ROOT/firmware/linker.ld"
 SOURCES="
@@ -41,6 +44,9 @@ $REPO_ROOT/firmware/drivers/uart.c
 $REPO_ROOT/firmware/drivers/gpio.c
 $REPO_ROOT/firmware/drivers/traffic_light.c
 $REPO_ROOT/firmware/drivers/buzzer.c
+$REPO_ROOT/firmware/runtime/rt_string.c
+$REPO_ROOT/firmware/runtime/rt_print.c
+$REPO_ROOT/firmware/runtime/rt_alloc.c
 $FIRMWARE_MAIN
 $REPO_ROOT/firmware/drivers/perf.c
 $REPO_ROOT/firmware/tests/selftest.c
