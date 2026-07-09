@@ -15,7 +15,8 @@ module tecplus_minisoc_top #(
     input  [3:0] key,
     output reg [3:0] led,
     input        uart_rxd,
-    output       uart_txd
+    output       uart_txd,
+    output [11:0] tl
 );
 
 localparam [31:0] BRAM_BYTES = (32'd1 << BRAM_ADDR_WIDTH) * 32'd4;
@@ -64,6 +65,7 @@ wire [31:0] uart_data_rdata;
 wire [31:0] uart_status_rdata;
 wire [31:0] cycle_rdata;
 wire [31:0] instret_rdata;
+wire [31:0] traffic_rdata;
 wire [31:0] cpu_cycle_count;
 wire [31:0] cpu_instret_count;
 wire [31:0] mmio_rdata;
@@ -72,6 +74,7 @@ wire        gpio_led_sel;
 wire        uart_data_sel;
 wire        uart_status_sel;
 wire        test_exit_sel;
+wire        traffic_sel;
 wire        uart_tx_ready;
 wire        uart_fire;
 wire [7:0]  uart_rx_data;
@@ -82,6 +85,7 @@ wire        uart_rx_consume;
 wire        uart_overrun_clear;
 wire        uart_framing_error_clear;
 wire        test_exit_write;
+wire        traffic_write;
 wire        mmio_stall;
 wire        respond;
 
@@ -115,6 +119,7 @@ assign uart_status_rdata = {
 // 这里不要重新引入 local proxy counting，否则 instret 语义会再次偏离 core 自己的报告值。
 assign cycle_rdata = cpu_cycle_count;
 assign instret_rdata = cpu_instret_count;
+assign traffic_rdata = {20'h00000, tl};
 
 assign same_as_last_req =
     last_req_valid &&
@@ -133,6 +138,7 @@ assign uart_framing_error_clear =
     respond && !req_is_bram && !req_is_replay &&
     uart_status_sel && mmio_write_en && req_wdata[3];
 assign test_exit_write = respond && !req_is_bram && !req_is_replay && test_exit_sel && mmio_write_en;
+assign traffic_write = respond && !req_is_bram && !req_is_replay && traffic_sel && mmio_write_en;
 
 tecplus_cpu_wrapper #(
     .CPU_IMPL(CPU_IMPL),
@@ -182,6 +188,7 @@ tinybus_decode u_decode (
     .uart_status_rdata(uart_status_rdata),
     .cycle_rdata(cycle_rdata),
     .instret_rdata(instret_rdata),
+    .traffic_rdata(traffic_rdata),
     .accel_rdata(32'h0000_0000),
     .rdata(mmio_rdata),
     .ready(),
@@ -193,6 +200,7 @@ tinybus_decode u_decode (
     .cycle_sel(),
     .instret_sel(),
     .test_exit_sel(test_exit_sel),
+    .traffic_sel(traffic_sel),
     .accel_sel(),
     .write_data()
 );
@@ -223,6 +231,15 @@ uart_rx #(
     .data_valid(uart_rx_valid),
     .overrun(uart_rx_overrun),
     .framing_error(uart_rx_framing_error)
+);
+
+traffic_light_gpio u_traffic_light (
+    .clk(clk),
+    .reset(rst),
+    .write_en(traffic_write),
+    .write_data(req_wdata),
+    .write_strobe(req_wstrb),
+    .tl(tl)
 );
 
 mmio_test_exit u_test_exit (

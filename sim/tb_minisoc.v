@@ -14,6 +14,8 @@ module tb_minisoc #(
     parameter integer DRIVE_UART_RX = 0,
     parameter [7:0] UART_RX_BYTE = 8'h00,
     parameter integer EXPECT_UART_LAST_BYTE = -1,
+    parameter integer REQUIRE_TRAFFIC_WRITE = 0,
+    parameter integer EXPECT_TRAFFIC = -1,
     parameter integer TIMEOUT_CYCLES = 2000000
 );
 
@@ -25,11 +27,13 @@ reg uart_rxd;
 reg uart_written;
 reg led_written;
 reg exit_written;
+reg traffic_written;
 integer uart_fire_count;
 reg [7:0] uart_last_byte;
 
 wire [3:0] led;
 wire uart_txd;
+wire [11:0] tl;
 
 
 tecplus_minisoc_top #(
@@ -44,7 +48,8 @@ tecplus_minisoc_top #(
     .key(key),
     .led(led),
     .uart_rxd(uart_rxd),
-    .uart_txd(uart_txd)
+    .uart_txd(uart_txd),
+    .tl(tl)
 );
 
 always #5 clk = ~clk;
@@ -58,6 +63,7 @@ initial begin
     uart_written = 1'b0;
     led_written = 1'b0;
     exit_written = 1'b0;
+    traffic_written = 1'b0;
     uart_fire_count = 0;
     uart_last_byte = 8'h00;
 
@@ -87,6 +93,8 @@ initial begin
             led_written = 1'b1;
         if (dut.test_exit_write)
             exit_written = 1'b1;
+        if (dut.traffic_write)
+            traffic_written = 1'b1;
         if (dut.test_exited) begin
             if (dut.test_exit_code !== EXPECT_EXIT_CODE) begin
                 $display("FAIL: test_exit=0x%08x", dut.test_exit_code);
@@ -113,6 +121,11 @@ initial begin
                 $finish;
             end
 
+            if (EXPECT_TRAFFIC >= 0 && tl !== EXPECT_TRAFFIC[11:0]) begin
+                $display("FAIL: expected traffic pattern %03x, got %03x", EXPECT_TRAFFIC[11:0], tl);
+                $finish;
+            end
+
             if (REQUIRE_LED_WRITE != 0 && !led_written) begin
                 $display("FAIL: No GPIO LED write occurred during firmware execution");
                 $finish;
@@ -120,6 +133,11 @@ initial begin
 
             if (REQUIRE_EXIT_WRITE != 0 && !exit_written) begin
                 $display("FAIL: exited but no exit written");
+                $finish;
+            end
+
+            if (REQUIRE_TRAFFIC_WRITE != 0 && !traffic_written) begin
+                $display("FAIL: No traffic-light MMIO write occurred");
                 $finish;
             end
 

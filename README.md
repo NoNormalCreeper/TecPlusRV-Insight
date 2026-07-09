@@ -7,6 +7,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 工程目录骨架
 - 早期板级探针
 - 可复用的 UART TX / RX RTL
+- CPU 可读写的 12 位交通灯 MMIO 外设
 - 蜂鸣器 UART debug probe
 - 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架
 - 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
@@ -234,14 +235,16 @@ bash scripts/test_minisoc_tb_modes.sh
 ```bash
 make sim TARGET=uart_tx
 make sim TARGET=uart_rx
+make sim TARGET=traffic_light_gpio
 make sim TARGET=minisoc_pico
 make sim TARGET=minisoc_smoke_pico
 ```
 
-验证 CPU 通过 MMIO 接收一个字节并原样发送（PicoRV32 / DarkRISCV）：
+验证 UART echo 与交通灯 MMIO（PicoRV32 / DarkRISCV）：
 
 ```bash
 scripts/test_uart_echo_regression.sh
+scripts/test_traffic_light_regression.sh
 ```
 
 如果当前分支提供双核脚本，还可以用：
@@ -256,6 +259,13 @@ make perf
 ```bash
 make ise-export ISE_TARGET=minisoc
 make ise-export ISE_TARGET=probe_uart
+```
+
+导出交通灯 MMIO 上板测试固件：
+
+```bash
+FIRMWARE_MAIN="$PWD/firmware/tests/traffic_light_mmio.c" \
+make ise-export ISE_TARGET=minisoc
 ```
 
 默认会生成到 `build/ise-export/<target>/`。其中 `.v` / `.vh` / `.ucf` 会摊平到导出目录根部，便于在 ISE 里直接 Import Sources；只有 `firmware/build/firmware.mem` 这类路径敏感文件继续保留目录结构。导出目录里还会附带 `files.list` 和 `README.txt`。

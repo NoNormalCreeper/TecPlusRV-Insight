@@ -49,6 +49,8 @@ compile_minisoc_tb() {
     local drive_uart_rx="${11:-}"
     local uart_rx_byte="${12:-}"
     local expect_uart_last_byte="${13:-}"
+    local require_traffic_write="${14:-}"
+    local expect_traffic="${15:-}"
     local extra_params=()
 
     if [ ! -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
@@ -95,6 +97,13 @@ compile_minisoc_tb() {
         )
     fi
 
+    if [ "$arg_count" -ge 15 ]; then
+        extra_params+=(
+            -P "$tb_module.REQUIRE_TRAFFIC_WRITE=$require_traffic_write"
+            -P "$tb_module.EXPECT_TRAFFIC=$expect_traffic"
+        )
+    fi
+
     iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -I "$REPO_ROOT/rtl/core" \
         -P "$tb_module.CPU_IMPL=$cpu_impl" \
         "${extra_params[@]}" \
@@ -110,7 +119,8 @@ compile_minisoc_tb() {
         "$REPO_ROOT/rtl/soc/tinybus_decode.v" \
         "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
         "$REPO_ROOT/rtl/periph/uart_tx.v" \
-        "$REPO_ROOT/rtl/periph/uart_rx.v"
+        "$REPO_ROOT/rtl/periph/uart_rx.v" \
+        "$REPO_ROOT/rtl/periph/traffic_light_gpio.v"
 }
 
 compile_minisoc_perf_tb() {
@@ -152,7 +162,8 @@ compile_minisoc_perf_tb() {
         "$REPO_ROOT/rtl/soc/tinybus_decode.v" \
         "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
         "$REPO_ROOT/rtl/periph/uart_tx.v" \
-        "$REPO_ROOT/rtl/periph/uart_rx.v"
+        "$REPO_ROOT/rtl/periph/uart_rx.v" \
+        "$REPO_ROOT/rtl/periph/traffic_light_gpio.v"
 }
 
 case "$SIM_KIND" in
@@ -167,6 +178,12 @@ case "$SIM_KIND" in
             "$REPO_ROOT/sim/tb_uart_rx.v" \
             "$REPO_ROOT/rtl/periph/uart_rx.v"
         run_and_check "$BUILD_DIR/tb_uart_rx.log" vvp "$BUILD_DIR/tb_uart_rx.out"
+        ;;
+    traffic_light_gpio)
+        iverilog -g2001 -o "$BUILD_DIR/tb_traffic_light_gpio.out" \
+            "$REPO_ROOT/sim/tb_traffic_light_gpio.v" \
+            "$REPO_ROOT/rtl/periph/traffic_light_gpio.v"
+        run_and_check "$BUILD_DIR/tb_traffic_light_gpio.log" vvp "$BUILD_DIR/tb_traffic_light_gpio.out"
         ;;
     probe_led_key)
         iverilog -g2001 -o "$BUILD_DIR/tb_probe_led_key_top.out" \
@@ -240,6 +257,14 @@ case "$SIM_KIND" in
     minisoc_uart_echo_dark)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_uart_echo_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1 1 1 5 1 90 90
         run_and_check "$BUILD_DIR/tb_minisoc_uart_echo_dark.log" vvp "$BUILD_DIR/tb_minisoc_uart_echo_dark.out"
+        ;;
+    minisoc_traffic_pico)
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_traffic_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 0 1 1 -1 1 5 0 0 -1 1 2645
+        run_and_check "$BUILD_DIR/tb_minisoc_traffic_pico.log" vvp "$BUILD_DIR/tb_minisoc_traffic_pico.out"
+        ;;
+    minisoc_traffic_dark)
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_traffic_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 0 1 1 -1 1 5 0 0 -1 1 2645
+        run_and_check "$BUILD_DIR/tb_minisoc_traffic_dark.log" vvp "$BUILD_DIR/tb_minisoc_traffic_dark.out"
         ;;
     minisoc_perf_pico)
         compile_minisoc_perf_tb "$BUILD_DIR/tb_minisoc_perf_pico.out" 0 tb_minisoc_perf "$REPO_ROOT/sim/tb_minisoc_perf.v"
@@ -348,7 +373,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、bigboard_tl、probe_buzzer_uart、probe_vga、vga_text_mode" >&2
+        echo "支持的目标：uart_tx、uart_rx、traffic_light_gpio、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、bigboard_tl、probe_buzzer_uart、probe_vga、vga_text_mode" >&2
         exit 1
         ;;
 esac

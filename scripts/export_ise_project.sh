@@ -171,6 +171,7 @@ package_minisoc() {
 
     need_file "rtl/periph/uart_tx.v"
     need_file "rtl/periph/uart_rx.v"
+    need_file "rtl/periph/traffic_light_gpio.v"
     need_file "rtl/soc/tinybus_decode.v"
     need_file "rtl/soc/mmio_test_exit.v"
     need_file "rtl/soc/tecplus_minisoc_top.v"
@@ -179,6 +180,7 @@ package_minisoc() {
 
     copy_flat "rtl/periph/uart_tx.v"
     copy_flat "rtl/periph/uart_rx.v"
+    copy_flat "rtl/periph/traffic_light_gpio.v"
     copy_flat "rtl/soc/tinybus_decode.v"
     copy_flat "rtl/soc/mmio_test_exit.v"
     copy_flat "rtl/soc/tecplus_minisoc_top.v"

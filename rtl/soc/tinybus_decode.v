@@ -13,6 +13,7 @@ module tinybus_decode (
     input  [31:0] uart_status_rdata,
     input  [31:0] cycle_rdata,
     input  [31:0] instret_rdata,
+    input  [31:0] traffic_rdata,
     input  [31:0] accel_rdata,
     output reg [31:0] rdata,
     output            ready,
@@ -24,6 +25,7 @@ module tinybus_decode (
     output            cycle_sel,
     output            instret_sel,
     output            test_exit_sel,
+    output            traffic_sel,
     output            accel_sel,
     output [31:0]     write_data
 );
@@ -37,6 +39,7 @@ assign uart_status_sel = valid && (addr == `TINYBUS_ADDR_UART_STATUS);
 assign cycle_sel = valid && (addr == `TINYBUS_ADDR_CYCLE);
 assign instret_sel = valid && (addr == `TINYBUS_ADDR_INSTRET);
 assign test_exit_sel = valid && (addr == `TINYBUS_ADDR_TEST_EXIT);
+assign traffic_sel = valid && (addr == `TINYBUS_ADDR_TRAFFIC_DATA);
 assign accel_sel = valid && (addr[31:28] == 4'h2);
 assign write_en = valid && (wstrb != 4'b0000);
 assign write_data = wdata;
@@ -57,6 +60,8 @@ always @(*) begin
         rdata = cycle_rdata;
     end else if (instret_sel) begin
         rdata = instret_rdata;
+    end else if (traffic_sel) begin
+        rdata = traffic_rdata;
     end else if (accel_sel) begin
         rdata = accel_rdata;
     end
