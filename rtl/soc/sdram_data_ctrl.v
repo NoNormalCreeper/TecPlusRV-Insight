@@ -387,7 +387,7 @@ always @(posedge clk) begin
                             bank_addr   <= req_addr[11:10];
                             col_addr_lo <= req_addr[9:1];
                             col_addr_hi <= req_addr[9:1] + 9'd1;
-                            cmd_active(haddr[10:9], haddr[22:11]);
+                            cmd_active(req_addr[11:10], req_addr[23:12]);
                             wait_count <= TRCD_CYCLES[15:0];
                             state <= ST_TRCD;
                         end
