@@ -10,7 +10,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - CPU 可读写的 12 位交通灯 MMIO 外设
 - CPU 可编程频率与启停的蜂鸣器 MMIO 外设
 - 蜂鸣器 UART debug probe
-- 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架
+- 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架 / 独立 8x8 字模
 - 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
 - 裸机 firmware 骨架
 - 本地构建和仿真入口
@@ -238,6 +238,7 @@ make sim TARGET=uart_tx
 make sim TARGET=uart_rx
 make sim TARGET=traffic_light_gpio
 make sim TARGET=buzzer_pwm
+make sim TARGET=font_rom_8x8
 make sim TARGET=minisoc_pico
 make sim TARGET=minisoc_smoke_pico
 ```

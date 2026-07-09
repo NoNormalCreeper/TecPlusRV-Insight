@@ -126,6 +126,12 @@
       "args": ["vga_timing_640x480"]
     },
     {
+      "id": "rtl_syntax__font_rom_8x8",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["font_rom_8x8"]
+    },
+    {
       "id": "rtl_syntax__vga_text_mode",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -304,6 +310,11 @@
       "sim_target": "vga_text_mode"
     },
     {
+      "id": "font_rom_8x8",
+      "kind": "sim",
+      "sim_target": "font_rom_8x8"
+    },
+    {
       "id": "minisoc_smoke_pico",
       "kind": "sim",
       "sim_target": "minisoc_smoke_pico",
@@ -421,6 +432,7 @@
       "rtl_syntax__buzzer_uart_reporter",
       "rtl_syntax__probe_buzzer_uart_top",
       "rtl_syntax__vga_timing_640x480",
+      "rtl_syntax__font_rom_8x8",
       "rtl_syntax__vga_text_mode",
       "rtl_syntax__probe_vga_top",
       "rtl_syntax__probe_vga_text_top",
@@ -457,6 +469,7 @@
       "uart_rx",
       "traffic_light_gpio",
       "buzzer_pwm",
+      "font_rom_8x8",
       "sdram_data_ctrl"
     ],
     "soc": [

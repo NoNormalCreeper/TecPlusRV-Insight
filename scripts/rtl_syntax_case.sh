@@ -152,9 +152,14 @@ case "$CASE_ID" in
         run_iverilog vga_timing_640x480 \
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         ;;
+    font_rom_8x8)
+        run_iverilog font_rom_8x8 \
+            "$REPO_ROOT/rtl/periph/font_rom_8x8.v"
+        ;;
     vga_text_mode)
         run_iverilog vga_text_mode \
             "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+            "$REPO_ROOT/rtl/periph/font_rom_8x8.v" \
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         ;;
     probe_vga_top)
@@ -166,6 +171,7 @@ case "$CASE_ID" in
         run_iverilog probe_vga_text_top \
             "$REPO_ROOT/rtl/probe/probe_vga_text_top.v" \
             "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+            "$REPO_ROOT/rtl/periph/font_rom_8x8.v" \
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         ;;
     tinybus_decode)

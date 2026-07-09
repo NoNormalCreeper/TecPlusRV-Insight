@@ -6,7 +6,8 @@
 //
 // 已知限制：
 // - 当前 cell 固定按 16x16 使用，内部把 8x8 字模水平/垂直各放大 2 倍。
-// - 字符集只覆盖本阶段需要的少量大写字母、数字和符号；未覆盖字符会显示为空。
+// - 字符集由独立 font_rom_8x8 提供，只覆盖本阶段需要的少量字符；
+//   未覆盖字符会显示为空。
 // - reset 后先逐字清空 RAM，再写入默认 banner。这样做比较啰嗦，但比依赖综合器对大数组 initial 的支持更稳。
 module vga_text_mode #(
     parameter integer CLK_DIV = 2,
@@ -58,7 +59,7 @@ wire hsync;
 wire vsync;
 
 reg [7:0] current_char;
-reg [7:0] current_glyph_row;
+wire [7:0] current_glyph_row;
 reg pixel_on;
 integer write_index;
 integer banner_index;
@@ -91,280 +92,11 @@ function [7:0] banner_char;
     end
 endfunction
 
-function [7:0] glyph_row_8x8;
-    input [7:0] char_code;
-    input [2:0] row_index;
-    begin
-        case (char_code)
-            "A": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h18;
-                    3'd1: glyph_row_8x8 = 8'h24;
-                    3'd2: glyph_row_8x8 = 8'h42;
-                    3'd3: glyph_row_8x8 = 8'h42;
-                    3'd4: glyph_row_8x8 = 8'h7e;
-                    3'd5: glyph_row_8x8 = 8'h42;
-                    3'd6: glyph_row_8x8 = 8'h42;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "C": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h3c;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h40;
-                    3'd3: glyph_row_8x8 = 8'h40;
-                    3'd4: glyph_row_8x8 = 8'h40;
-                    3'd5: glyph_row_8x8 = 8'h42;
-                    3'd6: glyph_row_8x8 = 8'h3c;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "E": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h7e;
-                    3'd1: glyph_row_8x8 = 8'h40;
-                    3'd2: glyph_row_8x8 = 8'h40;
-                    3'd3: glyph_row_8x8 = 8'h7c;
-                    3'd4: glyph_row_8x8 = 8'h40;
-                    3'd5: glyph_row_8x8 = 8'h40;
-                    3'd6: glyph_row_8x8 = 8'h7e;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "G": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h3c;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h40;
-                    3'd3: glyph_row_8x8 = 8'h4e;
-                    3'd4: glyph_row_8x8 = 8'h42;
-                    3'd5: glyph_row_8x8 = 8'h46;
-                    3'd6: glyph_row_8x8 = 8'h3a;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "L": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h40;
-                    3'd1: glyph_row_8x8 = 8'h40;
-                    3'd2: glyph_row_8x8 = 8'h40;
-                    3'd3: glyph_row_8x8 = 8'h40;
-                    3'd4: glyph_row_8x8 = 8'h40;
-                    3'd5: glyph_row_8x8 = 8'h40;
-                    3'd6: glyph_row_8x8 = 8'h7e;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "P": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h7c;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h42;
-                    3'd3: glyph_row_8x8 = 8'h7c;
-                    3'd4: glyph_row_8x8 = 8'h40;
-                    3'd5: glyph_row_8x8 = 8'h40;
-                    3'd6: glyph_row_8x8 = 8'h40;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "R": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h7c;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h42;
-                    3'd3: glyph_row_8x8 = 8'h7c;
-                    3'd4: glyph_row_8x8 = 8'h48;
-                    3'd5: glyph_row_8x8 = 8'h44;
-                    3'd6: glyph_row_8x8 = 8'h42;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "S": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h3c;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h40;
-                    3'd3: glyph_row_8x8 = 8'h3c;
-                    3'd4: glyph_row_8x8 = 8'h02;
-                    3'd5: glyph_row_8x8 = 8'h42;
-                    3'd6: glyph_row_8x8 = 8'h3c;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "T": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h7e;
-                    3'd1: glyph_row_8x8 = 8'h18;
-                    3'd2: glyph_row_8x8 = 8'h18;
-                    3'd3: glyph_row_8x8 = 8'h18;
-                    3'd4: glyph_row_8x8 = 8'h18;
-                    3'd5: glyph_row_8x8 = 8'h18;
-                    3'd6: glyph_row_8x8 = 8'h18;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "U": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h42;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h42;
-                    3'd3: glyph_row_8x8 = 8'h42;
-                    3'd4: glyph_row_8x8 = 8'h42;
-                    3'd5: glyph_row_8x8 = 8'h42;
-                    3'd6: glyph_row_8x8 = 8'h3c;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "V": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h42;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h42;
-                    3'd3: glyph_row_8x8 = 8'h42;
-                    3'd4: glyph_row_8x8 = 8'h42;
-                    3'd5: glyph_row_8x8 = 8'h24;
-                    3'd6: glyph_row_8x8 = 8'h18;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "0": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h3c;
-                    3'd1: glyph_row_8x8 = 8'h46;
-                    3'd2: glyph_row_8x8 = 8'h4a;
-                    3'd3: glyph_row_8x8 = 8'h52;
-                    3'd4: glyph_row_8x8 = 8'h62;
-                    3'd5: glyph_row_8x8 = 8'h42;
-                    3'd6: glyph_row_8x8 = 8'h3c;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "1": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h18;
-                    3'd1: glyph_row_8x8 = 8'h28;
-                    3'd2: glyph_row_8x8 = 8'h08;
-                    3'd3: glyph_row_8x8 = 8'h08;
-                    3'd4: glyph_row_8x8 = 8'h08;
-                    3'd5: glyph_row_8x8 = 8'h08;
-                    3'd6: glyph_row_8x8 = 8'h3e;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "2": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h3c;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h02;
-                    3'd3: glyph_row_8x8 = 8'h0c;
-                    3'd4: glyph_row_8x8 = 8'h30;
-                    3'd5: glyph_row_8x8 = 8'h40;
-                    3'd6: glyph_row_8x8 = 8'h7e;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "3": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h3c;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h02;
-                    3'd3: glyph_row_8x8 = 8'h1c;
-                    3'd4: glyph_row_8x8 = 8'h02;
-                    3'd5: glyph_row_8x8 = 8'h42;
-                    3'd6: glyph_row_8x8 = 8'h3c;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "4": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h0c;
-                    3'd1: glyph_row_8x8 = 8'h14;
-                    3'd2: glyph_row_8x8 = 8'h24;
-                    3'd3: glyph_row_8x8 = 8'h44;
-                    3'd4: glyph_row_8x8 = 8'h7e;
-                    3'd5: glyph_row_8x8 = 8'h04;
-                    3'd6: glyph_row_8x8 = 8'h04;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "5": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h7e;
-                    3'd1: glyph_row_8x8 = 8'h40;
-                    3'd2: glyph_row_8x8 = 8'h7c;
-                    3'd3: glyph_row_8x8 = 8'h02;
-                    3'd4: glyph_row_8x8 = 8'h02;
-                    3'd5: glyph_row_8x8 = 8'h42;
-                    3'd6: glyph_row_8x8 = 8'h3c;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "6": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h1c;
-                    3'd1: glyph_row_8x8 = 8'h20;
-                    3'd2: glyph_row_8x8 = 8'h40;
-                    3'd3: glyph_row_8x8 = 8'h7c;
-                    3'd4: glyph_row_8x8 = 8'h42;
-                    3'd5: glyph_row_8x8 = 8'h42;
-                    3'd6: glyph_row_8x8 = 8'h3c;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "7": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h7e;
-                    3'd1: glyph_row_8x8 = 8'h02;
-                    3'd2: glyph_row_8x8 = 8'h04;
-                    3'd3: glyph_row_8x8 = 8'h08;
-                    3'd4: glyph_row_8x8 = 8'h10;
-                    3'd5: glyph_row_8x8 = 8'h10;
-                    3'd6: glyph_row_8x8 = 8'h10;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "8": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h3c;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h42;
-                    3'd3: glyph_row_8x8 = 8'h3c;
-                    3'd4: glyph_row_8x8 = 8'h42;
-                    3'd5: glyph_row_8x8 = 8'h42;
-                    3'd6: glyph_row_8x8 = 8'h3c;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "9": begin
-                case (row_index)
-                    3'd0: glyph_row_8x8 = 8'h3c;
-                    3'd1: glyph_row_8x8 = 8'h42;
-                    3'd2: glyph_row_8x8 = 8'h42;
-                    3'd3: glyph_row_8x8 = 8'h3e;
-                    3'd4: glyph_row_8x8 = 8'h02;
-                    3'd5: glyph_row_8x8 = 8'h04;
-                    3'd6: glyph_row_8x8 = 8'h38;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            "-": begin
-                case (row_index)
-                    3'd3: glyph_row_8x8 = 8'h3c;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            ":": begin
-                case (row_index)
-                    3'd1: glyph_row_8x8 = 8'h18;
-                    3'd4: glyph_row_8x8 = 8'h18;
-                    default: glyph_row_8x8 = 8'h00;
-                endcase
-            end
-            default: glyph_row_8x8 = 8'h00;
-        endcase
-    end
-endfunction
+font_rom_8x8 font_rom (
+    .char_code(current_char),
+    .row_index(glyph_row_index[2:0]),
+    .row_pixels(current_glyph_row)
+);
 
 vga_timing_640x480 #(
     .CLK_DIV(CLK_DIV),
@@ -427,7 +159,6 @@ end
 
 always @(*) begin
     current_char = 8'h20;
-    current_glyph_row = 8'h00;
     pixel_on = 1'b0;
     current_cell_x = 0;
     current_cell_y = 0;
@@ -448,7 +179,6 @@ always @(*) begin
             current_char = char_ram[current_cell_index];
             glyph_col = cell_pixel_x >> 1;
             glyph_row_index = cell_pixel_y >> 1;
-            current_glyph_row = glyph_row_8x8(current_char, glyph_row_index[2:0]);
 
             if (glyph_col < 8) begin
                 pixel_on = current_glyph_row[7 - glyph_col];
