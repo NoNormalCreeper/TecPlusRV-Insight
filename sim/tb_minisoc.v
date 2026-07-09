@@ -11,17 +11,22 @@ module tb_minisoc #(
     parameter integer REQUIRE_LED_WRITE = 0,
     parameter integer REQUIRE_EXIT_WRITE = 0,
     parameter integer EXPECT_UART_FIRE_COUNT = -1,
+    parameter integer DRIVE_UART_RX = 0,
+    parameter [7:0] UART_RX_BYTE = 8'h00,
+    parameter integer EXPECT_UART_LAST_BYTE = -1,
     parameter integer TIMEOUT_CYCLES = 2000000
 );
 
 reg clk;
 reg reset;
 reg [3:0] key;
+reg uart_rxd;
 
 reg uart_written;
 reg led_written;
 reg exit_written;
 integer uart_fire_count;
+reg [7:0] uart_last_byte;
 
 wire [3:0] led;
 wire uart_txd;
@@ -38,7 +43,7 @@ tecplus_minisoc_top #(
     .reset(reset),
     .key(key),
     .led(led),
-    .uart_rxd(1'b1),
+    .uart_rxd(uart_rxd),
     .uart_txd(uart_txd)
 );
 
@@ -48,11 +53,13 @@ initial begin
     clk = 1'b0;
     reset = 1'b0;
     key = 4'b1111;
+    uart_rxd = 1'b1;
 
     uart_written = 1'b0;
     led_written = 1'b0;
     exit_written = 1'b0;
     uart_fire_count = 0;
+    uart_last_byte = 8'h00;
 
     $dumpfile("sim/build/tb_minisoc.vcd");
     $dumpvars(0, tb_minisoc);
@@ -74,6 +81,7 @@ initial begin
         if (dut.uart_fire) begin
             uart_written = 1'b1;
             uart_fire_count = uart_fire_count + 1;
+            uart_last_byte = dut.req_wdata[7:0];
         end
         if (dut.gpio_led_sel && (dut.req_wstrb != 4'b0))
             led_written = 1'b1;
@@ -97,6 +105,11 @@ initial begin
 
             if (EXPECT_UART_FIRE_COUNT >= 0 && uart_fire_count !== EXPECT_UART_FIRE_COUNT) begin
                 $display("FAIL: expected %0d UART writes, got %0d", EXPECT_UART_FIRE_COUNT, uart_fire_count);
+                $finish;
+            end
+
+            if (EXPECT_UART_LAST_BYTE >= 0 && uart_last_byte !== EXPECT_UART_LAST_BYTE[7:0]) begin
+                $display("FAIL: expected UART last byte %02x, got %02x", EXPECT_UART_LAST_BYTE[7:0], uart_last_byte);
                 $finish;
             end
 
@@ -131,6 +144,34 @@ localparam integer UART_BIT_NS = UART_CLKS_PER_BIT * UART_CLK_PERIOD_NS; // 100n
 
 integer uart_bit_i;
 reg [7:0] uart_rx_byte;
+
+task drive_uart_rx_byte;
+    input [7:0] value;
+    integer rx_bit_i;
+    begin
+        @(negedge clk);
+        uart_rxd = 1'b0;
+        repeat (UART_CLKS_PER_BIT) @(posedge clk);
+
+        for (rx_bit_i = 0; rx_bit_i < 8; rx_bit_i = rx_bit_i + 1) begin
+            @(negedge clk);
+            uart_rxd = value[rx_bit_i];
+            repeat (UART_CLKS_PER_BIT) @(posedge clk);
+        end
+
+        @(negedge clk);
+        uart_rxd = 1'b1;
+        repeat (UART_CLKS_PER_BIT) @(posedge clk);
+    end
+endtask
+
+initial begin
+    wait (reset === 1'b1);
+    if (DRIVE_UART_RX != 0) begin
+        repeat (100) @(posedge clk);
+        drive_uart_rx_byte(UART_RX_BYTE);
+    end
+end
 
 initial begin
     forever begin

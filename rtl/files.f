@@ -1,6 +1,7 @@
 # rtl/files.f
 rtl/core/picorv32.v
 rtl/periph/uart_tx.v
+rtl/periph/uart_rx.v
 rtl/periph/vga_timing_640x480.v
 rtl/periph/vga_text_mode.v
 rtl/soc/bram.v

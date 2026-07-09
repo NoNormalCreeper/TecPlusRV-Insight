@@ -18,6 +18,12 @@
       "args": ["probe_uart_top"]
     },
     {
+      "id": "rtl_syntax__uart_rx",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["uart_rx"]
+    },
+    {
       "id": "rtl_syntax__sdram_smoke_ctrl",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -193,6 +199,11 @@
       "sim_target": "uart_tx"
     },
     {
+      "id": "uart_rx",
+      "kind": "sim",
+      "sim_target": "uart_rx"
+    },
+    {
       "id": "sdram_smoke",
       "kind": "sim",
       "sim_target": "sdram_smoke"
@@ -288,6 +299,12 @@
       "requires": ["firmware", "rtl_syntax"]
     },
     {
+      "id": "uart_echo_regression",
+      "kind": "script",
+      "script": "scripts/test_uart_echo_regression.sh",
+      "requires": ["firmware", "rtl_syntax"]
+    },
+    {
       "id": "perf_targets_require_addrs",
       "kind": "script",
       "script": "scripts/test_perf_targets_require_addrs.sh"
@@ -324,6 +341,7 @@
     "rtl_syntax_internal": [
       "rtl_syntax__probe_led_key_top",
       "rtl_syntax__probe_uart_top",
+      "rtl_syntax__uart_rx",
       "rtl_syntax__sdram_smoke_ctrl",
       "rtl_syntax__sdram_data_ctrl",
       "rtl_syntax__probe_sdram_smoke_top",
@@ -367,6 +385,7 @@
       "bram_dualport",
       "tinybus_decode",
       "mmio_test_exit",
+      "uart_rx",
       "sdram_data_ctrl"
     ],
     "soc": [
@@ -378,6 +397,7 @@
       "minisoc_counter_reset_dark",
       "tb_mode_check",
       "uart_once_regression",
+      "uart_echo_regression",
       "perf_targets_require_addrs"
     ],
     "smoke": [
@@ -388,6 +408,7 @@
       "tinybus_decode",
       "mmio_test_exit",
       "uart_tx",
+      "uart_rx",
       "sdram_smoke",
       "bigboard_tl",
       "minisoc_smoke_pico",

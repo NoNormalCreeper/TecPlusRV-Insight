@@ -6,7 +6,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 
 - 工程目录骨架
 - 早期板级探针
-- 可复用的 UART TX RTL
+- 可复用的 UART TX / RX RTL
 - 蜂鸣器 UART debug probe
 - 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架
 - 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
@@ -15,7 +15,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 
 当前版本还不提供：
 
-- UART RX bootloader
+- UART RX bootloader（基础收发已经接入，bootloader 尚未实现）
 - 通用 SDRAM 控制器
 - ISE 工程文件或 bitstream
 
@@ -233,8 +233,15 @@ bash scripts/test_minisoc_tb_modes.sh
 
 ```bash
 make sim TARGET=uart_tx
+make sim TARGET=uart_rx
 make sim TARGET=minisoc_pico
 make sim TARGET=minisoc_smoke_pico
+```
+
+验证 CPU 通过 MMIO 接收一个字节并原样发送（PicoRV32 / DarkRISCV）：
+
+```bash
+scripts/test_uart_echo_regression.sh
 ```
 
 如果当前分支提供双核脚本，还可以用：
@@ -268,7 +275,7 @@ make test-smoke
 你应该看到几类结果：
 
 - firmware 构建成功
-- `uart_tx` 仿真输出 `PASS`
+- `uart_tx` / `uart_rx` 仿真输出 `PASS`
 - `minisoc_smoke_pico` / `minisoc_smoke_dark` 仿真输出 `PASS` / `FAIL` / `TIMEOUT`
 
 如果当前分支还有双核 wrapper / regression，再补跑：

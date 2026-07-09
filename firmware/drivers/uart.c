@@ -3,8 +3,6 @@
 #include "mmio.h"
 #include "uart.h"
 
-#define UART_STATUS_TX_READY 0x1u
-
 void uart_putc(char ch)
 {
     // 阻塞等待最简单，适合早期裸机调试；后续需要吞吐量时再做中断/FIFO。
@@ -75,4 +73,36 @@ void uart_put_dec(unsigned int value)
         len--;
         uart_putc(buf[len]);
     }
+}
+
+int uart_try_getc(char *ch)
+{
+    if ((mmio_read(TINYBUS_UART_STATUS) & UART_STATUS_RX_VALID) == 0u) {
+        return 0;
+    }
+
+    *ch = (char)(mmio_read(TINYBUS_UART_DATA) & 0xffu);
+    return 1;
+}
+
+char uart_getc(void)
+{
+    char ch;
+
+    while (!uart_try_getc(&ch)) {
+    }
+
+    return ch;
+}
+
+unsigned int uart_get_and_clear_rx_errors(void)
+{
+    unsigned int errors = mmio_read(TINYBUS_UART_STATUS) & UART_STATUS_RX_ERROR_MASK;
+
+    if (errors != 0u) {
+        // RX error bits use write-one-to-clear semantics.
+        mmio_write(TINYBUS_UART_STATUS, errors);
+    }
+
+    return errors;
 }

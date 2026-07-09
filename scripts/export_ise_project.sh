@@ -170,6 +170,7 @@ package_minisoc() {
     "$BUILD_FIRMWARE_SCRIPT"
 
     need_file "rtl/periph/uart_tx.v"
+    need_file "rtl/periph/uart_rx.v"
     need_file "rtl/soc/tinybus_decode.v"
     need_file "rtl/soc/mmio_test_exit.v"
     need_file "rtl/soc/tecplus_minisoc_top.v"
@@ -177,6 +178,7 @@ package_minisoc() {
     need_file "firmware/build/firmware.mem"
 
     copy_flat "rtl/periph/uart_tx.v"
+    copy_flat "rtl/periph/uart_rx.v"
     copy_flat "rtl/soc/tinybus_decode.v"
     copy_flat "rtl/soc/mmio_test_exit.v"
     copy_flat "rtl/soc/tecplus_minisoc_top.v"

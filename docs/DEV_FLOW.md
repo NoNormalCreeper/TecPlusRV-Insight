@@ -67,6 +67,7 @@
 当前典型文件：
 
 - `uart_tx.v`
+- `uart_rx.v`
 - `buzzer_tune_player.v`
 - `buzzer_uart_reporter.v`
 - `vga_timing_640x480.v`
@@ -317,6 +318,7 @@ ISE 不关心的通常是：
 当前典型对象：
 
 - `uart_tx`
+- `uart_rx`
 - `mmio_test_exit`
 - `sdram_smoke_ctrl`
 

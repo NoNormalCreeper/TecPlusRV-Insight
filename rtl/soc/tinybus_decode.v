@@ -9,6 +9,7 @@ module tinybus_decode (
     input  [31:0] wdata,
     input  [3:0]  wstrb,
     input  [31:0] gpio_key_rdata,
+    input  [31:0] uart_data_rdata,
     input  [31:0] uart_status_rdata,
     input  [31:0] cycle_rdata,
     input  [31:0] instret_rdata,
@@ -48,6 +49,8 @@ always @(*) begin
     // 当前只有少量占位外设支持读回。
     if (gpio_key_sel) begin
         rdata = gpio_key_rdata;
+    end else if (uart_data_sel) begin
+        rdata = uart_data_rdata;
     end else if (uart_status_sel) begin
         rdata = uart_status_rdata;
     end else if (cycle_sel) begin

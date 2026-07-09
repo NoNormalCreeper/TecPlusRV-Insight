@@ -11,6 +11,7 @@ reg [31:0] addr;
 reg [31:0] wdata;
 reg [3:0]  wstrb;
 reg [31:0] gpio_key_rdata;
+reg [31:0] uart_data_rdata;
 reg [31:0] uart_status_rdata;
 reg [31:0] cycle_rdata;
 reg [31:0] instret_rdata;
@@ -35,6 +36,7 @@ tinybus_decode dut (
     .wdata(wdata),
     .wstrb(wstrb),
     .gpio_key_rdata(gpio_key_rdata),
+    .uart_data_rdata(uart_data_rdata),
     .uart_status_rdata(uart_status_rdata),
     .cycle_rdata(cycle_rdata),
     .instret_rdata(instret_rdata),
@@ -59,6 +61,7 @@ initial begin
     wdata = 32'hDEAD_BEEF;
     wstrb = 4'b0000;
     gpio_key_rdata = 32'h0000_000F;
+    uart_data_rdata = 32'h0000_005A;
     uart_status_rdata = 32'h0000_0001;
     cycle_rdata = 32'h1234_5678;
     instret_rdata = 32'h8765_4321;
@@ -76,6 +79,13 @@ initial begin
     // 组合逻辑需要一个 delta 时间稳定，所以这里用 #1 后再检查。
     if (!gpio_key_sel || rdata !== gpio_key_rdata) begin
         $display("FAIL: GPIO KEY 译码或读回错误");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_UART_DATA;
+    #1;
+    if (!uart_data_sel || write_en || rdata !== uart_data_rdata) begin
+        $display("FAIL: UART DATA 读译码错误");
         $finish;
     end
 

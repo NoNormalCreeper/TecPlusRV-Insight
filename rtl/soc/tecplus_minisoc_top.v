@@ -60,6 +60,7 @@ reg  [31:0] last_req_wdata;
 reg  [3:0]  last_req_wstrb;
 
 wire [31:0] gpio_key_rdata;
+wire [31:0] uart_data_rdata;
 wire [31:0] uart_status_rdata;
 wire [31:0] cycle_rdata;
 wire [31:0] instret_rdata;
@@ -69,14 +70,20 @@ wire [31:0] mmio_rdata;
 wire        mmio_write_en;
 wire        gpio_led_sel;
 wire        uart_data_sel;
+wire        uart_status_sel;
 wire        test_exit_sel;
-wire        uart_ready;
+wire        uart_tx_ready;
 wire        uart_fire;
+wire [7:0]  uart_rx_data;
+wire        uart_rx_valid;
+wire        uart_rx_overrun;
+wire        uart_rx_framing_error;
+wire        uart_rx_consume;
+wire        uart_overrun_clear;
+wire        uart_framing_error_clear;
 wire        test_exit_write;
 wire        mmio_stall;
 wire        respond;
-
-wire unused_uart_rxd;
 
 wire        test_exited;
 wire [31:0] test_exit_code;
@@ -84,7 +91,6 @@ wire        same_as_last_req;
 
 assign resetn = reset;
 assign rst = !reset;
-assign unused_uart_rxd = uart_rxd;
 
 assign start_req = mem_valid && !pending && !mem_ready;
 assign start_is_bram = (mem_addr < BRAM_BYTES);
@@ -97,7 +103,14 @@ assign ifetch_ready = ifetch_pending;
 assign ifetch_rdata = ifetch_bram_rdata;
 
 assign gpio_key_rdata = {28'h0000000, key};
-assign uart_status_rdata = {31'h00000000, uart_ready};
+assign uart_data_rdata = {24'h000000, uart_rx_data};
+assign uart_status_rdata = {
+    28'h0000000,
+    uart_rx_framing_error,
+    uart_rx_overrun,
+    uart_rx_valid,
+    uart_tx_ready
+};
 // MMIO 可见的 counter 故意通过 wrapper 契约直接来自被选中的 CPU。
 // 这里不要重新引入 local proxy counting，否则 instret 语义会再次偏离 core 自己的报告值。
 assign cycle_rdata = cpu_cycle_count;
@@ -109,9 +122,16 @@ assign same_as_last_req =
     (mem_wdata == last_req_wdata) &&
     (mem_wstrb == last_req_wstrb);
 
-assign mmio_stall = pending && !req_is_bram && !req_is_replay && uart_data_sel && mmio_write_en && !uart_ready;
+assign mmio_stall = pending && !req_is_bram && !req_is_replay && uart_data_sel && mmio_write_en && !uart_tx_ready;
 assign respond = pending && !mmio_stall;
 assign uart_fire = respond && !req_is_bram && !req_is_replay && uart_data_sel && mmio_write_en;
+assign uart_rx_consume = respond && !req_is_bram && !req_is_replay && uart_data_sel && !mmio_write_en;
+assign uart_overrun_clear =
+    respond && !req_is_bram && !req_is_replay &&
+    uart_status_sel && mmio_write_en && req_wdata[2];
+assign uart_framing_error_clear =
+    respond && !req_is_bram && !req_is_replay &&
+    uart_status_sel && mmio_write_en && req_wdata[3];
 assign test_exit_write = respond && !req_is_bram && !req_is_replay && test_exit_sel && mmio_write_en;
 
 tecplus_cpu_wrapper #(
@@ -158,6 +178,7 @@ tinybus_decode u_decode (
     .wdata(req_wdata),
     .wstrb(req_wstrb),
     .gpio_key_rdata(gpio_key_rdata),
+    .uart_data_rdata(uart_data_rdata),
     .uart_status_rdata(uart_status_rdata),
     .cycle_rdata(cycle_rdata),
     .instret_rdata(instret_rdata),
@@ -168,7 +189,7 @@ tinybus_decode u_decode (
     .gpio_led_sel(gpio_led_sel),
     .gpio_key_sel(),
     .uart_data_sel(uart_data_sel),
-    .uart_status_sel(),
+    .uart_status_sel(uart_status_sel),
     .cycle_sel(),
     .instret_sel(),
     .test_exit_sel(test_exit_sel),
@@ -184,8 +205,24 @@ uart_tx #(
     .reset(rst),
     .valid(uart_fire),
     .data_in(req_wdata[7:0]),
-    .ready(uart_ready),
+    .ready(uart_tx_ready),
     .txd(uart_txd)
+);
+
+uart_rx #(
+    .CLK_FREQ(CLK_FREQ),
+    .BAUD(UART_BAUD)
+) u_uart_rx (
+    .clk(clk),
+    .reset(rst),
+    .rxd(uart_rxd),
+    .data_ready(uart_rx_consume),
+    .clear_overrun(uart_overrun_clear),
+    .clear_framing_error(uart_framing_error_clear),
+    .data_out(uart_rx_data),
+    .data_valid(uart_rx_valid),
+    .overrun(uart_rx_overrun),
+    .framing_error(uart_rx_framing_error)
 );
 
 mmio_test_exit u_test_exit (

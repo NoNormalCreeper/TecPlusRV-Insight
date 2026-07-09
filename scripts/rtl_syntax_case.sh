@@ -68,6 +68,10 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/probe/probe_uart_top.v" \
             "$REPO_ROOT/rtl/periph/uart_tx.v"
         ;;
+    uart_rx)
+        run_iverilog uart_rx \
+            "$REPO_ROOT/rtl/periph/uart_rx.v"
+        ;;
     sdram_smoke_ctrl)
         run_iverilog sdram_smoke_ctrl \
             "$REPO_ROOT/rtl/probe/sdram_smoke_ctrl.v"
@@ -204,7 +208,8 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/soc/bram_dualport.v" \
             "$REPO_ROOT/rtl/soc/tinybus_decode.v" \
             "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
-            "$REPO_ROOT/rtl/periph/uart_tx.v"
+            "$REPO_ROOT/rtl/periph/uart_tx.v" \
+            "$REPO_ROOT/rtl/periph/uart_rx.v"
         ;;
     *)
         echo "未知 RTL syntax case: $CASE_ID" >&2
