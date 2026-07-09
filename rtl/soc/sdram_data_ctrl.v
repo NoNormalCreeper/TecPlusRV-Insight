@@ -363,7 +363,7 @@ always @(posedge clk) begin
                 req_ready <= 1'b0;
                 
                 if (!busy) begin
-                    if (force_refresh) begin
+                    if (refresh_pending || force_refresh) begin
                         cmd_auto_refresh();
                         wait_count <= TRFC_CYCLES[15:0];
                         refresh_pending <= 1'b0;
@@ -391,12 +391,6 @@ always @(posedge clk) begin
                             wait_count <= TRCD_CYCLES[15:0];
                             state <= ST_TRCD;
                         end
-                    end
-                    else if (refresh_pending) begin
-                        cmd_auto_refresh();
-                        wait_count <= TRFC_CYCLES[15:0];
-                        refresh_pending <= 1'b0;
-                        state <= ST_REF_TRFC;
                     end
                     else begin
                         // 真正空闲，允许新请求

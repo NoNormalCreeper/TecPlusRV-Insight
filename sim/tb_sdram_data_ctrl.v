@@ -41,7 +41,9 @@ localparam integer TMRD_CYCLES        = 2;
 localparam integer TRCD_CYCLES        = 2;
 localparam integer TWR_CYCLES         = 2;
 localparam integer CAS_LATENCY_CYCLES = 2;
-localparam integer REFI_CYCLES        = 20;
+// 这里故意把 REFI 设得明显大于单次 read/write 事务长度，
+// 避免旧逻辑靠 force_refresh 提前触发而掩盖 starvation。
+localparam integer REFI_CYCLES        = 64;
 
 sdram_data_ctrl #(
     .PWRUP_WAIT_CYCLES(PWRUP_WAIT_CYCLES),
@@ -197,10 +199,12 @@ initial begin
     end
     saw_misaligned_resp = 1;
 
-    // 6) 持续 req_valid=1 的流量下，仍然必须插入 refresh
+    // 6) 持续 req_valid=1 的流量下，仍然必须插入 refresh。
+    // 这里必须在“压力仍然存在”的窗口里观察到 refresh，
+    // 不能等撤掉 req_valid 之后再检查，否则会漏掉 refresh starvation。
     refresh_before_pressure = refresh_seen;
     start_read_pressure(32'h0012_0440);
-    repeat (120) @(posedge clk);
+    wait_for_refresh_under_pressure(400);
     stop_read_pressure();
     if ((refresh_seen - refresh_before_pressure) == 0) begin
         $display("FAIL: refresh missing under continuous req_valid pressure");
@@ -340,6 +344,24 @@ begin
     req_wstrb = 4'b0000;
     while (dut.busy) @(posedge clk);
     @(posedge clk);
+end
+endtask
+
+task wait_for_refresh_under_pressure;
+    input integer max_cycles;
+    integer pressure_cycles;
+begin
+    pressure_cycles = 0;
+    while ((refresh_seen - refresh_before_pressure) == 0 &&
+           pressure_cycles < max_cycles) begin
+        @(posedge clk);
+        pressure_cycles = pressure_cycles + 1;
+    end
+
+    if ((refresh_seen - refresh_before_pressure) == 0) begin
+        $display("FAIL: refresh missing while req_valid stayed high");
+        $finish;
+    end
 end
 endtask
 
