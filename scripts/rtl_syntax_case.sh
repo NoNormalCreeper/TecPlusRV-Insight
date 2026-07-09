@@ -113,6 +113,22 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/probe/sdram_tester_uart_reporter.v" \
             "$REPO_ROOT/rtl/periph/uart_tx.v"
         ;;
+    sdram_data_ctrl_probe_runner)
+        run_iverilog sdram_data_ctrl_probe_runner \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_runner.v"
+        ;;
+    sdram_data_ctrl_probe_reporter)
+        run_iverilog sdram_data_ctrl_probe_reporter \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_reporter.v"
+        ;;
+    probe_sdram_data_ctrl_top)
+        run_iverilog probe_sdram_data_ctrl_top \
+            "$REPO_ROOT/rtl/probe/probe_sdram_data_ctrl_top.v" \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_runner.v" \
+            "$REPO_ROOT/rtl/probe/sdram_data_ctrl_probe_reporter.v" \
+            "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
+            "$REPO_ROOT/rtl/periph/uart_tx.v"
+        ;;
     probe_bigboard_tl_top)
         run_iverilog probe_bigboard_tl_top \
             "$REPO_ROOT/rtl/probe/probe_bigboard_tl_top.v"
