@@ -263,6 +263,7 @@ make perf
 ```bash
 make ise-export ISE_TARGET=minisoc
 make ise-export ISE_TARGET=probe_uart
+make ise-export ISE_TARGET=probe_uart ISE_EXPORT_MODE=full
 ```
 
 导出交通灯 MMIO 上板测试固件：
@@ -280,6 +281,9 @@ make ise-export ISE_TARGET=minisoc
 ```
 
 默认会生成到 `build/ise-export/<target>/`。其中 `.v` / `.vh` / `.ucf` 会摊平到导出目录根部，便于在 ISE 里直接 Import Sources；只有 `firmware/build/firmware.mem` 这类路径敏感文件继续保留目录结构。导出目录里还会附带 `files.list` 和 `README.txt`。
+
+- 默认 `ISE_EXPORT_MODE=minimal`：只导出当前 `ISE_TARGET` 直接需要的 `.v` / `.vh` / `.ucf`
+- `ISE_EXPORT_MODE=full`：额外把仓库内全部 `.v` / `.vh` / `.ucf` 也摊平导出，适合一次性导入后在 ISE 里自己选择 top 和 `.ucf`
 
 `sim/run_sim.sh` 和 `scripts/rtl_syntax_case.sh` 是底层 recipe；`scripts/check_rtl_syntax.sh` 和 `scripts/test_local.sh` 是兼容壳。推荐优先从 `python3 scripts/test_runner.py ...` 入口进入；`make` 和旧脚本名只是兼容层。
 
