@@ -39,6 +39,7 @@ SOURCES="
 $REPO_ROOT/firmware/startup.S
 $REPO_ROOT/firmware/drivers/uart.c
 $REPO_ROOT/firmware/drivers/gpio.c
+$REPO_ROOT/firmware/drivers/traffic_light.c
 $FIRMWARE_MAIN
 $REPO_ROOT/firmware/drivers/perf.c
 $REPO_ROOT/firmware/tests/selftest.c

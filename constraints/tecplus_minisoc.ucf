@@ -19,3 +19,18 @@ NET "key[3]" LOC = "P11" | IOSTANDARD = "LVCMOS33";
 
 NET "uart_txd" LOC = "D6" | IOSTANDARD = "LVCMOS33";
 NET "uart_rxd" LOC = "D5" | IOSTANDARD = "LVCMOS33";
+
+# Big-board traffic-light outputs. The teaching-board green TL region still
+# requires the verified ribbon cable / #1 wire connection.
+NET "tl[0]"  LOC = "M11" | IOSTANDARD = "LVCMOS33";
+NET "tl[1]"  LOC = "M10" | IOSTANDARD = "LVCMOS33";
+NET "tl[2]"  LOC = "M9"  | IOSTANDARD = "LVCMOS33";
+NET "tl[3]"  LOC = "M7"  | IOSTANDARD = "LVCMOS33";
+NET "tl[4]"  LOC = "M6"  | IOSTANDARD = "LVCMOS33";
+NET "tl[5]"  LOC = "M5"  | IOSTANDARD = "LVCMOS33";
+NET "tl[6]"  LOC = "M4"  | IOSTANDARD = "LVCMOS33";
+NET "tl[7]"  LOC = "N9"  | IOSTANDARD = "LVCMOS33";
+NET "tl[8]"  LOC = "N8"  | IOSTANDARD = "LVCMOS33";
+NET "tl[9]"  LOC = "N6"  | IOSTANDARD = "LVCMOS33";
+NET "tl[10]" LOC = "N5"  | IOSTANDARD = "LVCMOS33";
+NET "tl[11]" LOC = "N4"  | IOSTANDARD = "LVCMOS33";

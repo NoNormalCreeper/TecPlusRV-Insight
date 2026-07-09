@@ -15,6 +15,7 @@ reg [31:0] uart_data_rdata;
 reg [31:0] uart_status_rdata;
 reg [31:0] cycle_rdata;
 reg [31:0] instret_rdata;
+reg [31:0] traffic_rdata;
 reg [31:0] accel_rdata;
 
 wire [31:0] rdata;
@@ -27,6 +28,7 @@ wire        uart_status_sel;
 wire        cycle_sel;
 wire        instret_sel;
 wire        test_exit_sel;
+wire        traffic_sel;
 wire        accel_sel;
 wire [31:0] write_data;
 
@@ -40,6 +42,7 @@ tinybus_decode dut (
     .uart_status_rdata(uart_status_rdata),
     .cycle_rdata(cycle_rdata),
     .instret_rdata(instret_rdata),
+    .traffic_rdata(traffic_rdata),
     .accel_rdata(accel_rdata),
     .rdata(rdata),
     .ready(ready),
@@ -51,6 +54,7 @@ tinybus_decode dut (
     .cycle_sel(cycle_sel),
     .instret_sel(instret_sel),
     .test_exit_sel(test_exit_sel),
+    .traffic_sel(traffic_sel),
     .accel_sel(accel_sel),
     .write_data(write_data)
 );
@@ -65,6 +69,7 @@ initial begin
     uart_status_rdata = 32'h0000_0001;
     cycle_rdata = 32'h1234_5678;
     instret_rdata = 32'h8765_4321;
+    traffic_rdata = 32'h0000_0A55;
     accel_rdata = 32'hCAFE_BABE;
 
     #1;
@@ -101,6 +106,14 @@ initial begin
     #1;
     if (!test_exit_sel || !write_en || write_data !== wdata) begin
         $display("FAIL: TEST_EXIT 写路径译码错误");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_TRAFFIC_DATA;
+    wstrb = 4'b0000;
+    #1;
+    if (!traffic_sel || write_en || rdata !== traffic_rdata) begin
+        $display("FAIL: TRAFFIC DATA 译码或读回错误");
         $finish;
     end
 
