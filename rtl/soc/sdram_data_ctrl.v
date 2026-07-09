@@ -1,7 +1,8 @@
 //by GPT 5.3 codex
 // - This is intentionally conservative for bring-up.
 // - Explicit PRECHARGE after each request (closed-page).
-// - Refresh is periodic and inserted in IDLE.
+// - Refresh is scheduled in IDLE; periodic due can be deferred slightly,
+//   but an overdue window will force the next IDLE slot to refresh first.
 // - Non word-aligned accesses are rejected with resp_err.
 //
 // Style follows existing probe RTL in this repository (explicit state machine,
@@ -16,6 +17,7 @@ module sdram_data_ctrl #(
     parameter integer TWR_CYCLES          = 16'd3,
     parameter integer CAS_LATENCY_CYCLES  = 16'd2,
     parameter integer REFI_CYCLES         = 16'd780,   // example @50MHz for ~15.6us
+    parameter integer REFRESH_DEFER_CYCLES = 16'd100,  // allow a small overdue window
     parameter [12:0] MODE_REG_VALUE       = 13'h220    // BL=1, sequential, CL=2 (example)
 ) (
     input              clk,
@@ -88,10 +90,9 @@ localparam [5:0]
 
 reg [5:0]  state;
 reg [15:0] wait_count;
-reg [15:0] refresh_count;
+reg [15:0] refresh_age;
 reg        refresh_pending;
 reg        busy;
-reg [15:0] busy_cycles;        // 连续忙碌周期计数
 reg        force_refresh;       // 强制刷新标志
 
 reg [31:0] latched_addr;
@@ -211,10 +212,9 @@ always @(posedge clk) begin
     if (reset) begin
         state <= ST_PWRUP_WAIT;
         wait_count <= 16'd0;
-        refresh_count <= 16'd0;
+        refresh_age <= 16'd0;
         refresh_pending <= 1'b0;
         busy <= 1'b0;
-        busy_cycles <= 16'd0;
         force_refresh <= 1'b0;
 
         req_ready <= 1'b0;
@@ -259,29 +259,24 @@ always @(posedge clk) begin
         sdram_dqm  <= 2'b00;
         cmd_nop();
 
-        // refresh ticker only after init
+        // refresh age：统计距离上一次“实际发出 refresh 命令”已经过了多久。
+        // refresh_pending 表示已到周期点，但允许继续服务一小段请求；
+        // force_refresh 表示已经拖到 overdue 窗口，下一次回到 IDLE 必须先 refresh。
         if (state >= ST_IDLE) begin
-            if (refresh_count >= (REFI_CYCLES - 1)) begin
-                refresh_count <= 16'd0;
-                refresh_pending <= 1'b1;
-            end else begin
-                refresh_count <= refresh_count + 16'd1;
+            if (refresh_age < 16'hffff) begin
+                refresh_age <= refresh_age + 16'd1;
             end
-        end
-        // 忙碌周期计数
-        if (state >= ST_IDLE && state != ST_IDLE && state != ST_REF_TRFC) begin
-            // 忙碌状态（读写操作序列）
-            if (busy_cycles < 16'hFFFF) busy_cycles <= busy_cycles + 16'd1;
-        end else if (state == ST_IDLE || state == ST_REF_TRFC) begin
-            busy_cycles <= 16'd0;
-        end
 
-        // 强制刷新阈值判断（仅当初始化完成）
-        if (state >= ST_IDLE) begin
-            if (busy_cycles >= (REFI_CYCLES - 4)) begin
+            if (refresh_age >= (REFI_CYCLES - 1)) begin
+                refresh_pending <= 1'b1;
+            end
+
+            if (refresh_age >= (REFI_CYCLES + REFRESH_DEFER_CYCLES - 1)) begin
                 force_refresh <= 1'b1;
             end
         end else begin
+            refresh_age <= 16'd0;
+            refresh_pending <= 1'b0;
             force_refresh <= 1'b0;  // 初始化期间不触发
         end
 
@@ -363,8 +358,9 @@ always @(posedge clk) begin
                 req_ready <= 1'b0;
                 
                 if (!busy) begin
-                    if (refresh_pending || force_refresh) begin
+                    if (force_refresh) begin
                         cmd_auto_refresh();
+                        refresh_age <= 16'd0;
                         wait_count <= TRFC_CYCLES[15:0];
                         refresh_pending <= 1'b0;
                         force_refresh <= 1'b0;
@@ -391,6 +387,14 @@ always @(posedge clk) begin
                             wait_count <= TRCD_CYCLES[15:0];
                             state <= ST_TRCD;
                         end
+                    end
+                    else if (refresh_pending) begin
+                        cmd_auto_refresh();
+                        refresh_age <= 16'd0;
+                        wait_count <= TRFC_CYCLES[15:0];
+                        refresh_pending <= 1'b0;
+                        force_refresh <= 1'b0;
+                        state <= ST_REF_TRFC;
                     end
                     else begin
                         // 真正空闲，允许新请求

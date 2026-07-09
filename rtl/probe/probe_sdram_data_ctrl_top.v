@@ -13,6 +13,7 @@ module probe_sdram_data_ctrl_top #(
     parameter integer CTRL_TWR_CYCLES = 16'd3,
     parameter integer CTRL_CAS_LATENCY_CYCLES = 16'd2,
     parameter integer CTRL_REFI_CYCLES = 16'd780,
+    parameter integer CTRL_REFRESH_DEFER_CYCLES = 16'd100,
     parameter [12:0]  CTRL_MODE_REG_VALUE = 13'h220,
     parameter integer RUNNER_WAIT_TIMEOUT_CYCLES = 24'd200000,
     parameter integer RUNNER_PRESSURE_TIMEOUT_CYCLES = 24'd8192,
@@ -116,6 +117,7 @@ sdram_data_ctrl #(
     .TWR_CYCLES(CTRL_TWR_CYCLES),
     .CAS_LATENCY_CYCLES(CTRL_CAS_LATENCY_CYCLES),
     .REFI_CYCLES(CTRL_REFI_CYCLES),
+    .REFRESH_DEFER_CYCLES(CTRL_REFRESH_DEFER_CYCLES),
     .MODE_REG_VALUE(CTRL_MODE_REG_VALUE)
 ) ctrl (
     .clk(clk),
