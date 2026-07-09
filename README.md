@@ -8,6 +8,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 早期板级探针
 - 可复用的 UART TX / RX RTL
 - CPU 可读写的 12 位交通灯 MMIO 外设
+- CPU 可编程频率与启停的蜂鸣器 MMIO 外设
 - 蜂鸣器 UART debug probe
 - 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架
 - 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
@@ -236,6 +237,7 @@ bash scripts/test_minisoc_tb_modes.sh
 make sim TARGET=uart_tx
 make sim TARGET=uart_rx
 make sim TARGET=traffic_light_gpio
+make sim TARGET=buzzer_pwm
 make sim TARGET=minisoc_pico
 make sim TARGET=minisoc_smoke_pico
 ```
@@ -245,6 +247,7 @@ make sim TARGET=minisoc_smoke_pico
 ```bash
 scripts/test_uart_echo_regression.sh
 scripts/test_traffic_light_regression.sh
+scripts/test_buzzer_regression.sh
 ```
 
 如果当前分支提供双核脚本，还可以用：
@@ -265,6 +268,13 @@ make ise-export ISE_TARGET=probe_uart
 
 ```bash
 FIRMWARE_MAIN="$PWD/firmware/tests/traffic_light_mmio.c" \
+make ise-export ISE_TARGET=minisoc
+```
+
+导出蜂鸣器 1 kHz 持续音示例：
+
+```bash
+FIRMWARE_MAIN="$PWD/firmware/tests/buzzer_tone.c" \
 make ise-export ISE_TARGET=minisoc
 ```
 

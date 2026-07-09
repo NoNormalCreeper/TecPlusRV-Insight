@@ -69,6 +69,7 @@
 - `uart_tx.v`
 - `uart_rx.v`
 - `traffic_light_gpio.v`
+- `buzzer_pwm.v`
 - `buzzer_tune_player.v`
 - `buzzer_uart_reporter.v`
 - `vga_timing_640x480.v`
@@ -321,6 +322,7 @@ ISE 不关心的通常是：
 - `uart_tx`
 - `uart_rx`
 - `traffic_light_gpio`
+- `buzzer_pwm`
 - `mmio_test_exit`
 - `sdram_smoke_ctrl`
 

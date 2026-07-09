@@ -16,6 +16,8 @@ module tb_minisoc #(
     parameter integer EXPECT_UART_LAST_BYTE = -1,
     parameter integer REQUIRE_TRAFFIC_WRITE = 0,
     parameter integer EXPECT_TRAFFIC = -1,
+    parameter integer REQUIRE_BUZZER_WRITE = 0,
+    parameter integer REQUIRE_BUZZER_TOGGLE = 0,
     parameter integer TIMEOUT_CYCLES = 2000000
 );
 
@@ -28,12 +30,16 @@ reg uart_written;
 reg led_written;
 reg exit_written;
 reg traffic_written;
+reg buzzer_written;
 integer uart_fire_count;
+integer buzzer_toggle_count;
 reg [7:0] uart_last_byte;
+reg last_spk;
 
 wire [3:0] led;
 wire uart_txd;
 wire [11:0] tl;
+wire spk;
 
 
 tecplus_minisoc_top #(
@@ -49,7 +55,8 @@ tecplus_minisoc_top #(
     .led(led),
     .uart_rxd(uart_rxd),
     .uart_txd(uart_txd),
-    .tl(tl)
+    .tl(tl),
+    .spk(spk)
 );
 
 always #5 clk = ~clk;
@@ -64,8 +71,11 @@ initial begin
     led_written = 1'b0;
     exit_written = 1'b0;
     traffic_written = 1'b0;
+    buzzer_written = 1'b0;
     uart_fire_count = 0;
+    buzzer_toggle_count = 0;
     uart_last_byte = 8'h00;
+    last_spk = 1'b0;
 
     $dumpfile("sim/build/tb_minisoc.vcd");
     $dumpvars(0, tb_minisoc);
@@ -95,6 +105,12 @@ initial begin
             exit_written = 1'b1;
         if (dut.traffic_write)
             traffic_written = 1'b1;
+        if (dut.buzzer_ctrl_write || dut.buzzer_period_write)
+            buzzer_written = 1'b1;
+        if (spk != last_spk) begin
+            buzzer_toggle_count = buzzer_toggle_count + 1;
+            last_spk = spk;
+        end
         if (dut.test_exited) begin
             if (dut.test_exit_code !== EXPECT_EXIT_CODE) begin
                 $display("FAIL: test_exit=0x%08x", dut.test_exit_code);
@@ -138,6 +154,16 @@ initial begin
 
             if (REQUIRE_TRAFFIC_WRITE != 0 && !traffic_written) begin
                 $display("FAIL: No traffic-light MMIO write occurred");
+                $finish;
+            end
+
+            if (REQUIRE_BUZZER_WRITE != 0 && !buzzer_written) begin
+                $display("FAIL: No buzzer MMIO write occurred");
+                $finish;
+            end
+
+            if (REQUIRE_BUZZER_TOGGLE != 0 && buzzer_toggle_count == 0) begin
+                $display("FAIL: Buzzer was programmed but SPK never toggled");
                 $finish;
             end
 

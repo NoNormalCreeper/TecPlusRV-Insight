@@ -3,6 +3,7 @@ rtl/core/picorv32.v
 rtl/periph/uart_tx.v
 rtl/periph/uart_rx.v
 rtl/periph/traffic_light_gpio.v
+rtl/periph/buzzer_pwm.v
 rtl/periph/vga_timing_640x480.v
 rtl/periph/vga_text_mode.v
 rtl/soc/bram.v

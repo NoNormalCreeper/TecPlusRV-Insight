@@ -30,6 +30,12 @@
       "args": ["traffic_light_gpio"]
     },
     {
+      "id": "rtl_syntax__buzzer_pwm",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["buzzer_pwm"]
+    },
+    {
       "id": "rtl_syntax__sdram_smoke_ctrl",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -215,6 +221,11 @@
       "sim_target": "traffic_light_gpio"
     },
     {
+      "id": "buzzer_pwm",
+      "kind": "sim",
+      "sim_target": "buzzer_pwm"
+    },
+    {
       "id": "sdram_smoke",
       "kind": "sim",
       "sim_target": "sdram_smoke"
@@ -322,6 +333,12 @@
       "requires": ["firmware", "rtl_syntax"]
     },
     {
+      "id": "buzzer_regression",
+      "kind": "script",
+      "script": "scripts/test_buzzer_regression.sh",
+      "requires": ["firmware", "rtl_syntax"]
+    },
+    {
       "id": "perf_targets_require_addrs",
       "kind": "script",
       "script": "scripts/test_perf_targets_require_addrs.sh"
@@ -360,6 +377,7 @@
       "rtl_syntax__probe_uart_top",
       "rtl_syntax__uart_rx",
       "rtl_syntax__traffic_light_gpio",
+      "rtl_syntax__buzzer_pwm",
       "rtl_syntax__sdram_smoke_ctrl",
       "rtl_syntax__sdram_data_ctrl",
       "rtl_syntax__probe_sdram_smoke_top",
@@ -405,6 +423,7 @@
       "mmio_test_exit",
       "uart_rx",
       "traffic_light_gpio",
+      "buzzer_pwm",
       "sdram_data_ctrl"
     ],
     "soc": [
@@ -418,6 +437,7 @@
       "uart_once_regression",
       "uart_echo_regression",
       "traffic_light_regression",
+      "buzzer_regression",
       "perf_targets_require_addrs"
     ],
     "smoke": [
@@ -430,6 +450,7 @@
       "uart_tx",
       "uart_rx",
       "traffic_light_gpio",
+      "buzzer_pwm",
       "sdram_smoke",
       "bigboard_tl",
       "minisoc_smoke_pico",

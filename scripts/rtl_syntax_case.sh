@@ -76,6 +76,10 @@ case "$CASE_ID" in
         run_iverilog traffic_light_gpio \
             "$REPO_ROOT/rtl/periph/traffic_light_gpio.v"
         ;;
+    buzzer_pwm)
+        run_iverilog buzzer_pwm \
+            "$REPO_ROOT/rtl/periph/buzzer_pwm.v"
+        ;;
     sdram_smoke_ctrl)
         run_iverilog sdram_smoke_ctrl \
             "$REPO_ROOT/rtl/probe/sdram_smoke_ctrl.v"
@@ -214,7 +218,8 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
             "$REPO_ROOT/rtl/periph/uart_tx.v" \
             "$REPO_ROOT/rtl/periph/uart_rx.v" \
-            "$REPO_ROOT/rtl/periph/traffic_light_gpio.v"
+            "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
+            "$REPO_ROOT/rtl/periph/buzzer_pwm.v"
         ;;
     *)
         echo "未知 RTL syntax case: $CASE_ID" >&2
