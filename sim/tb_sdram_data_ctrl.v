@@ -96,6 +96,7 @@ integer saw_refresh_cmd;
 integer saw_write_cmd;
 integer saw_read_cmd;
 integer saw_misaligned_resp;
+integer refresh_before_pressure;
 
 function [15:0] mk_addr_key;
     input [1:0] ba;
@@ -109,6 +110,13 @@ endfunction
 reg [1:0] open_ba;
 reg [12:0] open_row;
 reg        row_open;
+
+reg        expect_is_write;
+integer    expect_phase;
+reg [1:0]  expect_bank;
+reg [11:0] expect_row;
+reg [8:0]  expect_col_lo;
+reg [8:0]  expect_col_hi;
 
 initial begin
     clk = 1'b0;
@@ -130,9 +138,16 @@ initial begin
     saw_write_cmd = 0;
     saw_read_cmd = 0;
     saw_misaligned_resp = 0;
+    refresh_before_pressure = 0;
     row_open = 1'b0;
     open_ba = 2'b00;
     open_row = 13'd0;
+    expect_is_write = 1'b0;
+    expect_phase = 0;
+    expect_bank = 2'b00;
+    expect_row = 12'd0;
+    expect_col_lo = 9'd0;
+    expect_col_hi = 9'd0;
 
     for (i = 0; i < 65536; i = i + 1) begin
         mem[i] = 16'h0000;
@@ -165,7 +180,16 @@ initial begin
         $finish;
     end
 
-    // 4) misaligned access should error
+    // 4) 非零 row/bank 地址访问，固定“ACT 用旧地址”的回归
+    host_write32(32'h0012_0440, 32'hCAFE_BABE, 4'b1111);
+    host_read32(32'h0012_0440);
+    if (resp_rdata !== 32'hCAFE_BABE) begin
+        $display("FAIL: non-zero bank/row readback mismatch, got=%h exp=%h",
+                 resp_rdata, 32'hCAFE_BABE);
+        $finish;
+    end
+
+    // 5) misaligned access should error
     host_read32(32'h0000_0042);
     if (!resp_err) begin
         $display("FAIL: misaligned read did not raise resp_err");
@@ -173,7 +197,29 @@ initial begin
     end
     saw_misaligned_resp = 1;
 
-    // 5) wait to observe at least one refresh command after idle
+    // 6) 持续 req_valid=1 的流量下，仍然必须插入 refresh
+    refresh_before_pressure = refresh_seen;
+    start_read_pressure(32'h0012_0440);
+    repeat (120) @(posedge clk);
+    stop_read_pressure();
+    if ((refresh_seen - refresh_before_pressure) == 0) begin
+        $display("FAIL: refresh missing under continuous req_valid pressure");
+        $finish;
+    end
+
+    // 7) 写事务进行到一半时 reset，控制器必须回到初始化并重新可用
+    start_write32_no_wait(32'h0012_0480, 32'h0BAD_F00D, 4'b1111);
+    wait(dut.state == 6'd20 || dut.state == 6'd21 || dut.state == 6'd22);
+    pulse_reset_and_wait_reinit();
+    host_write32(32'h0012_0480, 32'h0BAD_F00D, 4'b1111);
+    host_read32(32'h0012_0480);
+    if (resp_rdata !== 32'h0BAD_F00D) begin
+        $display("FAIL: post-reset recovery readback mismatch, got=%h exp=%h",
+                 resp_rdata, 32'h0BAD_F00D);
+        $finish;
+    end
+
+    // 8) idle 一段时间，至少还能看到一次 refresh
     repeat (80) @(posedge clk);
     if (saw_refresh_cmd == 0) begin
         $display("FAIL: no refresh command observed");
@@ -201,6 +247,7 @@ task host_write32;
 begin
     @(posedge clk);
     while (!req_ready) @(posedge clk);
+    arm_expected_access(addr, 1'b1);
     req_addr  = addr;
     req_wdata = data;
     req_wstrb = wstrb;
@@ -224,6 +271,9 @@ task host_read32;
 begin
     @(posedge clk);
     while (!req_ready) @(posedge clk);
+    if (addr[1:0] == 2'b00) begin
+        arm_expected_access(addr, 1'b0);
+    end
     req_addr  = addr;
     req_wdata = 32'd0;
     req_wstrb = 4'b0000;
@@ -232,6 +282,104 @@ begin
     while (req_ready) @(posedge clk);
     req_valid = 1'b0;
     wait(resp_valid);
+    @(posedge clk);
+end
+endtask
+
+task arm_expected_access;
+    input [31:0] addr;
+    input        is_write;
+begin
+    expect_is_write = is_write;
+    expect_phase = 1;
+    expect_bank = addr[11:10];
+    expect_row = addr[23:12];
+    expect_col_lo = addr[9:1];
+    expect_col_hi = addr[9:1] + 9'd1;
+end
+endtask
+
+task start_read_pressure;
+    input [31:0] addr;
+begin
+    @(posedge clk);
+    while (!req_ready) @(posedge clk);
+    req_addr  = addr;
+    req_wdata = 32'd0;
+    req_wstrb = 4'b0000;
+    req_we    = 1'b0;
+    req_valid = 1'b1;
+end
+endtask
+
+task start_write32_no_wait;
+    input [31:0] addr;
+    input [31:0] data;
+    input [3:0]  wstrb;
+begin
+    @(posedge clk);
+    while (!req_ready) @(posedge clk);
+    arm_expected_access(addr, 1'b1);
+    req_addr  = addr;
+    req_wdata = data;
+    req_wstrb = wstrb;
+    req_we    = 1'b1;
+    req_valid = 1'b1;
+    while (req_ready) @(posedge clk);
+    req_valid = 1'b0;
+    req_we    = 1'b0;
+    req_wstrb = 4'b0000;
+end
+endtask
+
+task stop_read_pressure;
+begin
+    @(posedge clk);
+    req_valid = 1'b0;
+    req_we = 1'b0;
+    req_wstrb = 4'b0000;
+    while (dut.busy) @(posedge clk);
+    @(posedge clk);
+end
+endtask
+
+task pulse_reset_and_wait_reinit;
+begin
+    @(negedge clk);
+    reset = 1'b1;
+    req_valid = 1'b0;
+    req_we = 1'b0;
+    req_wstrb = 4'b0000;
+    expect_phase = 0;
+
+    @(posedge clk);
+    #1;
+    if (dbg_state !== 6'd0) begin
+        $display("FAIL: reset did not force ST_PWRUP_WAIT, state=%0d", dbg_state);
+        $finish;
+    end
+    if (dut.busy !== 1'b0) begin
+        $display("FAIL: reset did not clear busy");
+        $finish;
+    end
+    if (req_ready !== 1'b0) begin
+        $display("FAIL: req_ready should stay low during reset");
+        $finish;
+    end
+    if (resp_valid !== 1'b0) begin
+        $display("FAIL: resp_valid should be low during reset");
+        $finish;
+    end
+    if (dq_oe !== 1'b0) begin
+        $display("FAIL: dq_oe should drop low during reset");
+        $finish;
+    end
+
+    @(posedge clk);
+    @(negedge clk);
+    reset = 1'b0;
+
+    wait(req_ready === 1'b1);
     @(posedge clk);
 end
 endtask
@@ -246,6 +394,22 @@ always @(posedge clk) begin
 //$display("DBG CMD t=%0t st=%0d busy=%b req_valid=%b dq_oe=%b dq_out=%h RAS=%b CAS=%b WE=%b A10=%b A=%h",
 //$time, init_stage,dut.busy, req_valid, dq_oe, dq_out, sdram_ras_n, sdram_cas_n, sdram_we_n, sdram_addr[10], sdram_addr);
 
+    if (reset) begin
+        row_open <= 1'b0;
+        open_ba <= 2'b00;
+        open_row <= 13'd0;
+        read_wait <= 0;
+        read_pending <= 1'b0;
+        read_data_latch <= 16'd0;
+        dq_in <= 16'h0000;
+        expect_is_write <= 1'b0;
+        expect_phase <= 0;
+        expect_bank <= 2'b00;
+        expect_row <= 12'd0;
+        expect_col_lo <= 9'd0;
+        expect_col_hi <= 9'd0;
+        init_stage <= 0;
+    end else begin
     // emit read data after CL countdown
     if (read_pending) begin
         if (read_wait == 0) begin
@@ -258,6 +422,14 @@ always @(posedge clk) begin
 
     // ACTIVE: RAS=0 CAS=1 WE=1
     if (!sdram_cs_n && !sdram_ras_n && sdram_cas_n && sdram_we_n) begin
+        if (expect_phase == 1) begin
+            if (sdram_ba !== expect_bank || sdram_addr !== {1'b0, expect_row}) begin
+                $display("FAIL: ACT address mismatch, got bank=%b row=%h exp bank=%b row=%h",
+                         sdram_ba, sdram_addr[11:0], expect_bank, expect_row);
+                $finish;
+            end
+            expect_phase <= 2;
+        end
         row_open <= 1'b1;
         open_ba  <= sdram_ba;
         open_row <= sdram_addr;
@@ -318,6 +490,33 @@ always @(posedge clk) begin
             $display("FAIL: WRITE without open row");
             $finish;
         end
+        if (sdram_ba !== open_ba) begin
+            $display("FAIL: WRITE bank mismatch, got=%b open=%b", sdram_ba, open_ba);
+            $finish;
+        end
+        if (expect_phase == 2 || expect_phase == 3) begin
+            if (!expect_is_write) begin
+                $display("FAIL: saw WRITE but expected READ command");
+                $finish;
+            end
+            if (sdram_ba !== expect_bank) begin
+                $display("FAIL: WRITE bank mismatch against expected access, got=%b exp=%b",
+                         sdram_ba, expect_bank);
+                $finish;
+            end
+            if (expect_phase == 2 && sdram_addr[8:0] !== expect_col_lo) begin
+                $display("FAIL: low-half WRITE column mismatch, got=%h exp=%h",
+                         sdram_addr[8:0], expect_col_lo);
+                $finish;
+            end
+            if (expect_phase == 3 && sdram_addr[8:0] !== expect_col_hi) begin
+                $display("FAIL: high-half WRITE column mismatch, got=%h exp=%h",
+                         sdram_addr[8:0], expect_col_hi);
+                $finish;
+            end
+            if (expect_phase == 2) expect_phase <= 3;
+            else expect_phase <= 0;
+        end
         saw_write_cmd <= 1;
         // apply DQM byte-mask
         if (dq_oe !== 1'b1) begin
@@ -335,6 +534,33 @@ always @(posedge clk) begin
             $display("FAIL: READ without open row");
             $finish;
         end
+        if (sdram_ba !== open_ba) begin
+            $display("FAIL: READ bank mismatch, got=%b open=%b", sdram_ba, open_ba);
+            $finish;
+        end
+        if (expect_phase == 2 || expect_phase == 3) begin
+            if (expect_is_write) begin
+                $display("FAIL: saw READ but expected WRITE command");
+                $finish;
+            end
+            if (sdram_ba !== expect_bank) begin
+                $display("FAIL: READ bank mismatch against expected access, got=%b exp=%b",
+                         sdram_ba, expect_bank);
+                $finish;
+            end
+            if (expect_phase == 2 && sdram_addr[8:0] !== expect_col_lo) begin
+                $display("FAIL: low-half READ column mismatch, got=%h exp=%h",
+                         sdram_addr[8:0], expect_col_lo);
+                $finish;
+            end
+            if (expect_phase == 3 && sdram_addr[8:0] !== expect_col_hi) begin
+                $display("FAIL: high-half READ column mismatch, got=%h exp=%h",
+                         sdram_addr[8:0], expect_col_hi);
+                $finish;
+            end
+            if (expect_phase == 2) expect_phase <= 3;
+            else expect_phase <= 0;
+        end
         saw_read_cmd <= 1;
         if (dq_oe !== 1'b0) begin
             $display("FAIL: dq_oe asserted during READ");
@@ -344,9 +570,10 @@ always @(posedge clk) begin
         read_wait <= CAS_LATENCY_CYCLES;
         read_pending <= 1'b1;
     end
+    end
 end
 initial begin
-    #8000; // 应当是足够长
+    #12000; // 覆盖二次初始化与 reset 恢复测试
     $display("TIMEOUT: DUT not ready, state=%0d", dut.dbg_state);
     $finish;
 end
