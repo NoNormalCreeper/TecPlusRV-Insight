@@ -227,9 +227,11 @@ initial begin
             $finish;
         end
     end
-    $display("TIMEOUT: MiniSoC SDRAM 未退出 cycle=%0d read=%0d write=%0d resp=%0d pending=%b sent=%b ctrl_state=%0d mem_addr=%08x",
+    $display("TIMEOUT: MiniSoC SDRAM 未退出 cycle=%0d read=%0d write=%0d resp=%0d pending=%b sent=%b replay=%b ready=%b valid=%b mem_valid=%b last_valid=%b ctrl_state=%0d mem_addr=%08x",
              cycle_count, accepted_read_count, accepted_write_count, response_count,
-             dut.pending, dut.sdram_req_sent, dut.u_sdram.dbg_state, dut.mem_addr);
+             dut.pending, dut.sdram_req_sent, dut.req_is_replay, dut.sdram_req_ready,
+             dut.cpu_sdram_req_valid, dut.mem_valid, dut.last_req_valid,
+             dut.u_sdram.dbg_state, dut.mem_addr);
     $finish;
 end
 
