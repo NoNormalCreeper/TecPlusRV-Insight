@@ -8,11 +8,13 @@
 // 直接读两个硬件计数器的当前值。
 unsigned int perf_read_cycle(void);
 unsigned int perf_read_instret(void);
+unsigned int perf_read_mem_wait(void);
 
 // 一次性抓取的性能快照，配合下面的 begin/end 使用。
 typedef struct {
     unsigned int cycle;
     unsigned int instret;
+    unsigned int mem_wait;
 } perf_snapshot_t;
 
 // 记录当前 cycle / instret，作为一段测量的起点。

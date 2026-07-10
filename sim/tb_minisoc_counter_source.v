@@ -81,7 +81,12 @@ initial begin
                 $finish;
             end
 
-            $display("PASS: MiniSoC 的 counter source 与 CPU backing counter 一致");
+            if (dut.mem_wait_rdata == 32'h0000_0000) begin
+                $display("FAIL: SoC 数据等待计数器没有记录任何等待周期");
+                $finish;
+            end
+
+            $display("PASS: core-backed counter 一致，SoC mem_wait=%0d", dut.mem_wait_rdata);
             $finish;
         end
     end

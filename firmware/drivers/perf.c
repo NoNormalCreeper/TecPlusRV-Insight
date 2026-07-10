@@ -15,12 +15,18 @@ unsigned int perf_read_instret(void)
     return mmio_read(TINYBUS_INSTRET);
 }
 
+unsigned int perf_read_mem_wait(void)
+{
+    return mmio_read(TINYBUS_MEM_WAIT);
+}
+
 void perf_begin(perf_snapshot_t *snap)
 {
     // 先抓起点。注意读两个寄存器本身也要花几拍，属于固定测量开销，
     // 对比不同实现时开销一致可以抵消，这里不额外校正。
     snap->cycle = perf_read_cycle();
     snap->instret = perf_read_instret();
+    snap->mem_wait = perf_read_mem_wait();
 }
 
 void perf_end(perf_snapshot_t *snap)
@@ -28,9 +34,11 @@ void perf_end(perf_snapshot_t *snap)
     // 计数器是单调递增的无符号数；即使中途回绕，无符号减法仍给出正确差值。
     unsigned int cycle_now = perf_read_cycle();
     unsigned int instret_now = perf_read_instret();
+    unsigned int mem_wait_now = perf_read_mem_wait();
 
     snap->cycle = cycle_now - snap->cycle;
     snap->instret = instret_now - snap->instret;
+    snap->mem_wait = mem_wait_now - snap->mem_wait;
 }
 
 void perf_report(const char *label, const perf_snapshot_t *snap)
@@ -48,6 +56,8 @@ void perf_report(const char *label, const perf_snapshot_t *snap)
     uart_put_dec(snap->cycle);
     uart_puts(" instret=");
     uart_put_dec(snap->instret);
+    uart_puts(" mem_wait=");
+    uart_put_dec(snap->mem_wait);
     uart_puts(" CPI=");
     uart_put_dec(cpi_x100 / 100u);   // 整数部分
     uart_putc('.');

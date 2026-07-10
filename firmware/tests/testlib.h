@@ -45,4 +45,9 @@ static inline unsigned int test_read_instret(void)
     return mmio_read(TINYBUS_INSTRET);
 }
 
+static inline unsigned int test_read_mem_wait(void)
+{
+    return mmio_read(TINYBUS_MEM_WAIT);
+}
+
 #endif

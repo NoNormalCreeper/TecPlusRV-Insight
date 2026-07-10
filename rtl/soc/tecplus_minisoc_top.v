@@ -101,12 +101,14 @@ wire [31:0] uart_data_rdata;
 wire [31:0] uart_status_rdata;
 wire [31:0] cycle_rdata;
 wire [31:0] instret_rdata;
+wire [31:0] mem_wait_rdata;
 wire [31:0] traffic_rdata;
 wire [31:0] buzzer_ctrl_rdata;
 wire [31:0] buzzer_period_rdata;
 wire [31:0] vga_status_rdata;
 wire [31:0] cpu_cycle_count;
 wire [31:0] cpu_instret_count;
+reg  [31:0] mem_wait_count;
 wire [31:0] mmio_rdata;
 wire        mmio_write_en;
 wire        gpio_led_sel;
@@ -221,6 +223,7 @@ assign uart_status_rdata = {
 // 这里不要重新引入 local proxy counting，否则 instret 语义会再次偏离 core 自己的报告值。
 assign cycle_rdata = cpu_cycle_count;
 assign instret_rdata = cpu_instret_count;
+assign mem_wait_rdata = mem_wait_count;
 assign traffic_rdata = {20'h00000, tl};
 assign buzzer_ctrl_rdata = {31'h00000000, buzzer_enabled};
 assign buzzer_period_rdata = buzzer_half_period;
@@ -355,6 +358,7 @@ tinybus_decode u_decode (
     .uart_status_rdata(uart_status_rdata),
     .cycle_rdata(cycle_rdata),
     .instret_rdata(instret_rdata),
+    .mem_wait_rdata(mem_wait_rdata),
     .traffic_rdata(traffic_rdata),
     .buzzer_ctrl_rdata(buzzer_ctrl_rdata),
     .buzzer_period_rdata(buzzer_period_rdata),
@@ -369,6 +373,7 @@ tinybus_decode u_decode (
     .uart_status_sel(uart_status_sel),
     .cycle_sel(),
     .instret_sel(),
+    .mem_wait_sel(),
     .test_exit_sel(test_exit_sel),
     .traffic_sel(traffic_sel),
     .buzzer_ctrl_sel(buzzer_ctrl_sel),
@@ -538,9 +543,16 @@ always @(posedge clk) begin
         last_req_rdata <= 32'h0000_0000;
         mem_ready <= 1'b0;
         mem_rdata <= 32'h0000_0000;
+        mem_wait_count <= 32'h0000_0000;
         led <= 4'h0;
     end else begin
         mem_ready <= 1'b0;
+
+        // 只统计 CPU 数据口等待：PicoRV32 的取指也走 mem_*，必须用 mem_instr 排除；
+        // DarkRISCV 的 mem_* 本来就是独立 D-bus，因此两颗核得到同一语义。
+        if (mem_valid && !mem_instr && !mem_ready) begin
+            mem_wait_count <= mem_wait_count + 1'b1;
+        end
 
         if (!mem_valid) begin
             last_req_valid <= 1'b0;
