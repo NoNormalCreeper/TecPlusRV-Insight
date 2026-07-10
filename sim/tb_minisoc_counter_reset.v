@@ -63,7 +63,13 @@ initial begin
         $finish;
     end
 
-    $display("PASS: warm reset 会清零 core-backed counters");
+
+    if (dut.mem_wait_rdata !== 32'h0000_0000) begin
+        $display("FAIL: warm reset 后 mem_wait 没有清零，after=%0d", dut.mem_wait_rdata);
+        $finish;
+    end
+
+    $display("PASS: warm reset 会清零 core-backed counters 与 mem_wait");
     $finish;
 end
 

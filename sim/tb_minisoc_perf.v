@@ -21,6 +21,8 @@ wire uart_txd;
 integer cpi_x1000;
 reg [31:0] measured_cycle;
 reg [31:0] measured_instret;
+integer uart_bit_i;
+reg [7:0] uart_rx_byte;
 
 tecplus_minisoc_top #(
     .CLK_FREQ(1000000),
@@ -46,6 +48,26 @@ initial begin
 
     repeat (5) @(posedge clk);
     reset = 1'b1;
+end
+
+// perf testbench 原先只读取最终 mixed case 的 BRAM 结果，导致同一 firmware
+// 输出的分项 RESULT 无法进入自动化日志。还原 uart_txd，保留每个 workload 的
+// 原始测量行；它不参与 pass/fail 判定。
+localparam integer UART_CLKS_PER_BIT = 1000000 / 100000;
+localparam integer UART_CLK_PERIOD_NS = 10;
+localparam integer UART_BIT_NS = UART_CLKS_PER_BIT * UART_CLK_PERIOD_NS;
+
+initial begin
+    forever begin
+        @(negedge uart_txd);
+        #(UART_BIT_NS + UART_BIT_NS / 2);
+        for (uart_bit_i = 0; uart_bit_i < 8; uart_bit_i = uart_bit_i + 1) begin
+            uart_rx_byte[uart_bit_i] = uart_txd;
+            #(UART_BIT_NS);
+        end
+        $write("%c", uart_rx_byte);
+        $fflush;
+    end
 end
 
 initial begin

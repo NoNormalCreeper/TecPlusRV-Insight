@@ -1,0 +1,6 @@
+firmware 构建完成：
+  entry: /tmp/NexysRV-Insight-issue19/firmware/tests/system_bench.c
+  output: /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/system_bench/firmware
+  /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/system_bench/firmware.elf
+  /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/system_bench/firmware.bin
+  /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/system_bench/firmware.mem

@@ -15,6 +15,7 @@ reg [31:0] uart_data_rdata;
 reg [31:0] uart_status_rdata;
 reg [31:0] cycle_rdata;
 reg [31:0] instret_rdata;
+reg [31:0] mem_wait_rdata;
 reg [31:0] traffic_rdata;
 reg [31:0] buzzer_ctrl_rdata;
 reg [31:0] buzzer_period_rdata;
@@ -30,6 +31,7 @@ wire        uart_data_sel;
 wire        uart_status_sel;
 wire        cycle_sel;
 wire        instret_sel;
+wire        mem_wait_sel;
 wire        test_exit_sel;
 wire        traffic_sel;
 wire        buzzer_ctrl_sel;
@@ -49,6 +51,7 @@ tinybus_decode dut (
     .uart_status_rdata(uart_status_rdata),
     .cycle_rdata(cycle_rdata),
     .instret_rdata(instret_rdata),
+    .mem_wait_rdata(mem_wait_rdata),
     .traffic_rdata(traffic_rdata),
     .buzzer_ctrl_rdata(buzzer_ctrl_rdata),
     .buzzer_period_rdata(buzzer_period_rdata),
@@ -63,6 +66,7 @@ tinybus_decode dut (
     .uart_status_sel(uart_status_sel),
     .cycle_sel(cycle_sel),
     .instret_sel(instret_sel),
+    .mem_wait_sel(mem_wait_sel),
     .test_exit_sel(test_exit_sel),
     .traffic_sel(traffic_sel),
     .buzzer_ctrl_sel(buzzer_ctrl_sel),
@@ -83,6 +87,7 @@ initial begin
     uart_status_rdata = 32'h0000_0001;
     cycle_rdata = 32'h1234_5678;
     instret_rdata = 32'h8765_4321;
+    mem_wait_rdata = 32'h0000_00a5;
     traffic_rdata = 32'h0000_0A55;
     buzzer_ctrl_rdata = 32'h0000_0001;
     buzzer_period_rdata = 32'h0000_1388;
@@ -114,6 +119,14 @@ initial begin
     #1;
     if (!uart_status_sel || rdata !== uart_status_rdata) begin
         $display("FAIL: UART STATUS 译码或读回错误");
+        $finish;
+    end
+
+
+    addr = `TINYBUS_ADDR_MEM_WAIT;
+    #1;
+    if (!mem_wait_sel || rdata !== mem_wait_rdata) begin
+        $display("FAIL: MEM_WAIT 译码或读回错误");
         $finish;
     end
 
@@ -189,7 +202,7 @@ initial begin
     addr = `TINYBUS_ADDR_SDRAM_BASE;  // 0x8000_0000
     #1;
     if (gpio_led_sel || gpio_key_sel || uart_data_sel || uart_status_sel ||
-        cycle_sel || instret_sel || test_exit_sel || traffic_sel ||
+        cycle_sel || instret_sel || mem_wait_sel || test_exit_sel || traffic_sel ||
         buzzer_ctrl_sel || buzzer_period_sel || vga_status_sel || vga_tile_sel || accel_sel) begin
         $display("FAIL: SDRAM 地址 %h 误触发了 TinyBus 选择信号", addr);
         $finish;
@@ -207,7 +220,7 @@ initial begin
     addr = `TINYBUS_ADDR_SDRAM_BASE + 32'h0000_1000;  // 范围内任意地址
     #1;
     if (gpio_led_sel || gpio_key_sel || uart_data_sel || uart_status_sel ||
-        cycle_sel || instret_sel || test_exit_sel || traffic_sel ||
+        cycle_sel || instret_sel || mem_wait_sel || test_exit_sel || traffic_sel ||
         buzzer_ctrl_sel || buzzer_period_sel || vga_status_sel || vga_tile_sel || accel_sel) begin
         $display("FAIL: SDRAM 地址 %h 误触发了 TinyBus 选择信号", addr);
         $finish;

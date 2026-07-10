@@ -13,6 +13,7 @@ module tinybus_decode (
     input  [31:0] uart_status_rdata,
     input  [31:0] cycle_rdata,
     input  [31:0] instret_rdata,
+    input  [31:0] mem_wait_rdata,
     input  [31:0] traffic_rdata,
     input  [31:0] buzzer_ctrl_rdata,
     input  [31:0] buzzer_period_rdata,
@@ -27,6 +28,7 @@ module tinybus_decode (
     output            uart_status_sel,
     output            cycle_sel,
     output            instret_sel,
+    output            mem_wait_sel,
     output            test_exit_sel,
     output            traffic_sel,
     output            buzzer_ctrl_sel,
@@ -45,6 +47,7 @@ assign uart_data_sel = valid && (addr == `TINYBUS_ADDR_UART_DATA);
 assign uart_status_sel = valid && (addr == `TINYBUS_ADDR_UART_STATUS);
 assign cycle_sel = valid && (addr == `TINYBUS_ADDR_CYCLE);
 assign instret_sel = valid && (addr == `TINYBUS_ADDR_INSTRET);
+assign mem_wait_sel = valid && (addr == `TINYBUS_ADDR_MEM_WAIT);
 assign test_exit_sel = valid && (addr == `TINYBUS_ADDR_TEST_EXIT);
 assign traffic_sel = valid && (addr == `TINYBUS_ADDR_TRAFFIC_DATA);
 assign buzzer_ctrl_sel = valid && (addr == `TINYBUS_ADDR_BUZZER_CTRL);
@@ -73,6 +76,8 @@ always @(*) begin
         rdata = cycle_rdata;
     end else if (instret_sel) begin
         rdata = instret_rdata;
+    end else if (mem_wait_sel) begin
+        rdata = mem_wait_rdata;
     end else if (traffic_sel) begin
         rdata = traffic_rdata;
     end else if (buzzer_ctrl_sel) begin

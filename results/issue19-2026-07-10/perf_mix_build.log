@@ -1,0 +1,6 @@
+firmware 构建完成：
+  entry: /tmp/NexysRV-Insight-issue19/firmware/tests/perf_mix.c
+  output: /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/perf_mix/firmware
+  /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/perf_mix/firmware.elf
+  /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/perf_mix/firmware.bin
+  /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/perf_mix/firmware.mem

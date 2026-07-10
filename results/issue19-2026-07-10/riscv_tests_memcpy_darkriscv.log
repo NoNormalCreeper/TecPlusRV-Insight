@@ -1,0 +1,3 @@
+riscv_tests_memcpy
+RESULT: benchmark=riscv_tests_memcpy path=bram_to_bram bytes=16000 cycles=128106 instret=32031 mem_wait=32020
+RESULT: benchmark=riscv_tests_memcpy path=sdram_to_sdram bytes=16000 cycles=261812 instret=32028 mem_wait=173446PASS: MiniSoC SDRAM 集成通过，cycle=1113692 read=8000 write=8000 bram=73480 mmio=2853 sdram=16448 ifetch=1113686

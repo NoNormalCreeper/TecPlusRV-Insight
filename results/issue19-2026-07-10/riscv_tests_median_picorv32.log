@@ -1,0 +1,4 @@
+riscv_tests_median
+RESULT: benchmark=riscv_tests_median memory=bram elements=400 cycles=34853 instret=4942 mem_wait=3198
+RESULT: benchmark=riscv_tests_median memory=sdram elements=400 cycles=67072 instret=4941 mem_wait=35422
+PASS: MiniSoC SDRAM 集成通过，cycle=313718 read=1594 write=800 bram=52812 mmio=882 sdram=2394 ifetch=0

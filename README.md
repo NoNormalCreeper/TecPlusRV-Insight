@@ -258,11 +258,13 @@ python3 scripts/uart_loader.py \
 真实串口命令和 `0xBADABB1E` wire protocol 见 `docs/BOOTLOADER_PROTOCOL.md`。
 Windows `COMx` 一键下载是推荐路径；usbipd、`/dev/ttyUSB0` 与 RESET 的备用配置流程见 `docs/WINDOWS_WSL_UART.md`。
 
-单独跑双核性能粗对比：
+运行完整双核性能实验（原始日志、CSV、Markdown 表和环境快照会写入 `sim/build/benchmarks/`）：
 
 ```bash
 make perf
 ```
+
+workload、指标口径和瓶颈分析方法见 `docs/BENCHMARKS.md`。
 
 单独跑 core-backed counter source 检查：
 
