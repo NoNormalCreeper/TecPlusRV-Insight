@@ -28,7 +28,7 @@ BENCHMARK_RUN_ID=after-change make perf
 
 - `cycles`、`instret`、`mem_wait` 都是 `perf_begin/perf_end` 围出的 workload 区间差值，不含初始化、结果校验和 UART 打印。
 - `CPI = cycles / instret`；同一编译镜像在两颗核上运行时，可用它比较核心总体效率。
-- `mem_wait` 只统计 CPU 数据口在 `mem_ready` 前保持有效的周期。它可用于定位 BRAM/SDRAM 访问的等待热点，但不是 Cache miss 数；当前设计没有 Cache。
+- `mem_wait` 只统计 CPU 数据口在 `mem_ready` 前保持有效的周期。它可用于定位**同一颗核**中 BRAM/SDRAM 访问的等待热点，但不是 Cache miss 数；当前设计没有 Cache。PicoRV32 与 DarkRISCV 的 wrapper/ack 握手时序不同，因此不要把两颗核的绝对 `mem_wait` 直接解释为完全等价的停顿数，应优先比较同核的存储位置变化与 CPI。
 - `KIPS @ 1 MHz = 1000 / CPI` 是 testbench 的 `CLK_FREQ=1 MHz` 下的等效吞吐量。实际上板频率应以 ISE 的 post-route timing report 为准，再按同一 CPI 换算；不能把 1 MHz 仿真值当作板上最高频率。
 
 ## 如何据此分析瓶颈
