@@ -11,20 +11,7 @@ SIM_KIND=${1:-uart_tx}
 DEFAULT_FIRMWARE_MAIN="$REPO_ROOT/firmware/main.c"
 # SDRAM 目标默认跑 memtest；显式传入 FIRMWARE_MAIN 时用于 benchmark/runtime 验收。
 SDRAM_FIRMWARE_MAIN=${FIRMWARE_MAIN:-$REPO_ROOT/firmware/tests/sdram_memtest.c}
-RESTORE_DEFAULT_FIRMWARE=0
-
-restore_default_firmware() {
-    if [ "$RESTORE_DEFAULT_FIRMWARE" -eq 1 ]; then
-        FIRMWARE_MAIN="$DEFAULT_FIRMWARE_MAIN" "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null || true
-    fi
-}
-
-build_sdram_firmware() {
-    RESTORE_DEFAULT_FIRMWARE=1
-    FIRMWARE_MAIN="$SDRAM_FIRMWARE_MAIN" "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
-}
-
-trap restore_default_firmware EXIT
+FIRMWARE_MEM=${FIRMWARE_MEM:-}
 
 need_tool() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -37,6 +24,33 @@ need_tool iverilog
 need_tool vvp
 
 mkdir -p "$BUILD_DIR"
+
+prepare_firmware() {
+    local firmware_out
+
+    if [ -n "$FIRMWARE_MEM" ]; then
+        case "$FIRMWARE_MEM" in
+            /*) ;;
+            *) FIRMWARE_MEM="$REPO_ROOT/$FIRMWARE_MEM" ;;
+        esac
+        if [ ! -f "$FIRMWARE_MEM" ]; then
+            echo "找不到指定的 firmware mem：$FIRMWARE_MEM" >&2
+            exit 1
+        fi
+        return
+    fi
+
+    firmware_out=${FIRMWARE_OUT:-$REPO_ROOT/firmware/build/sim/$SIM_KIND/firmware}
+    case "$firmware_out" in
+        /*) ;;
+        *) firmware_out="$REPO_ROOT/$firmware_out" ;;
+    esac
+
+    FIRMWARE_MAIN=${FIRMWARE_MAIN:-$DEFAULT_FIRMWARE_MAIN} \
+    FIRMWARE_OUT="$firmware_out" \
+        "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
+    FIRMWARE_MEM="$firmware_out.mem"
+}
 
 run_and_check() {
     local out_file="$1"
@@ -71,6 +85,10 @@ compile_minisoc_tb() {
     local require_buzzer_write="${16:-}"
     local require_buzzer_toggle="${17:-}"
     local extra_params=()
+    local firmware_param
+
+    prepare_firmware
+    firmware_param="$tb_module.FIRMWARE_MEM_FILE=\"$FIRMWARE_MEM\""
 
     if [ ! -f "$REPO_ROOT/rtl/core/picorv32.v" ]; then
         echo "缺少 rtl/core/picorv32.v，无法运行 MiniSoC 板级 top 仿真" >&2
@@ -133,12 +151,14 @@ compile_minisoc_tb() {
     iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -I "$REPO_ROOT/rtl/core" \
         -s "$tb_module" \
         -P "$tb_module.CPU_IMPL=$cpu_impl" \
+        -P "$firmware_param" \
         "${extra_params[@]}" \
         -o "$out_file" \
         "$tb_file" \
         "$REPO_ROOT/rtl/core/picorv32.v" \
         "$REPO_ROOT/rtl/core/darkriscv.v" \
         "$REPO_ROOT/rtl/soc/tecplus_minisoc_top.v" \
+        "$REPO_ROOT/rtl/soc/bootloader_ctrl.v" \
         "$REPO_ROOT/rtl/soc/tecplus_cpu_wrapper.v" \
         "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
         "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
@@ -160,6 +180,10 @@ compile_minisoc_perf_tb() {
     local tb_file="$4"
     local result_cycle_addr="${PERF_RESULT_CYCLE_ADDR:-}"
     local result_instret_addr="${PERF_RESULT_INSTRET_ADDR:-}"
+    local firmware_param
+
+    prepare_firmware
+    firmware_param="$tb_module.FIRMWARE_MEM_FILE=\"$FIRMWARE_MEM\""
 
     if [ -z "$result_cycle_addr" ] || [ -z "$result_instret_addr" ]; then
         echo "缺少 PERF_RESULT_CYCLE_ADDR / PERF_RESULT_INSTRET_ADDR；请先提供 firmware 中 perf 结果符号地址，或直接运行 scripts/compare_cpu_perf.sh" >&2
@@ -179,6 +203,7 @@ compile_minisoc_perf_tb() {
     iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -I "$REPO_ROOT/rtl/core" \
         -s "$tb_module" \
         -P "$tb_module.CPU_IMPL=$cpu_impl" \
+        -P "$firmware_param" \
         -P "$tb_module.RESULT_CYCLE_ADDR=$result_cycle_addr" \
         -P "$tb_module.RESULT_INSTRET_ADDR=$result_instret_addr" \
         -o "$out_file" \
@@ -186,6 +211,7 @@ compile_minisoc_perf_tb() {
         "$REPO_ROOT/rtl/core/picorv32.v" \
         "$REPO_ROOT/rtl/core/darkriscv.v" \
         "$REPO_ROOT/rtl/soc/tecplus_minisoc_top.v" \
+        "$REPO_ROOT/rtl/soc/bootloader_ctrl.v" \
         "$REPO_ROOT/rtl/soc/tecplus_cpu_wrapper.v" \
         "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
         "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
@@ -211,6 +237,13 @@ case "$SIM_KIND" in
             "$REPO_ROOT/sim/tb_uart_rx.v" \
             "$REPO_ROOT/rtl/periph/uart_rx.v"
         run_and_check "$BUILD_DIR/tb_uart_rx.log" vvp "$BUILD_DIR/tb_uart_rx.out"
+        ;;
+    bootloader_ctrl)
+        iverilog -g2001 -s tb_bootloader_ctrl \
+            -o "$BUILD_DIR/tb_bootloader_ctrl.out" \
+            "$REPO_ROOT/sim/tb_bootloader_ctrl.v" \
+            "$REPO_ROOT/rtl/soc/bootloader_ctrl.v"
+        run_and_check "$BUILD_DIR/tb_bootloader_ctrl.log" vvp "$BUILD_DIR/tb_bootloader_ctrl.out"
         ;;
     traffic_light_gpio)
         iverilog -g2001 -o "$BUILD_DIR/tb_traffic_light_gpio.out" \
@@ -273,6 +306,14 @@ case "$SIM_KIND" in
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v"
         run_and_check "$BUILD_DIR/tb_minisoc_dark.log" vvp "$BUILD_DIR/tb_minisoc_dark.out"
         ;;
+    bootloader_pico)
+        compile_minisoc_tb "$BUILD_DIR/tb_bootloader_pico.out" 0 tb_minisoc_bootloader "$REPO_ROOT/sim/tb_minisoc_bootloader.v"
+        run_and_check "$BUILD_DIR/tb_bootloader_pico.log" vvp "$BUILD_DIR/tb_bootloader_pico.out"
+        ;;
+    bootloader_dark)
+        compile_minisoc_tb "$BUILD_DIR/tb_bootloader_dark.out" 1 tb_minisoc_bootloader "$REPO_ROOT/sim/tb_minisoc_bootloader.v"
+        run_and_check "$BUILD_DIR/tb_bootloader_dark.log" vvp "$BUILD_DIR/tb_bootloader_dark.out"
+        ;;
     minisoc_smoke_pico)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_smoke_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
         run_and_check "$BUILD_DIR/tb_minisoc_smoke_pico.log" vvp "$BUILD_DIR/tb_minisoc_smoke_pico.out"
@@ -282,12 +323,12 @@ case "$SIM_KIND" in
         run_and_check "$BUILD_DIR/tb_minisoc_smoke_dark.log" vvp "$BUILD_DIR/tb_minisoc_smoke_dark.out"
         ;;
     minisoc_sdram_pico)
-        build_sdram_firmware
+        FIRMWARE_MAIN="$SDRAM_FIRMWARE_MAIN"
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_pico.out" 0 tb_minisoc_sdram "$REPO_ROOT/sim/tb_minisoc_sdram.v"
         run_and_check "$BUILD_DIR/tb_minisoc_sdram_pico.log" vvp "$BUILD_DIR/tb_minisoc_sdram_pico.out"
         ;;
     minisoc_sdram_dark)
-        build_sdram_firmware
+        FIRMWARE_MAIN="$SDRAM_FIRMWARE_MAIN"
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_dark.out" 1 tb_minisoc_sdram "$REPO_ROOT/sim/tb_minisoc_sdram.v"
         run_and_check "$BUILD_DIR/tb_minisoc_sdram_dark.log" vvp "$BUILD_DIR/tb_minisoc_sdram_dark.out"
         ;;
@@ -453,7 +494,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
+        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
         exit 1
         ;;
 esac

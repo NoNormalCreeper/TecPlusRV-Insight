@@ -1,7 +1,6 @@
 {
   "prerequisites": {
     "check_env": ["bash", "scripts/check_env.sh"],
-    "firmware": ["bash", "scripts/build_firmware.sh"],
     "rtl_syntax": ["python3", "scripts/test_runner.py", "run-suite", "rtl_syntax_internal"]
   },
   "cases": [
@@ -24,6 +23,12 @@
       "args": ["uart_rx"]
     },
     {
+      "id": "rtl_syntax__bootloader_ctrl",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["bootloader_ctrl"]
+    },
+    {
       "id": "rtl_syntax__traffic_light_gpio",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -33,13 +38,13 @@
       "id": "minisoc_sdram_pico",
       "kind": "sim",
       "sim_target": "minisoc_sdram_pico",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "minisoc_sdram_dark",
       "kind": "sim",
       "sim_target": "minisoc_sdram_dark",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "rtl_syntax__buzzer_pwm",
@@ -252,6 +257,11 @@
       "sim_target": "uart_rx"
     },
     {
+      "id": "bootloader_ctrl",
+      "kind": "sim",
+      "sim_target": "bootloader_ctrl"
+    },
+    {
       "id": "traffic_light_gpio",
       "kind": "sim",
       "sim_target": "traffic_light_gpio"
@@ -330,7 +340,7 @@
       "id": "minisoc_smoke_pico",
       "kind": "sim",
       "sim_target": "minisoc_smoke_pico",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "minisoc_smoke_dark",
@@ -338,10 +348,31 @@
       "sim_target": "minisoc_smoke_dark"
     },
     {
+      "id": "bootloader_pico",
+      "kind": "sim",
+      "sim_target": "bootloader_pico",
+      "requires": ["rtl_syntax"]
+    },
+    {
+      "id": "bootloader_dark",
+      "kind": "sim",
+      "sim_target": "bootloader_dark"
+    },
+    {
+      "id": "uart_loader_tool",
+      "kind": "command",
+      "command": ["python3", "scripts/test_uart_loader.py"]
+    },
+    {
+      "id": "firmware_output_isolation",
+      "kind": "script",
+      "script": "scripts/test_firmware_output_isolation.sh"
+    },
+    {
       "id": "minisoc_counter_source_pico",
       "kind": "sim",
       "sim_target": "minisoc_counter_source_pico",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "minisoc_counter_source_dark",
@@ -352,7 +383,7 @@
       "id": "minisoc_counter_reset_pico",
       "kind": "sim",
       "sim_target": "minisoc_counter_reset_pico",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "minisoc_counter_reset_dark",
@@ -363,31 +394,31 @@
       "id": "tb_mode_check",
       "kind": "script",
       "script": "scripts/test_minisoc_tb_modes.sh",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "uart_once_regression",
       "kind": "script",
       "script": "scripts/test_uart_once_regression.sh",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "uart_echo_regression",
       "kind": "script",
       "script": "scripts/test_uart_echo_regression.sh",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "traffic_light_regression",
       "kind": "script",
       "script": "scripts/test_traffic_light_regression.sh",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "buzzer_regression",
       "kind": "script",
       "script": "scripts/test_buzzer_regression.sh",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "perf_targets_require_addrs",
@@ -398,7 +429,7 @@
       "id": "dual_core_regression",
       "kind": "script",
       "script": "scripts/test_dual_core_regression.sh",
-      "requires": ["firmware", "rtl_syntax"]
+      "requires": ["rtl_syntax"]
     },
     {
       "id": "rv32ui_safe",
@@ -427,6 +458,7 @@
       "rtl_syntax__probe_led_key_top",
       "rtl_syntax__probe_uart_top",
       "rtl_syntax__uart_rx",
+      "rtl_syntax__bootloader_ctrl",
       "rtl_syntax__traffic_light_gpio",
       "rtl_syntax__buzzer_pwm",
       "rtl_syntax__sdram_smoke_ctrl",
@@ -479,6 +511,7 @@
       "tinybus_decode",
       "mmio_test_exit",
       "uart_rx",
+      "bootloader_ctrl",
       "traffic_light_gpio",
       "buzzer_pwm",
       "font_rom_8x8",
@@ -487,6 +520,10 @@
     "soc": [
       "minisoc_smoke_pico",
       "minisoc_smoke_dark",
+      "bootloader_pico",
+      "bootloader_dark",
+      "uart_loader_tool",
+      "firmware_output_isolation",
       "minisoc_sdram_pico",
       "minisoc_sdram_dark",
       "minisoc_counter_source_pico",

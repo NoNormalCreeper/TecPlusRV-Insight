@@ -13,8 +13,6 @@ cleanup() {
 
 trap cleanup EXIT
 
-"$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
-
 for sim_kind in minisoc_perf_pico minisoc_perf_dark; do
     if PERF_RESULT_CYCLE_ADDR= PERF_RESULT_INSTRET_ADDR= \
         "$REPO_ROOT/sim/run_sim.sh" "$sim_kind" >"$TMP_LOG" 2>&1; then

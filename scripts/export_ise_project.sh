@@ -12,6 +12,7 @@ BUILD_FIRMWARE_SCRIPT="$REPO_ROOT/scripts/build_firmware.sh"
 ISE_TARGET=${1:-minisoc}
 EXPORT_DIR=${2:-$REPO_ROOT/build/ise-export/$ISE_TARGET}
 ISE_EXPORT_MODE=${ISE_EXPORT_MODE:-minimal}
+ISE_FIRMWARE_OUT="$REPO_ROOT/firmware/build/ise/$ISE_TARGET/firmware"
 
 need_file() {
     local rel="$1"
@@ -56,6 +57,19 @@ copy_if_exists() {
     if [ -f "$REPO_ROOT/$rel" ]; then
         copy_rel "$rel"
     fi
+}
+
+copy_firmware_mem() {
+    local src="$ISE_FIRMWARE_OUT.mem"
+    local rel="firmware/build/firmware.mem"
+    local dst="$EXPORT_DIR/$rel"
+    if [ ! -f "$src" ]; then
+        echo "缺少 ISE firmware：$src" >&2
+        exit 1
+    fi
+    mkdir -p "$(dirname "$dst")"
+    cp "$src" "$dst"
+    printf '%s\n' "$rel" >>"$EXPORT_DIR/files.list"
 }
 
 write_readme() {
@@ -211,13 +225,15 @@ package_minisoc() {
     local cpu_note="如果当前工程支持双核 wrapper，可在 ISE 的 Generics, Parameters 中覆写 CPU_IMPL：0 表示 PicoRV32，1 表示 DarkRISCV。"
 
     if [ -n "$firmware_main" ]; then
-        FIRMWARE_MAIN="$firmware_main" "$BUILD_FIRMWARE_SCRIPT"
+        FIRMWARE_MAIN="$firmware_main" FIRMWARE_OUT="$ISE_FIRMWARE_OUT" \
+            "$BUILD_FIRMWARE_SCRIPT"
     else
-        "$BUILD_FIRMWARE_SCRIPT"
+        FIRMWARE_OUT="$ISE_FIRMWARE_OUT" "$BUILD_FIRMWARE_SCRIPT"
     fi
 
     need_file "rtl/periph/uart_tx.v"
     need_file "rtl/periph/uart_rx.v"
+    need_file "rtl/soc/bootloader_ctrl.v"
     need_file "rtl/periph/traffic_light_gpio.v"
     need_file "rtl/periph/buzzer_pwm.v"
     need_file "rtl/soc/tinybus_decode.v"
@@ -225,10 +241,10 @@ package_minisoc() {
     need_file "rtl/soc/sdram_data_ctrl.v"
     need_file "rtl/soc/tecplus_minisoc_top.v"
     need_file "$ucf"
-    need_file "firmware/build/firmware.mem"
 
     copy_flat "rtl/periph/uart_tx.v"
     copy_flat "rtl/periph/uart_rx.v"
+    copy_flat "rtl/soc/bootloader_ctrl.v"
     copy_flat "rtl/periph/traffic_light_gpio.v"
     copy_flat "rtl/periph/buzzer_pwm.v"
     copy_flat "rtl/soc/tinybus_decode.v"
@@ -250,7 +266,7 @@ package_minisoc() {
     fi
 
     copy_flat "$ucf"
-    copy_rel "firmware/build/firmware.mem"
+    copy_firmware_mem
     write_readme "$top" "$(basename "$ucf")" "$target_note"$'\n'"$cpu_note"$'\n'"MiniSoC 已接入 U2 x16 SDRAM；SDRAM_CLK_INVERT 默认沿用 Probe 4 的反相时钟设置。"$'\n'"注意：源码和约束已经摊平到导出目录根部，但 firmware.mem 仍应保持 firmware/build/firmware.mem 这个相对路径。"
 }
 
@@ -292,6 +308,9 @@ case "$ISE_TARGET" in
         ;;
     minisoc|minisoc_pico|minisoc_dark)
         package_minisoc
+        ;;
+    minisoc_bootloader|bootloader)
+        package_minisoc "$REPO_ROOT/firmware/tests/boot_payload.c" "这是 UART bootloader 目标。请在 ISE 的 Generics, Parameters 中设置 BOOTLOADER_ENABLE=1；程序复位后等待 READY，再通过 scripts/uart_loader.py 下发 firmware.bin。"
         ;;
     probe_minisoc_sdram|minisoc_sdram_probe|m2b_probe)
         package_minisoc "$REPO_ROOT/firmware/tests/sdram_memtest.c" "这是 M2b 板级 probe：真实 CPU 从 BRAM 取指，经数据总线访问 BRAM、TinyBus MMIO 与 U2 SDRAM。LED=5 且 UART 打印 all patterns verified 表示通过。"

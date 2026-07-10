@@ -2,6 +2,7 @@
 
 module tb_minisoc_perf #(
     parameter integer CPU_IMPL = 0,
+    parameter FIRMWARE_MEM_FILE = "firmware/build/firmware.mem",
     parameter [31:0] EXPECT_EXIT_CODE = 32'h0000_0001,
     parameter [31:0] RESULT_CYCLE_ADDR = 32'hffff_ffff,
     parameter [31:0] RESULT_INSTRET_ADDR = 32'hffff_ffff,
@@ -26,7 +27,7 @@ tecplus_minisoc_top #(
     .UART_BAUD(100000),
     .CPU_IMPL(CPU_IMPL),
     .BRAM_ADDR_WIDTH(14),
-    .BRAM_INIT_FILE("firmware/build/firmware.mem")
+    .BRAM_INIT_FILE(FIRMWARE_MEM_FILE)
 ) dut (
     .clk(clk),
     .reset(reset),

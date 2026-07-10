@@ -7,8 +7,8 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 PERF_MAIN=${1:-$REPO_ROOT/firmware/tests/perf_mix.c}
-DEFAULT_MAIN="$REPO_ROOT/firmware/main.c"
 PERF_DIR="$REPO_ROOT/sim/build/perf"
+FIRMWARE_OUT="$REPO_ROOT/firmware/build/perf/firmware"
 OBJDUMP=${OBJDUMP:-riscv64-unknown-elf-objdump}
 
 mkdir -p "$PERF_DIR"
@@ -17,10 +17,6 @@ if ! command -v "$OBJDUMP" >/dev/null 2>&1; then
     echo "缺少必需工具：$OBJDUMP" >&2
     exit 1
 fi
-
-restore_default() {
-    FIRMWARE_MAIN="$DEFAULT_MAIN" "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
-}
 
 extract_field() {
     local log_file="$1"
@@ -41,7 +37,7 @@ extract_field() {
 extract_symbol_addr() {
     local symbol_name="$1"
 
-    "$OBJDUMP" -t "$REPO_ROOT/firmware/build/firmware.elf" | awk -v sym="$symbol_name" '
+    "$OBJDUMP" -t "$FIRMWARE_OUT.elf" | awk -v sym="$symbol_name" '
         $NF == sym {
             print "0x" $1;
             exit;
@@ -49,10 +45,9 @@ extract_symbol_addr() {
     '
 }
 
-trap restore_default EXIT
-
 echo "=== 构建性能 benchmark ==="
-FIRMWARE_MAIN="$PERF_MAIN" "$REPO_ROOT/scripts/build_firmware.sh"
+FIRMWARE_MAIN="$PERF_MAIN" FIRMWARE_OUT="$FIRMWARE_OUT" \
+    "$REPO_ROOT/scripts/build_firmware.sh"
 
 PERF_RESULT_CYCLE_ADDR=$(extract_symbol_addr "perf_cycle_delta")
 PERF_RESULT_INSTRET_ADDR=$(extract_symbol_addr "perf_instret_delta")
@@ -66,6 +61,7 @@ echo
 echo "=== PicoRV32 ==="
 PERF_RESULT_CYCLE_ADDR="$PERF_RESULT_CYCLE_ADDR" \
 PERF_RESULT_INSTRET_ADDR="$PERF_RESULT_INSTRET_ADDR" \
+FIRMWARE_MEM="$FIRMWARE_OUT.mem" \
     "$REPO_ROOT/sim/run_sim.sh" minisoc_perf_pico
 cp "$REPO_ROOT/sim/build/tb_minisoc_perf_pico.log" "$PERF_DIR/pico.log"
 
@@ -73,6 +69,7 @@ echo
 echo "=== DarkRISCV ==="
 PERF_RESULT_CYCLE_ADDR="$PERF_RESULT_CYCLE_ADDR" \
 PERF_RESULT_INSTRET_ADDR="$PERF_RESULT_INSTRET_ADDR" \
+FIRMWARE_MEM="$FIRMWARE_OUT.mem" \
     "$REPO_ROOT/sim/run_sim.sh" minisoc_perf_dark
 cp "$REPO_ROOT/sim/build/tb_minisoc_perf_dark.log" "$PERF_DIR/dark.log"
 

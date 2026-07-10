@@ -5,16 +5,11 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 BUZZER_MAIN="$REPO_ROOT/firmware/tests/buzzer_mmio.c"
-DEFAULT_MAIN="$REPO_ROOT/firmware/main.c"
+FIRMWARE_OUT="$REPO_ROOT/firmware/build/regression/buzzer/firmware"
 
-cleanup() {
-    FIRMWARE_MAIN="$DEFAULT_MAIN" "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null || true
-}
-
-trap cleanup EXIT
-
-FIRMWARE_MAIN="$BUZZER_MAIN" "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
-"$REPO_ROOT/sim/run_sim.sh" minisoc_buzzer_pico
-"$REPO_ROOT/sim/run_sim.sh" minisoc_buzzer_dark
+FIRMWARE_MAIN="$BUZZER_MAIN" FIRMWARE_OUT="$FIRMWARE_OUT" \
+    "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
+FIRMWARE_MEM="$FIRMWARE_OUT.mem" "$REPO_ROOT/sim/run_sim.sh" minisoc_buzzer_pico
+FIRMWARE_MEM="$FIRMWARE_OUT.mem" "$REPO_ROOT/sim/run_sim.sh" minisoc_buzzer_dark
 
 echo "PASS: buzzer MMIO passed on both CPU implementations"

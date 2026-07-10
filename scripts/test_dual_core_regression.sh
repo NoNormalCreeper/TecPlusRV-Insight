@@ -11,18 +11,13 @@ TESTS=${TESTS:-"smoke alu_branch load_store counters perf_mix sdram_memtest runt
 
 mkdir -p "$REGRESSION_DIR"
 
-restore_default() {
-    FIRMWARE_MAIN="$DEFAULT_MAIN" "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
-}
-
-trap restore_default EXIT
-
 for test_name in $TESTS; do
     test_main="$REPO_ROOT/firmware/tests/$test_name.c"
     pico_target="minisoc_pico"
     dark_target="minisoc_dark"
     pico_log="tb_minisoc_pico.log"
     dark_log="tb_minisoc_dark.log"
+    firmware_out="$REPO_ROOT/firmware/build/regression/$test_name/firmware"
 
     case "$test_name" in
         sdram_memtest|sdram_sum_bench|runtime_heap_smoke)
@@ -34,18 +29,19 @@ for test_name in $TESTS; do
     esac
 
     echo "=== 构建 firmware 测试：$test_name ==="
-    FIRMWARE_MAIN="$test_main" "$REPO_ROOT/scripts/build_firmware.sh"
+    FIRMWARE_MAIN="$test_main" FIRMWARE_OUT="$firmware_out" \
+        "$REPO_ROOT/scripts/build_firmware.sh"
 
-    if [ -f "$REPO_ROOT/firmware/build/firmware.lst" ]; then
-        cp "$REPO_ROOT/firmware/build/firmware.lst" "$REGRESSION_DIR/$test_name.lst"
+    if [ -f "$firmware_out.lst" ]; then
+        cp "$firmware_out.lst" "$REGRESSION_DIR/$test_name.lst"
     fi
 
     echo "--- PicoRV32: $test_name ---"
-    FIRMWARE_MAIN="$test_main" "$REPO_ROOT/sim/run_sim.sh" "$pico_target"
+    FIRMWARE_MEM="$firmware_out.mem" "$REPO_ROOT/sim/run_sim.sh" "$pico_target"
     cp "$REPO_ROOT/sim/build/$pico_log" "$REGRESSION_DIR/${test_name}_pico.log"
 
     echo "--- DarkRISCV: $test_name ---"
-    FIRMWARE_MAIN="$test_main" "$REPO_ROOT/sim/run_sim.sh" "$dark_target"
+    FIRMWARE_MEM="$firmware_out.mem" "$REPO_ROOT/sim/run_sim.sh" "$dark_target"
     cp "$REPO_ROOT/sim/build/$dark_log" "$REGRESSION_DIR/${test_name}_dark.log"
 done
 

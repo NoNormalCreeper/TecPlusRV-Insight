@@ -8,6 +8,8 @@ module tecplus_minisoc_top #(
     parameter integer CPU_IMPL = 0,
     parameter integer BRAM_ADDR_WIDTH = 14,
     parameter integer SDRAM_CLK_INVERT = 1,
+    parameter integer BOOTLOADER_ENABLE = 0,
+    parameter integer BOOT_TIMEOUT_CYCLES = CLK_FREQ,
     parameter BRAM_INIT_FILE = "firmware/build/firmware.mem"
 ) (
     input        clk,
@@ -52,7 +54,11 @@ reg  [31:0] mem_rdata;
 wire        start_req;
 wire        bram_en;
 wire [BRAM_ADDR_WIDTH-1:0] bram_addr;
+wire [31:0] bram_wdata;
+wire [3:0] bram_wstrb;
 wire [31:0] bram_data_rdata;
+wire        cpu_bram_en;
+wire [BRAM_ADDR_WIDTH-1:0] cpu_bram_addr;
 
 wire        ifetch_is_bram;
 wire        ifetch_en;
@@ -104,6 +110,23 @@ wire        uart_rx_framing_error;
 wire        uart_rx_consume;
 wire        uart_overrun_clear;
 wire        uart_framing_error_clear;
+wire        uart_rx_ready;
+wire        uart_rx_overrun_clear;
+wire        uart_rx_framing_error_clear;
+wire        uart_tx_valid;
+wire [7:0]  uart_tx_data;
+wire        boot_active;
+wire        boot_cpu_release;
+wire        boot_rx_ready;
+wire        boot_rx_overrun_clear;
+wire        boot_rx_framing_error_clear;
+wire        boot_tx_valid;
+wire [7:0]  boot_tx_data;
+wire        boot_bram_en;
+wire [BRAM_ADDR_WIDTH-1:0] boot_bram_addr;
+wire [31:0] boot_bram_wdata;
+wire [3:0]  boot_bram_wstrb;
+wire [7:0]  boot_last_error;
 wire        test_exit_write;
 wire        traffic_write;
 wire        buzzer_ctrl_write;
@@ -132,7 +155,7 @@ wire mmio_done   = req_is_mmio && !mmio_stall;
 wire sdram_done  = req_is_sdram && (req_is_replay || sdram_resp_valid);
 wire respond     = pending && (bram_done || mmio_done || sdram_done);
 
-assign resetn = reset;
+assign resetn = reset && boot_cpu_release;
 assign rst = !reset;
 assign sh_clk = (SDRAM_CLK_INVERT != 0) ? !clk : clk;
 assign sh_db = sdram_dq_oe ? sdram_dq_out : 16'hzzzz;
@@ -142,8 +165,13 @@ assign start_req = mem_valid && !pending && !mem_ready;
 wire is_bram   = (mem_addr < BRAM_BYTES);
 wire is_sdram  = (mem_addr >= `TINYBUS_ADDR_SDRAM_BASE && mem_addr < `TINYBUS_ADDR_SDRAM_BASE + SDRAM_SIZE);
 wire is_mmio   = !(is_bram || is_sdram);   // 包括 0x1000_0000 和 0x2000_0000 等
-assign bram_en = start_req && is_bram;
-assign bram_addr = mem_addr[BRAM_ADDR_WIDTH+1:2];
+assign cpu_bram_en = start_req && is_bram;
+assign cpu_bram_addr = mem_addr[BRAM_ADDR_WIDTH+1:2];
+assign boot_active = (BOOTLOADER_ENABLE != 0) && !boot_cpu_release;
+assign bram_en = boot_active ? boot_bram_en : cpu_bram_en;
+assign bram_addr = boot_active ? boot_bram_addr : cpu_bram_addr;
+assign bram_wdata = boot_active ? boot_bram_wdata : mem_wdata;
+assign bram_wstrb = boot_active ? boot_bram_wstrb : mem_wstrb;
 assign ifetch_is_bram = (ifetch_addr < BRAM_BYTES);
 assign ifetch_en = ifetch_valid && !ifetch_pending && ifetch_is_bram;
 assign ifetch_bram_addr = ifetch_addr[BRAM_ADDR_WIDTH+1:2];
@@ -193,6 +221,12 @@ assign uart_overrun_clear =
 assign uart_framing_error_clear =
     respond && req_is_mmio && !req_is_replay &&
     uart_status_sel && mmio_write_en && req_wdata[3];
+assign uart_rx_ready = boot_active ? boot_rx_ready : uart_rx_consume;
+assign uart_rx_overrun_clear = boot_active ? boot_rx_overrun_clear : uart_overrun_clear;
+assign uart_rx_framing_error_clear =
+    boot_active ? boot_rx_framing_error_clear : uart_framing_error_clear;
+assign uart_tx_valid = boot_active ? boot_tx_valid : uart_fire;
+assign uart_tx_data = boot_active ? boot_tx_data : req_wdata[7:0];
 assign test_exit_write = respond && req_is_mmio && !req_is_replay && test_exit_sel && mmio_write_en;
 assign traffic_write = respond && req_is_mmio && !req_is_replay && traffic_sel && mmio_write_en;
 assign buzzer_ctrl_write = respond && !req_is_bram && !req_is_replay && buzzer_ctrl_sel && mmio_write_en;
@@ -227,8 +261,8 @@ bram_dualport #(
     .clk_a(clk),
     .en_a(bram_en),
     .addr_a(bram_addr),
-    .wdata_a(mem_wdata),
-    .wstrb_a(mem_wstrb),
+    .wdata_a(bram_wdata),
+    .wstrb_a(bram_wstrb),
     .rdata_a(bram_data_rdata),
     .clk_b(clk),
     .en_b(ifetch_en),
@@ -311,8 +345,8 @@ uart_tx #(
 ) u_uart_tx (
     .clk(clk),
     .reset(rst),
-    .valid(uart_fire),
-    .data_in(req_wdata[7:0]),
+    .valid(uart_tx_valid),
+    .data_in(uart_tx_data),
     .ready(uart_tx_ready),
     .txd(uart_txd)
 );
@@ -324,14 +358,54 @@ uart_rx #(
     .clk(clk),
     .reset(rst),
     .rxd(uart_rxd),
-    .data_ready(uart_rx_consume),
-    .clear_overrun(uart_overrun_clear),
-    .clear_framing_error(uart_framing_error_clear),
+    .data_ready(uart_rx_ready),
+    .clear_overrun(uart_rx_overrun_clear),
+    .clear_framing_error(uart_rx_framing_error_clear),
     .data_out(uart_rx_data),
     .data_valid(uart_rx_valid),
     .overrun(uart_rx_overrun),
     .framing_error(uart_rx_framing_error)
 );
+
+generate
+    if (BOOTLOADER_ENABLE != 0) begin : g_bootloader
+        bootloader_ctrl #(
+            .BRAM_ADDR_WIDTH(BRAM_ADDR_WIDTH),
+            .INTERBYTE_TIMEOUT_CYCLES(BOOT_TIMEOUT_CYCLES)
+        ) u_bootloader (
+            .clk(clk),
+            .reset(rst),
+            .rx_data(uart_rx_data),
+            .rx_valid(uart_rx_valid),
+            .rx_overrun(uart_rx_overrun),
+            .rx_framing_error(uart_rx_framing_error),
+            .rx_ready(boot_rx_ready),
+            .clear_rx_overrun(boot_rx_overrun_clear),
+            .clear_rx_framing_error(boot_rx_framing_error_clear),
+            .tx_ready(uart_tx_ready),
+            .tx_valid(boot_tx_valid),
+            .tx_data(boot_tx_data),
+            .bram_en(boot_bram_en),
+            .bram_addr(boot_bram_addr),
+            .bram_wdata(boot_bram_wdata),
+            .bram_wstrb(boot_bram_wstrb),
+            .cpu_release(boot_cpu_release),
+            .last_error(boot_last_error)
+        );
+    end else begin : g_no_bootloader
+        assign boot_cpu_release = 1'b1;
+        assign boot_rx_ready = 1'b0;
+        assign boot_rx_overrun_clear = 1'b0;
+        assign boot_rx_framing_error_clear = 1'b0;
+        assign boot_tx_valid = 1'b0;
+        assign boot_tx_data = 8'h00;
+        assign boot_bram_en = 1'b0;
+        assign boot_bram_addr = {BRAM_ADDR_WIDTH{1'b0}};
+        assign boot_bram_wdata = 32'h0000_0000;
+        assign boot_bram_wstrb = 4'b0000;
+        assign boot_last_error = 8'h00;
+    end
+endgenerate
 
 traffic_light_gpio u_traffic_light (
     .clk(clk),

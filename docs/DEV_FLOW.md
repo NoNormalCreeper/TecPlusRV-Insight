@@ -231,7 +231,7 @@ ISE 真正关心的通常是：
 - `*.v`
 - `*.vh`
 - `*.ucf`
-- `firmware/build/firmware.mem`（如果 BRAM 要初始化）
+- 导出包内的 `firmware/build/firmware.mem`（如果 BRAM 要初始化）
 
 ISE 不关心的通常是：
 
@@ -370,7 +370,7 @@ ISE 不关心的通常是：
 要求：
 
 - 使用真实 CPU wrapper 和 vendored CPU 核
-- 使用真实 `firmware/build/firmware.mem`
+- 使用当前目标专属的真实 `firmware/build/sim/<target>/firmware.mem`
 - 使用统一的 `test_exit`
 - 结果收敛到 `PASS / FAIL / TIMEOUT`
 
@@ -431,6 +431,8 @@ make test-soc
 ```bash
 make firmware
 ```
+
+`make firmware` 是手动默认构建，生成 `firmware/build/firmware.*`。自动仿真、regression、perf、bootload 和 ISE export 都必须通过 `FIRMWARE_OUT` 使用专属目录，不能覆盖这组默认产物。
 
 2. 再跑：
 
@@ -533,14 +535,14 @@ make ise-export ISE_TARGET=probe_uart
 make ise-export ISE_TARGET=probe_minisoc_sdram
 ```
 
-导出目录默认是 `build/ise-export/<target>/`。其中 `.v` / `.vh` / `.ucf` 会摊平到导出目录根部，便于 ISE 直接导入；只有 `firmware/build/firmware.mem` 这类路径敏感文件继续保留目录结构，避免 `$readmemh` 路径失效。
+导出目录默认是 `build/ise-export/<target>/`。仓库中的构建产物放在 `firmware/build/ise/<target>/firmware.*`；导出脚本只把对应 `.mem` 复制到导出包内的 `firmware/build/firmware.mem`，保持 RTL 默认 `$readmemh` 相对路径，同时不改写仓库的手动默认产物。
 
 ### ISE 一般真正需要的输入
 
 - `rtl/**/*.v`
 - `rtl/**/*.vh`
 - `constraints/*.ucf`
-- `firmware/build/firmware.mem`（如果设计依赖 BRAM 初始化）
+- 导出包内的 `firmware/build/firmware.mem`（如果设计依赖 BRAM 初始化）
 
 ### ISE 一般不需要的输入
 
@@ -589,14 +591,14 @@ make ise-export ISE_TARGET=probe_minisoc_sdram
 - `rtl/soc/tecplus_minisoc_top.v`
 - `rtl/periph/uart_tx.v`
 - `constraints/tecplus_minisoc.ucf`
-- `firmware/build/firmware.mem`
+- 当前 ISE target 专属的 `firmware/build/ise/<target>/firmware.mem`
 
 注意这里的 `firmware.mem` 不是 ISE 输出，而是 ISE 的输入之一。
 
-所以如果是 SoC 路线，上板前通常要先跑：
+所以如果是 SoC 路线，推荐直接让导出目标构建并打包自己的 firmware：
 
 ```bash
-scripts/build_firmware.sh
+make ise-export ISE_TARGET=minisoc
 ```
 
 ## ISE 里实际应该怎么操作
@@ -624,7 +626,7 @@ scripts/build_firmware.sh
 
 在综合前确认：
 
-- `firmware/build/firmware.mem` 已重新生成
+- 导出包内的 `firmware/build/firmware.mem` 已由当前 ISE target 重新生成
 - ISE 工程工作目录下能正确找到该文件
 - Map report 里 64 KiB 启动内存应主要消耗 `RAMB16BWER` / `RAMB8BWER`；如果看到大量 `Slice LUTs used as Memory`，说明 BRAM 没有被正确推断。
 
@@ -812,8 +814,49 @@ thin probe 的价值是早发现底层风险，不是替代后续完整系统。
 6. `Probe 4a`
 7. `Probe 5a`
 8. 板级 `MiniSoC bring-up`
+9. UART bootloader：模块仿真 -> 双核 SoC 仿真 -> ISE -> RESET 重复下载
 
 如果 `Probe 0` 和 `Probe 1` 还没稳定，就不要急着上完整 SoC。
+
+## UART bootloader 开发与上板顺序
+
+bootloader v1 固定走 `UART -> BRAM 0x0000_0000 -> CPU release`。默认 MiniSoC 参数 `BOOTLOADER_ENABLE=0`，因此旧 firmware 回归仍直接使用 `firmware.mem`；只有 bootloader ISE 目标需要把参数设为 1。
+
+本地先跑：
+
+```bash
+./sim/run_sim.sh bootloader_ctrl
+./sim/run_sim.sh bootloader_pico
+./sim/run_sim.sh bootloader_dark
+python3 scripts/test_uart_loader.py
+```
+
+再构建真实 payload 并检查封包：
+
+```bash
+FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" \
+FIRMWARE_OUT=firmware/build/manual/boot_payload \
+  ./scripts/build_firmware.sh
+python3 scripts/uart_loader.py \
+  --input firmware/build/manual/boot_payload.bin \
+  --dry-run
+```
+
+ISE 导出：
+
+```bash
+make ise-export ISE_TARGET=minisoc_bootloader
+```
+
+导入后在 ISE 的 `Generics, Parameters` 中设置 `BOOTLOADER_ENABLE=1`。Windows + WSL2 上板，可参考文档 WINDOWS_WSL_UART.md，推荐让串口留在 Windows，并在 WSL 执行：
+
+```bash
+make bootload PORT=COM8
+```
+
+该目标会依次构建、上传并进入 serial monitor。看到提示后按下并松开 RESET；收到 READY 后发送，收到 ACK 后 CPU 才运行。换程序只需退出 monitor、再次执行该目标并按 RESET，不需要重新下载 bitstream。
+
+协议字段、错误码和真实串口命令统一以 `docs/BOOTLOADER_PROTOCOL.md` 为准，不要在其他文档复制另一套常量。
 
 ## 不能误判的几点
 
