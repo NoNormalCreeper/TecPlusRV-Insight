@@ -1,0 +1,9 @@
+run_id=issue19-final
+timestamp_utc=2026-07-10T15:30:07Z
+git_commit=627e871a90442c389eae53d3ac9935438fc95039
+git_status=0 modified_paths
+host=Linux 6.18.33.2-microsoft-standard-WSL2 x86_64 GNU/Linux
+iverilog=Icarus Verilog version 11.0 (stable) ()
+riscv_gcc=riscv64-unknown-elf-gcc () 10.2.0
+clock_hz=1000000 (tb_minisoc / tb_minisoc_sdram parameter)
+counter_scope=firmware perf_begin/perf_end delta; mem_wait counts data-port wait cycles

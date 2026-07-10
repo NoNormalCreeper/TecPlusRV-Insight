@@ -39,3 +39,7 @@ BENCHMARK_RUN_ID=after-change make perf
 4. 优化优先级通常是：把热数据放入 BRAM、批量使用 32-bit 对齐的 `memcpy/memset`、减少 SDRAM 往返访问；若后续要继续扩展，再评估小型 Cache 或 burst/line buffer。每项优化前后均应使用固定 `BENCHMARK_RUN_ID` 重跑并保存两份表。
 
 `sdram_overlap_read` 是正确性回归而非性能表项：它以最小滑动窗口重叠读覆盖 DarkRISCV 的 SDRAM 请求重放路径，已加入双核 regression。
+
+## 已归档的 #19 基线
+
+2026-07-10 的完整仿真样本已固定在 [`results/issue19-2026-07-10/`](../results/issue19-2026-07-10/)，课程化的结论见 [`reports/issue19-performance-summary.md`](../reports/issue19-performance-summary.md)。该样本是 Icarus 仿真基线，不是板级 benchmark；后续优化和上板 PPA 的记录方式见 [`docs/FUTURE_PERFORMANCE_PLAN.md`](FUTURE_PERFORMANCE_PLAN.md)。
