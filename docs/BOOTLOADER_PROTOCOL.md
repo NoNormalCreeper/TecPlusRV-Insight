@@ -119,18 +119,22 @@ Windows + WSL2 推荐直接在 WSL 仓库根目录执行：
 make bootload PORT=COM8
 ```
 
-该目标会构建 firmware，通过 Windows Python 打开 `COM8` 完成下载，并在收到 ACK 后使用同一个串口连接进入 serial monitor。完整环境配置见 `docs/WINDOWS_WSL_UART.md`。
+该目标会构建到专属的 `firmware/build/bootload/firmware.*`，不会改写手动构建的默认 `firmware/build/firmware.*`；随后通过 Windows Python 打开 `COM8` 完成下载，并在收到 ACK 后使用同一个串口连接进入 serial monitor。完整环境配置见 `docs/WINDOWS_WSL_UART.md`。
 
 构建测试 payload：
 
 ```bash
-FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" ./scripts/build_firmware.sh
+FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" \
+FIRMWARE_OUT=firmware/build/manual/boot_payload \
+  ./scripts/build_firmware.sh
 ```
 
 只检查封包结果：
 
 ```bash
-python3 scripts/uart_loader.py --input firmware/build/firmware.bin --dry-run
+python3 scripts/uart_loader.py \
+  --input firmware/build/manual/boot_payload.bin \
+  --dry-run
 ```
 
 真实发送需要 `pyserial`：
@@ -140,7 +144,7 @@ python3 -m pip install pyserial
 python3 scripts/uart_loader.py \
   --port /dev/ttyUSB0 \
   --baud 9600 \
-  --input firmware/build/firmware.bin \
+  --input firmware/build/manual/boot_payload.bin \
   --monitor
 ```
 

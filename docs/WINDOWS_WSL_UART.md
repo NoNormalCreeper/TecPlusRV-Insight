@@ -95,6 +95,8 @@ WSL 构建 firmware.bin
 -> host 原地进入 serial monitor
 ```
 
+`bootload` 的产物固定放在 `firmware/build/bootload/firmware.*`，不会覆盖显式 `make firmware` 生成的默认 `firmware/build/firmware.*`。
+
 loader 自身提示使用 cyan、错误使用 red；serial monitor 不修改 payload 的颜色或内容。按 `Enter` 或 `Ctrl+C` 均可退出；WSL 启动的 Windows 进程可能把 `Ctrl+C` 表现为 stdin EOF，loader 会将它同样视为退出请求。当前 monitor 只负责接收和显示，不把键盘输入发送给 payload。
 
 上传按 64-byte chunk 进行。如果在 `收到 READY，按 64-byte chunk 发送 ...` 之后再次按 RESET，host 会在收到新 READY 后废弃当前 attempt，并从 magic 自动整包重传；默认最多重传 3 次，超过上限才会失败退出。

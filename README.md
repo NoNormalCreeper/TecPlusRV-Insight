@@ -116,7 +116,7 @@ make test-smoke
 make test-all
 ```
 
-`make test-smoke` 的前置顺序固定为 `check_env -> firmware -> rtl_syntax`；当前 suite/case 覆盖关系以 `scripts/test_catalog.json` 和 `python3 scripts/test_runner.py list` 为准，不再在 README 里手抄一份 case 列表。
+`make test-smoke` 的公共前置顺序固定为 `check_env -> rtl_syntax`；需要 firmware 的 SoC case 会在执行时构建自己的隔离产物。当前 suite/case 覆盖关系以 `scripts/test_catalog.json` 和 `python3 scripts/test_runner.py list` 为准，不再在 README 里手抄一份 case 列表。
 
 `make test-all` 会在此基础上再跑：
 
@@ -183,6 +183,16 @@ python3 scripts/test_runner.py run-suite rtl_syntax_internal
 make firmware
 ```
 
+这条手动入口默认生成 `firmware/build/firmware.{elf,bin,mem,lst}`。需要指定入口、目录或文件名时，使用不带扩展名的 `FIRMWARE_OUT` 输出前缀：
+
+```bash
+make firmware \
+  FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" \
+  FIRMWARE_OUT=firmware/build/manual/boot_payload
+```
+
+自动目标不会改写默认 `firmware.*`：`bootload` 使用 `firmware/build/bootload/`，仿真使用 `firmware/build/sim/<target>/`，regression、perf 和 ISE export 也各自使用专属目录。
+
 在 Windows + WSL2 中，推荐让 CP2102 保持为 Windows `COMx`，由 WSL 一条命令完成构建、上传并进入 serial monitor：
 
 ```bash
@@ -237,8 +247,12 @@ python3 scripts/test_uart_loader.py
 构建并检查可下载 payload：
 
 ```bash
-FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" ./scripts/build_firmware.sh
-python3 scripts/uart_loader.py --input firmware/build/firmware.bin --dry-run
+FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" \
+FIRMWARE_OUT=firmware/build/manual/boot_payload \
+  ./scripts/build_firmware.sh
+python3 scripts/uart_loader.py \
+  --input firmware/build/manual/boot_payload.bin \
+  --dry-run
 ```
 
 真实串口命令和 `0xBADABB1E` wire protocol 见 `docs/BOOTLOADER_PROTOCOL.md`。
