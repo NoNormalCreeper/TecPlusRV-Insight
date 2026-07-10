@@ -15,6 +15,8 @@
 | `0x1000_0040` | 32 位 | 交通灯 TL11..TL0 原始输出与读回 |
 | `0x1000_0050` | 32 位 | 蜂鸣器控制寄存器 |
 | `0x1000_0054` | 32 位 | 蜂鸣器方波半周期 |
+| `0x1000_0060` | 32 位 | 实验性 VGA status；`VGA_TEXT_ENABLE=0` 时返回未就绪 |
+| `0x1001_0000 - 0x1001_04AF` | 1200 B | 实验性 write-only `40x30` packed tile window |
 | `0x2000_0000` | 区域基址 | accelerator base |
 | `0x8000_0000 - 0x81FF_FFFF` | 32 MiB | U2 SDRAM data-only 区域 |
 
@@ -26,6 +28,9 @@
 - 近期真正会用到的主要是 LED、KEY、UART、交通灯和 `test_exit`。
 - 计数器和 accelerator 项先写入地址图，方便后续 firmware 与总线接口提前稳定。
 - SDRAM 已通过 `sdram_data_ctrl` 接入 MiniSoC 数据总线；`ifetch_*` 仍只从 BRAM 取指。
+- writable text/tile VGA 只作为 BAM1 仿真和资源实验原型保留。它在 LX9 MiniSoC
+  中会 overmap，因此顶层参数 `VGA_TEXT_ENABLE` 默认是 0；后续轻量 1bpp 方案会
+  复用地址但收紧 framebuffer 窗口。
 
 ## UART 寄存器
 

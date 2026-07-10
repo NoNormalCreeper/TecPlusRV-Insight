@@ -10,6 +10,12 @@ module tecplus_minisoc_top #(
     parameter integer SDRAM_CLK_INVERT = 1,
     parameter integer BOOTLOADER_ENABLE = 0,
     parameter integer BOOT_TIMEOUT_CYCLES = CLK_FREQ,
+    // 当前 writable text/tile 原型在 LX9 MiniSoC 中会 overmap，默认不参与综合。
+    // 只在保留的 Bad Apple 仿真或后续资源实验中显式设为 1。
+    parameter integer VGA_TEXT_ENABLE = 0,
+    parameter VGA_MF_DEFAULT = 1'b0,
+    parameter VGA_CLR_DEFAULT = 1'b1,
+    parameter VGA_QD_DEFAULT = 1'b0,
     parameter BRAM_INIT_FILE = "firmware/build/firmware.mem"
 ) (
     input        clk,
@@ -20,6 +26,14 @@ module tecplus_minisoc_top #(
     output       uart_txd,
     output [11:0] tl,
     output       spk,
+    output       vga_r,
+    output       vga_g,
+    output       vga_b,
+    output       vga_hs,
+    output       vga_vs,
+    output       vga_mf,
+    output       vga_clr,
+    output       vga_qd,
     output       sh_clk,
     output       sh_cke,
     output       sh_ncs,
@@ -90,6 +104,7 @@ wire [31:0] instret_rdata;
 wire [31:0] traffic_rdata;
 wire [31:0] buzzer_ctrl_rdata;
 wire [31:0] buzzer_period_rdata;
+wire [31:0] vga_status_rdata;
 wire [31:0] cpu_cycle_count;
 wire [31:0] cpu_instret_count;
 wire [31:0] mmio_rdata;
@@ -101,6 +116,8 @@ wire        test_exit_sel;
 wire        traffic_sel;
 wire        buzzer_ctrl_sel;
 wire        buzzer_period_sel;
+wire        vga_status_sel;
+wire        vga_tile_sel;
 wire        uart_tx_ready;
 wire        uart_fire;
 wire [7:0]  uart_rx_data;
@@ -126,16 +143,26 @@ wire        boot_bram_en;
 wire [BRAM_ADDR_WIDTH-1:0] boot_bram_addr;
 wire [31:0] boot_bram_wdata;
 wire [3:0]  boot_bram_wstrb;
+wire        boot_sdram_req_valid;
+wire [31:0] boot_sdram_req_addr;
+wire [31:0] boot_sdram_req_wdata;
+wire [3:0]  boot_sdram_req_wstrb;
 wire [7:0]  boot_last_error;
 wire        test_exit_write;
 wire        traffic_write;
 wire        buzzer_ctrl_write;
 wire        buzzer_period_write;
+wire        vga_tile_write;
+wire        vga_ready;
+wire        vga_vblank;
+wire [15:0] vga_frame_count;
+wire [8:0]  vga_tile_addr;
 wire        buzzer_enabled;
 wire [31:0] buzzer_half_period;
 wire        mmio_stall;
 // SDRAM 内部请求与物理数据通路。
 wire        sdram_req_valid;
+wire        cpu_sdram_req_valid;
 wire        sdram_req_fire;
 wire        sdram_req_ready;
 wire        sdram_resp_valid;
@@ -160,6 +187,9 @@ assign rst = !reset;
 assign sh_clk = (SDRAM_CLK_INVERT != 0) ? !clk : clk;
 assign sh_db = sdram_dq_oe ? sdram_dq_out : 16'hzzzz;
 assign sdram_dq_in = sh_db;
+assign vga_mf = VGA_MF_DEFAULT;
+assign vga_clr = VGA_CLR_DEFAULT;
+assign vga_qd = VGA_QD_DEFAULT;
 
 assign start_req = mem_valid && !pending && !mem_ready;
 wire is_bram   = (mem_addr < BRAM_BYTES);
@@ -194,6 +224,8 @@ assign instret_rdata = cpu_instret_count;
 assign traffic_rdata = {20'h00000, tl};
 assign buzzer_ctrl_rdata = {31'h00000000, buzzer_enabled};
 assign buzzer_period_rdata = buzzer_half_period;
+assign vga_status_rdata = {vga_frame_count, 14'h0000, vga_ready, vga_vblank};
+assign vga_tile_addr = (req_addr - `TINYBUS_ADDR_VGA_TILE_BASE) >> 2;
 
 assign same_as_last_req =
     last_req_valid &&
@@ -203,9 +235,11 @@ assign same_as_last_req =
 
 // sdram_data_ctrl 使用 ready-first 握手：仅在 ready 已拉高时提交一次请求。
 // CPU 侧仍等待 resp_valid，sdram_req_sent 负责隔离“已提交”和“等待响应”。
-assign sdram_req_valid =
+assign cpu_sdram_req_valid =
     pending && req_is_sdram && !req_is_replay && !sdram_req_sent && sdram_req_ready;
-assign sdram_req_fire = sdram_req_valid && sdram_req_ready;
+// bootloader 运行时 CPU 保持 reset，因此这里只需切换 SDRAM 所有权，不需要通用 arbiter。
+assign sdram_req_valid = boot_active ? boot_sdram_req_valid : cpu_sdram_req_valid;
+assign sdram_req_fire = !boot_active && cpu_sdram_req_valid && sdram_req_ready;
 assign response_rdata =
     (req_is_replay && req_is_sdram) ? last_req_rdata :
     req_is_bram   ? bram_data_rdata :
@@ -231,6 +265,9 @@ assign test_exit_write = respond && req_is_mmio && !req_is_replay && test_exit_s
 assign traffic_write = respond && req_is_mmio && !req_is_replay && traffic_sel && mmio_write_en;
 assign buzzer_ctrl_write = respond && !req_is_bram && !req_is_replay && buzzer_ctrl_sel && mmio_write_en;
 assign buzzer_period_write = respond && !req_is_bram && !req_is_replay && buzzer_period_sel && mmio_write_en;
+assign vga_tile_write =
+    (VGA_TEXT_ENABLE != 0) && respond && req_is_mmio && !req_is_replay &&
+    vga_tile_sel && mmio_write_en;
 
 tecplus_cpu_wrapper #(
     .CPU_IMPL(CPU_IMPL),
@@ -286,10 +323,10 @@ sdram_data_ctrl #(
     .reset(rst),
     .req_valid(sdram_req_valid),
     .req_ready(sdram_req_ready),
-    .req_we(req_we_reg),
-    .req_addr(req_addr),
-    .req_wdata(req_wdata),
-    .req_wstrb(req_wstrb),
+    .req_we(boot_active ? 1'b1 : req_we_reg),
+    .req_addr(boot_active ? boot_sdram_req_addr : req_addr),
+    .req_wdata(boot_active ? boot_sdram_req_wdata : req_wdata),
+    .req_wstrb(boot_active ? boot_sdram_req_wstrb : req_wstrb),
     .resp_valid(sdram_resp_valid),
     .resp_rdata(sdram_resp_rdata),
     .resp_err(sdram_resp_err),
@@ -321,6 +358,7 @@ tinybus_decode u_decode (
     .traffic_rdata(traffic_rdata),
     .buzzer_ctrl_rdata(buzzer_ctrl_rdata),
     .buzzer_period_rdata(buzzer_period_rdata),
+    .vga_status_rdata(vga_status_rdata),
     .accel_rdata(32'h0000_0000),
     .rdata(mmio_rdata),
     .ready(),
@@ -335,6 +373,8 @@ tinybus_decode u_decode (
     .traffic_sel(traffic_sel),
     .buzzer_ctrl_sel(buzzer_ctrl_sel),
     .buzzer_period_sel(buzzer_period_sel),
+    .vga_status_sel(vga_status_sel),
+    .vga_tile_sel(vga_tile_sel),
     .accel_sel(),
     .write_data()
 );
@@ -389,6 +429,13 @@ generate
             .bram_addr(boot_bram_addr),
             .bram_wdata(boot_bram_wdata),
             .bram_wstrb(boot_bram_wstrb),
+            .sdram_req_valid(boot_sdram_req_valid),
+            .sdram_req_ready(sdram_req_ready),
+            .sdram_req_addr(boot_sdram_req_addr),
+            .sdram_req_wdata(boot_sdram_req_wdata),
+            .sdram_req_wstrb(boot_sdram_req_wstrb),
+            .sdram_resp_valid(sdram_resp_valid),
+            .sdram_resp_error(sdram_resp_err),
             .cpu_release(boot_cpu_release),
             .last_error(boot_last_error)
         );
@@ -403,6 +450,10 @@ generate
         assign boot_bram_addr = {BRAM_ADDR_WIDTH{1'b0}};
         assign boot_bram_wdata = 32'h0000_0000;
         assign boot_bram_wstrb = 4'b0000;
+        assign boot_sdram_req_valid = 1'b0;
+        assign boot_sdram_req_addr = 32'h0000_0000;
+        assign boot_sdram_req_wdata = 32'h0000_0000;
+        assign boot_sdram_req_wstrb = 4'b0000;
         assign boot_last_error = 8'h00;
     end
 endgenerate
@@ -427,6 +478,36 @@ buzzer_pwm u_buzzer (
     .half_period(buzzer_half_period),
     .spk(spk)
 );
+
+generate
+    if (VGA_TEXT_ENABLE != 0) begin : g_vga_text
+        vga_text_mode u_vga_text (
+            .clk(clk),
+            .reset(rst),
+            .tile_we(vga_tile_write),
+            .tile_addr(vga_tile_addr),
+            .tile_wdata(req_wdata),
+            .tile_wstrb(req_wstrb),
+            .ready(vga_ready),
+            .vblank(vga_vblank),
+            .frame_count(vga_frame_count),
+            .vga_r(vga_r),
+            .vga_g(vga_g),
+            .vga_b(vga_b),
+            .vga_hs(vga_hs),
+            .vga_vs(vga_vs)
+        );
+    end else begin : g_no_vga_text
+        assign vga_ready = 1'b0;
+        assign vga_vblank = 1'b0;
+        assign vga_frame_count = 16'h0000;
+        assign vga_r = 1'b0;
+        assign vga_g = 1'b0;
+        assign vga_b = 1'b0;
+        assign vga_hs = 1'b1;
+        assign vga_vs = 1'b1;
+    end
+endgenerate
 
 mmio_test_exit u_test_exit (
     .clk(clk),

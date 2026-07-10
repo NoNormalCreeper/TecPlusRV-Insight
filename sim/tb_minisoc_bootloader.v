@@ -22,8 +22,21 @@ wire [3:0] led;
 wire uart_txd;
 wire [11:0] tl;
 wire spk;
+wire sh_clk;
+wire sh_cke;
+wire sh_ncs;
+wire sh_nwe;
+wire sh_ncas;
+wire sh_nras;
+wire [1:0] sh_dqm;
+wire [1:0] sh_ba;
+wire [12:0] sh_a;
+wire [15:0] sh_db;
+wire [31:0] model_read_command_count;
+wire [31:0] model_write_command_count;
 
 integer wait_cycles;
+integer boot_sdram_req_count;
 reg [7:0] response_0;
 reg [7:0] response_1;
 
@@ -43,7 +56,33 @@ tecplus_minisoc_top #(
     .uart_rxd(uart_rxd),
     .uart_txd(uart_txd),
     .tl(tl),
-    .spk(spk)
+    .spk(spk),
+    .sh_clk(sh_clk),
+    .sh_cke(sh_cke),
+    .sh_ncs(sh_ncs),
+    .sh_nwe(sh_nwe),
+    .sh_ncas(sh_ncas),
+    .sh_nras(sh_nras),
+    .sh_dqm(sh_dqm),
+    .sh_ba(sh_ba),
+    .sh_a(sh_a),
+    .sh_db(sh_db)
+);
+
+sdram_x16_model model (
+    .clk(clk),
+    .reset(!reset),
+    .cke(sh_cke),
+    .cs_n(sh_ncs),
+    .ras_n(sh_nras),
+    .cas_n(sh_ncas),
+    .we_n(sh_nwe),
+    .dqm(sh_dqm),
+    .ba(sh_ba),
+    .addr(sh_a),
+    .dq(sh_db),
+    .read_command_count(model_read_command_count),
+    .write_command_count(model_write_command_count)
 );
 
 always #5 clk = ~clk;
@@ -105,6 +144,54 @@ task drive_uart_byte;
         @(negedge clk);
         uart_rxd = 1'b1;
         repeat (UART_CLKS_PER_BIT) @(posedge clk);
+    end
+endtask
+
+task send_image_packet;
+    input [7:0] exit_code;
+    reg [31:0] crc;
+    reg [31:0] final_crc;
+    reg [7:0] value;
+    integer byte_index;
+    begin
+        drive_uart_byte(8'h1e);
+        drive_uart_byte(8'hbb);
+        drive_uart_byte(8'hda);
+        drive_uart_byte(8'hba);
+        crc = 32'hffff_ffff;
+
+        drive_uart_byte(8'h01); crc = crc32_byte(crc, 8'h01);
+        drive_uart_byte(8'h02); crc = crc32_byte(crc, 8'h02);
+        drive_uart_byte(PAYLOAD_LEN[7:0]); crc = crc32_byte(crc, PAYLOAD_LEN[7:0]);
+        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        // SDRAM 地址 0x81000000，长度 8 bytes。
+        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        drive_uart_byte(8'h81); crc = crc32_byte(crc, 8'h81);
+        drive_uart_byte(8'h08); crc = crc32_byte(crc, 8'h08);
+        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+
+        for (byte_index = 0; byte_index < PAYLOAD_LEN; byte_index = byte_index + 1) begin
+            value = payload_byte(byte_index, exit_code);
+            drive_uart_byte(value);
+            crc = crc32_byte(crc, value);
+        end
+        for (byte_index = 0; byte_index < 8; byte_index = byte_index + 1) begin
+            value = 8'he0 + byte_index;
+            drive_uart_byte(value);
+            crc = crc32_byte(crc, value);
+        end
+
+        final_crc = ~crc;
+        drive_uart_byte(final_crc[7:0]);
+        drive_uart_byte(final_crc[15:8]);
+        drive_uart_byte(final_crc[23:16]);
+        drive_uart_byte(final_crc[31:24]);
     end
 endtask
 
@@ -203,6 +290,7 @@ initial begin
     reset = 1'b0;
     key = 4'b1111;
     uart_rxd = 1'b1;
+    boot_sdram_req_count = 0;
 
     $dumpfile("sim/build/tb_minisoc_bootloader.vcd");
     $dumpvars(0, tb_minisoc_bootloader);
@@ -238,12 +326,28 @@ initial begin
         $finish;
     end
 
-    send_packet(8'h02, 1'b0);
+    send_image_packet(8'h02);
     receive_response(8'h79, 8'h00);
     wait_exit_code(32'h0000_0002);
 
-    $display("PASS: bootloader CPU=%0d 支持错误重传与 RESET 后重新下载", CPU_IMPL);
+    if (boot_sdram_req_count != 2 || model_write_command_count != 4) begin
+        $display("FAIL: LOAD_IMAGE 没有形成 2 个 32-bit / 4 个 x16 SDRAM write：req=%0d cmd=%0d",
+                 boot_sdram_req_count, model_write_command_count);
+        $finish;
+    end
+
+    $display("PASS: bootloader CPU=%0d 支持 v1 重传与 LOAD_IMAGE 真实 SDRAM 写入", CPU_IMPL);
     $finish;
+end
+
+always @(posedge clk) begin
+    if (dut.boot_active && dut.boot_sdram_req_valid && dut.sdram_req_ready) begin
+        if (dut.boot_sdram_req_addr !== 32'h8100_0000 + boot_sdram_req_count * 4) begin
+            $display("FAIL: bootloader SDRAM 地址序列错误：%08x", dut.boot_sdram_req_addr);
+            $finish;
+        end
+        boot_sdram_req_count = boot_sdram_req_count + 1;
+    end
 end
 
 endmodule

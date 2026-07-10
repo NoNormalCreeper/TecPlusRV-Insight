@@ -1,14 +1,15 @@
-// 最小字符型 VGA 渲染骨架。
-// 当前目标不是做完整终端，而是先提供：
-// 1. 可直接上板观察的 banner
-// 2. 一个未来可被 MMIO 包装的单拍写口
-// 3. 最小字模与字符 RAM 结构
+// 字符 / tile VGA 实验原型。
+//
+// 第一版仍保持 40x30、单色、单 buffer，但把显示面整理成 32-bit packed word：
+// 每个 word 按 little-endian 保存四个连续 tile ID。这个写口可以直接接 TinyBus，
+// 也让后续 FULL/DELTA frame replay 只处理对齐的 word，不需要单字符读改写。
 //
 // 已知限制：
-// - 当前 cell 固定按 16x16 使用，内部把 8x8 字模水平/垂直各放大 2 倍。
-// - 字符集由独立 font_rom_8x8 提供，只覆盖本阶段需要的少量字符；
-//   未覆盖字符会显示为空。
-// - reset 后先逐字清空 RAM，再写入默认 banner。这样做比较啰嗦，但比依赖综合器对大数组 initial 的支持更稳。
+// - 默认 cell 固定为 16x16，由 8x8 glyph 横纵各放大 2 倍。
+// - glyph 仍来自当前最小 font_rom_8x8；custom glyph 留到真实视频编码阶段。
+// - tile RAM 使用 byte-write + async-read；接入 LX9 MiniSoC 后 ISE 会展开为大量
+//   FF/mux 并 overmap。因此该模块只作为 probe/仿真与后续资源实验保留，不能作为
+//   当前可上板 Bad Apple 显示方案。
 module vga_text_mode #(
     parameter integer CLK_DIV = 2,
     parameter integer H_VISIBLE = 640,
@@ -28,24 +29,29 @@ module vga_text_mode #(
 ) (
     input clk,
     input reset,
-    input cell_we,
-    input [5:0] cell_x,
-    input [4:0] cell_y,
-    input [7:0] cell_char,
+    input tile_we,
+    input [8:0] tile_addr,
+    input [31:0] tile_wdata,
+    input [3:0] tile_wstrb,
+    output ready,
+    output vblank,
+    output reg [15:0] frame_count,
     output reg vga_r,
     output reg vga_g,
     output reg vga_b,
-    output     vga_hs,
-    output     vga_vs
+    output vga_hs,
+    output vga_vs
 );
 
 localparam integer CHAR_COUNT = TEXT_COLS * TEXT_ROWS;
+localparam integer WORD_COUNT = (CHAR_COUNT + 3) / 4;
 localparam integer BANNER_LEN = 13;
 localparam [1:0] INIT_CLEAR = 2'd0;
 localparam [1:0] INIT_BANNER = 2'd1;
 localparam [1:0] INIT_DONE = 2'd2;
 
-reg [7:0] char_ram [0:CHAR_COUNT-1];
+(* ram_style = "distributed" *)
+reg [31:0] tile_ram [0:WORD_COUNT-1];
 reg [1:0] init_state;
 reg [11:0] init_index;
 reg init_done;
@@ -61,11 +67,14 @@ wire vsync;
 reg [7:0] current_char;
 wire [7:0] current_glyph_row;
 reg pixel_on;
-integer write_index;
 integer banner_index;
+integer banner_word_index;
+integer banner_lane;
 integer current_cell_x;
 integer current_cell_y;
 integer current_cell_index;
+integer current_word_index;
+integer current_lane;
 integer cell_pixel_x;
 integer cell_pixel_y;
 integer glyph_col;
@@ -122,37 +131,55 @@ vga_timing_640x480 #(
 
 assign vga_hs = hsync;
 assign vga_vs = vsync;
+assign ready = init_done;
+assign vblank = (pixel_y >= V_VISIBLE);
 
 always @(posedge clk) begin
     if (reset) begin
         init_state <= INIT_CLEAR;
         init_index <= 12'd0;
         init_done <= 1'b0;
-    end else if (init_state == INIT_CLEAR) begin
-        char_ram[init_index] <= 8'h20;
-        if (init_index >= CHAR_COUNT - 1) begin
-            init_index <= 12'd0;
-            init_state <= INIT_BANNER;
-        end else begin
-            init_index <= init_index + 12'd1;
-        end
-    end else if (init_state == INIT_BANNER) begin
-        banner_index = (BANNER_ROW * TEXT_COLS) + BANNER_COL + init_index;
-        if (banner_index < CHAR_COUNT) begin
-            char_ram[banner_index] <= banner_char(init_index[3:0]);
-        end
-        if (init_index >= BANNER_LEN - 1) begin
-            init_index <= 12'd0;
-            init_state <= INIT_DONE;
-            init_done <= 1'b1;
-        end else begin
-            init_index <= init_index + 12'd1;
-        end
+        frame_count <= 16'd0;
     end else begin
-        init_done <= 1'b1;
-        if (cell_we && (cell_x < TEXT_COLS) && (cell_y < TEXT_ROWS)) begin
-            write_index = (cell_y * TEXT_COLS) + cell_x;
-            char_ram[write_index] <= cell_char;
+        if (frame_start) begin
+            frame_count <= frame_count + 1'b1;
+        end
+
+        if (init_state == INIT_CLEAR) begin
+            tile_ram[init_index] <= 32'h2020_2020;
+            if (init_index >= WORD_COUNT - 1) begin
+                init_index <= 12'd0;
+                init_state <= INIT_BANNER;
+            end else begin
+                init_index <= init_index + 1'b1;
+            end
+        end else if (init_state == INIT_BANNER) begin
+            banner_index = (BANNER_ROW * TEXT_COLS) + BANNER_COL + init_index;
+            banner_word_index = banner_index >> 2;
+            banner_lane = banner_index & 3;
+            if (banner_index < CHAR_COUNT) begin
+                case (banner_lane)
+                    0: tile_ram[banner_word_index][7:0] <= banner_char(init_index[3:0]);
+                    1: tile_ram[banner_word_index][15:8] <= banner_char(init_index[3:0]);
+                    2: tile_ram[banner_word_index][23:16] <= banner_char(init_index[3:0]);
+                    default: tile_ram[banner_word_index][31:24] <= banner_char(init_index[3:0]);
+                endcase
+            end
+            if (init_index >= BANNER_LEN - 1) begin
+                init_index <= 12'd0;
+                init_state <= INIT_DONE;
+                init_done <= 1'b1;
+            end else begin
+                init_index <= init_index + 1'b1;
+            end
+        end else begin
+            init_done <= 1'b1;
+            if (tile_we && (tile_addr < WORD_COUNT)) begin
+                if (tile_wstrb[0]) tile_ram[tile_addr][7:0] <= tile_wdata[7:0];
+                if (tile_wstrb[1]) tile_ram[tile_addr][15:8] <= tile_wdata[15:8];
+                if (tile_wstrb[2]) tile_ram[tile_addr][23:16] <= tile_wdata[23:16];
+                if (tile_wstrb[3]) tile_ram[tile_addr][31:24] <= tile_wdata[31:24];
+            end
         end
     end
 end
@@ -163,6 +190,8 @@ always @(*) begin
     current_cell_x = 0;
     current_cell_y = 0;
     current_cell_index = 0;
+    current_word_index = 0;
+    current_lane = 0;
     cell_pixel_x = 0;
     cell_pixel_y = 0;
     glyph_col = 0;
@@ -176,7 +205,14 @@ always @(*) begin
 
         if ((current_cell_x < TEXT_COLS) && (current_cell_y < TEXT_ROWS)) begin
             current_cell_index = (current_cell_y * TEXT_COLS) + current_cell_x;
-            current_char = char_ram[current_cell_index];
+            current_word_index = current_cell_index >> 2;
+            current_lane = current_cell_index & 3;
+            case (current_lane)
+                0: current_char = tile_ram[current_word_index][7:0];
+                1: current_char = tile_ram[current_word_index][15:8];
+                2: current_char = tile_ram[current_word_index][23:16];
+                default: current_char = tile_ram[current_word_index][31:24];
+            endcase
             glyph_col = cell_pixel_x >> 1;
             glyph_row_index = cell_pixel_y >> 1;
 

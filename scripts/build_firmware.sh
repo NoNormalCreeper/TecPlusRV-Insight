@@ -62,6 +62,7 @@ $REPO_ROOT/firmware/drivers/uart.c
 $REPO_ROOT/firmware/drivers/gpio.c
 $REPO_ROOT/firmware/drivers/traffic_light.c
 $REPO_ROOT/firmware/drivers/buzzer.c
+$REPO_ROOT/firmware/drivers/vga.c
 $REPO_ROOT/firmware/runtime/rt_string.c
 $REPO_ROOT/firmware/runtime/rt_print.c
 $REPO_ROOT/firmware/runtime/rt_alloc.c

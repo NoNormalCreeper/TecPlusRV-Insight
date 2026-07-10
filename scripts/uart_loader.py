@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""把 firmware.bin 封装成 TecPlusRV bootloader v1 数据包并通过 UART 发送。"""
+"""把 firmware 与可选 SDRAM asset 封装成 TecPlusRV bootloader 数据包。"""
 
 from __future__ import annotations
 
@@ -15,7 +15,10 @@ from pathlib import Path
 BOOT_MAGIC = 0xbadabb1e
 PROTOCOL_VERSION = 1
 COMMAND_LOAD_AND_RUN = 1
+COMMAND_LOAD_IMAGE = 2
 BRAM_BYTES = 64 * 1024
+SDRAM_BASE_ADDR = 0x80000000
+SDRAM_LIMIT_ADDR = 0x82000000
 TX_CHUNK_BYTES = 64
 DEFAULT_MAX_RETRIES = 5
 
@@ -34,6 +37,7 @@ ERROR_NAMES = {
     0x03: "UART framing/overrun",
     0x04: "CRC32 不匹配",
     0x05: "接收超时",
+    0x06: "SDRAM 写入失败",
 }
 
 
@@ -59,6 +63,39 @@ def build_packet(payload: bytes) -> tuple[bytes, int]:
     )
     crc32 = binascii.crc32(protocol_header + payload) & 0xFFFFFFFF
     packet = struct.pack("<I", BOOT_MAGIC) + protocol_header + payload + struct.pack("<I", crc32)
+    return packet, crc32
+
+
+def build_image_packet(
+    firmware: bytes, sdram_payload: bytes, sdram_address: int
+) -> tuple[bytes, int]:
+    """构造 command 2 双段 packet；SDRAM 段按完整 32-bit word 写入。"""
+    if not firmware:
+        raise ValueError("firmware payload 不能为空")
+    if len(firmware) > BRAM_BYTES:
+        raise ValueError(f"firmware payload 超过 64 KiB BRAM：{len(firmware)} bytes")
+    if not sdram_payload:
+        raise ValueError("SDRAM payload 不能为空")
+    if len(sdram_payload) % 4:
+        raise ValueError("SDRAM payload 长度必须是 4-byte 的整数倍")
+    if sdram_address % 4:
+        raise ValueError("SDRAM 地址必须 4-byte 对齐")
+    if not SDRAM_BASE_ADDR <= sdram_address < SDRAM_LIMIT_ADDR:
+        raise ValueError(f"SDRAM 地址不在 0x{SDRAM_BASE_ADDR:08x}..0x{SDRAM_LIMIT_ADDR - 1:08x}")
+    if len(sdram_payload) > SDRAM_LIMIT_ADDR - sdram_address:
+        raise ValueError("SDRAM payload 超出物理地址窗口")
+
+    protocol_header = struct.pack(
+        "<BBIII",
+        PROTOCOL_VERSION,
+        COMMAND_LOAD_IMAGE,
+        len(firmware),
+        sdram_address,
+        len(sdram_payload),
+    )
+    body = protocol_header + firmware + sdram_payload
+    crc32 = binascii.crc32(body) & 0xFFFFFFFF
+    packet = struct.pack("<I", BOOT_MAGIC) + body + struct.pack("<I", crc32)
     return packet, crc32
 
 
@@ -214,8 +251,15 @@ def send_packet(
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="TecPlusRV UART bootloader v1 host 工具")
+    parser = argparse.ArgumentParser(description="TecPlusRV UART bootloader host 工具")
     parser.add_argument("--input", type=Path, default=Path("firmware/build/firmware.bin"))
+    parser.add_argument("--sdram-input", type=Path, help="可选 SDRAM asset；提供后使用 LOAD_IMAGE")
+    parser.add_argument(
+        "--sdram-address",
+        type=lambda value: int(value, 0),
+        default=0x81000000,
+        help="SDRAM asset 装载地址，默认 0x81000000",
+    )
     parser.add_argument("--port", help="串口名，例如 COM3 或 /dev/ttyUSB0")
     parser.add_argument("--baud", type=int, default=9600)
     parser.add_argument("--ready-timeout", type=float, default=30.0)
@@ -238,12 +282,26 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     try:
         payload = args.input.read_bytes()
-        packet, crc32 = build_packet(payload)
+        asset = None
+        if args.sdram_input is not None:
+            asset = args.sdram_input.read_bytes()
+            if len(asset) % 4:
+                asset += bytes(4 - len(asset) % 4)
+            packet, crc32 = build_image_packet(payload, asset, args.sdram_address)
+        else:
+            packet, crc32 = build_packet(payload)
         host_print(f"input:   {args.input}")
         host_print(f"magic:   0x{BOOT_MAGIC:08x} (wire: 1e bb da ba)")
         host_print(f"version: {PROTOCOL_VERSION}")
-        host_print(f"command: LOAD_AND_RUN ({COMMAND_LOAD_AND_RUN})")
-        host_print(f"payload: {len(payload)} bytes")
+        if asset is None:
+            host_print(f"command: LOAD_AND_RUN ({COMMAND_LOAD_AND_RUN})")
+            host_print(f"payload: {len(payload)} bytes")
+        else:
+            host_print(f"command: LOAD_IMAGE ({COMMAND_LOAD_IMAGE})")
+            host_print(f"firmware: {len(payload)} bytes -> BRAM")
+            host_print(
+                f"asset:    {len(asset)} bytes -> SDRAM 0x{args.sdram_address:08x}"
+            )
         host_print(f"crc32:   0x{crc32:08x}")
         host_print(f"packet:  {len(packet)} bytes")
 

@@ -236,6 +236,9 @@ package_minisoc() {
     need_file "rtl/soc/bootloader_ctrl.v"
     need_file "rtl/periph/traffic_light_gpio.v"
     need_file "rtl/periph/buzzer_pwm.v"
+    need_file "rtl/periph/vga_text_mode.v"
+    need_file "rtl/periph/vga_timing_640x480.v"
+    need_file "rtl/periph/font_rom_8x8.v"
     need_file "rtl/soc/tinybus_decode.v"
     need_file "rtl/soc/mmio_test_exit.v"
     need_file "rtl/soc/sdram_data_ctrl.v"
@@ -247,6 +250,9 @@ package_minisoc() {
     copy_flat "rtl/soc/bootloader_ctrl.v"
     copy_flat "rtl/periph/traffic_light_gpio.v"
     copy_flat "rtl/periph/buzzer_pwm.v"
+    copy_flat "rtl/periph/vga_text_mode.v"
+    copy_flat "rtl/periph/vga_timing_640x480.v"
+    copy_flat "rtl/periph/font_rom_8x8.v"
     copy_flat "rtl/soc/tinybus_decode.v"
     copy_flat "rtl/soc/mmio_test_exit.v"
     copy_flat "rtl/soc/sdram_data_ctrl.v"
@@ -312,12 +318,15 @@ case "$ISE_TARGET" in
     minisoc_bootloader|bootloader)
         package_minisoc "$REPO_ROOT/firmware/tests/boot_payload.c" "这是 UART bootloader 目标。请在 ISE 的 Generics, Parameters 中设置 BOOTLOADER_ENABLE=1；程序复位后等待 READY，再通过 scripts/uart_loader.py 下发 firmware.bin。"
         ;;
+    bad_apple_minimal|bad_apple)
+        package_minisoc "$REPO_ROOT/firmware/tests/bad_apple_minimal.c" "这是保留的 BAM1 仿真/资源实验原型，不是当前可上板目标。若要重现实验，请显式设置 BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=1；已知 writable text/tile RAM 会让 LX9 MiniSoC overmap。后续 1bpp 改造见 docs/BAD_APPLE_FUTURE.md。"
+        ;;
     probe_minisoc_sdram|minisoc_sdram_probe|m2b_probe)
         package_minisoc "$REPO_ROOT/firmware/tests/sdram_memtest.c" "这是 M2b 板级 probe：真实 CPU 从 BRAM 取指，经数据总线访问 BRAM、TinyBus MMIO 与 U2 SDRAM。LED=5 且 UART 打印 all patterns verified 表示通过。"
         ;;
     *)
         echo "未知 ISE 导出目标：$ISE_TARGET" >&2
-        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_minisoc_sdram, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark" >&2
+        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_minisoc_sdram, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark, bad_apple_minimal" >&2
         exit 1
         ;;
 esac

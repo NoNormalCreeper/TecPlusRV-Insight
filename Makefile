@@ -13,8 +13,14 @@ TEST_RUNNER := python3 $(REPO_ROOT)/scripts/test_runner.py
 WINDOWS_PYTHON ?= py.exe
 BOOTLOAD_BAUD ?= 9600
 BOOTLOAD_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bootload/firmware
+BAD_APPLE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bad_apple_minimal
+BAD_APPLE_ASSET := $(REPO_ROOT)/build/badapple/bad_apple_20s.bin
+BAD_APPLE_PREVIEW := $(REPO_ROOT)/build/badapple/bad_apple_20s.gif
+BAD_APPLE_REPORT := $(REPO_ROOT)/build/badapple/bad_apple_20s.json
+BAD_APPLE_VIDEO := $(REPO_ROOT)/firmware/assets/bad-apple.mp4
+BAD_APPLE_MIDI := $(REPO_ROOT)/firmware/assets/badapple-midifull.mid
 
-.PHONY: help check-env firmware bootload rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf ise-export
+.PHONY: help check-env firmware bootload bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf ise-export
 
 help:
 	@echo "常用目标："
@@ -22,6 +28,8 @@ help:
 	@echo "  make firmware                  构建手动默认 firmware 镜像"
 	@echo "  make firmware FIRMWARE_OUT=... 构建到指定输出前缀"
 	@echo "  make bootload PORT=COM8        构建、上传并进入 serial monitor"
+	@echo "  make bad-apple-build           构建保留的 BAM1 仿真原型与媒体预览"
+	@echo "  make bad-apple-load PORT=COM8  重 VGA 资源实验入口（LX9 已知 overmap）"
 	@echo "  make rtl-syntax                跑 RTL 语法 smoke"
 	@echo "  make sim TARGET=minisoc_pico   单独运行一个仿真目标"
 	@echo "  make test-probe                跑探针类仿真"
@@ -50,6 +58,27 @@ bootload:
 		--port "$(PORT)" \
 		--baud "$(BOOTLOAD_BAUD)" \
 		--input "$$(wslpath -w "$(BOOTLOAD_FIRMWARE_OUT).bin")" \
+		--monitor
+
+bad-apple-build:
+	python3 "$(REPO_ROOT)/scripts/make_bad_apple_minimal_asset.py" \
+		--video "$(BAD_APPLE_VIDEO)" --midi "$(BAD_APPLE_MIDI)" \
+		--start 30 --duration 20 \
+		--output "$(BAD_APPLE_ASSET)" --preview "$(BAD_APPLE_PREVIEW)" \
+		--report "$(BAD_APPLE_REPORT)"
+	FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/bad_apple_minimal.c" \
+		FIRMWARE_OUT="$(BAD_APPLE_FIRMWARE_OUT)" "$(BUILD_FIRMWARE)"
+
+bad-apple-load: bad-apple-build
+	@if [ -z "$(PORT)" ]; then echo "用法：make bad-apple-load PORT=COM8" >&2; exit 1; fi
+	@if ! command -v wslpath >/dev/null 2>&1; then echo "bad-apple-load 需要在 WSL 中运行" >&2; exit 1; fi
+	@if ! command -v "$(WINDOWS_PYTHON)" >/dev/null 2>&1; then echo "找不到 Windows Python：$(WINDOWS_PYTHON)" >&2; exit 1; fi
+	"$(WINDOWS_PYTHON)" "$$(wslpath -w "$(UART_LOADER)")" \
+		--port "$(PORT)" \
+		--baud "$(BOOTLOAD_BAUD)" \
+		--input "$$(wslpath -w "$(BAD_APPLE_FIRMWARE_OUT).bin")" \
+		--sdram-input "$$(wslpath -w "$(BAD_APPLE_ASSET)")" \
+		--sdram-address 0x81000000 \
 		--monitor
 
 rtl-syntax:

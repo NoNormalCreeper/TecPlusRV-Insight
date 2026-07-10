@@ -1,16 +1,19 @@
 // vga_text_mode 的模块级仿真。
-// 先确认 reset 后 banner 会产生可见像素，再确认写口能把一个空白 cell 改成字符。
+// 先确认 reset 后初始化完成，再确认一个 32-bit 写入能更新四个连续 tile。
 `timescale 1ns/1ps
 
 module tb_vga_text_mode;
 
 reg clk;
 reg reset;
-reg cell_we;
-reg [5:0] cell_x;
-reg [4:0] cell_y;
-reg [7:0] cell_char;
+reg tile_we;
+reg [8:0] tile_addr;
+reg [31:0] tile_wdata;
+reg [3:0] tile_wstrb;
 
+wire ready;
+wire vblank;
+wire [15:0] frame_count;
 wire vga_r;
 wire vga_g;
 wire vga_b;
@@ -23,6 +26,7 @@ integer cell_pixels_before;
 integer cell_pixels_after;
 reg     measuring_before;
 reg     measuring_after;
+reg     saw_vblank;
 
 vga_text_mode #(
     .H_VISIBLE(64),
@@ -42,10 +46,13 @@ vga_text_mode #(
 ) dut (
     .clk(clk),
     .reset(reset),
-    .cell_we(cell_we),
-    .cell_x(cell_x),
-    .cell_y(cell_y),
-    .cell_char(cell_char),
+    .tile_we(tile_we),
+    .tile_addr(tile_addr),
+    .tile_wdata(tile_wdata),
+    .tile_wstrb(tile_wstrb),
+    .ready(ready),
+    .vblank(vblank),
+    .frame_count(frame_count),
     .vga_r(vga_r),
     .vga_g(vga_g),
     .vga_b(vga_b),
@@ -68,16 +75,17 @@ endtask
 initial begin
     clk = 1'b0;
     reset = 1'b0;
-    cell_we = 1'b0;
-    cell_x = 6'd0;
-    cell_y = 5'd0;
-    cell_char = 8'h20;
+    tile_we = 1'b0;
+    tile_addr = 9'd0;
+    tile_wdata = 32'h0000_0000;
+    tile_wstrb = 4'b0000;
     hs_edges = 0;
     vs_edges = 0;
     cell_pixels_before = 0;
     cell_pixels_after = 0;
     measuring_before = 1'b0;
     measuring_after = 1'b0;
+    saw_vblank = 1'b0;
 
     $dumpfile("sim/build/tb_vga_text_mode.vcd");
     $dumpvars(0, tb_vga_text_mode);
@@ -87,7 +95,7 @@ initial begin
     #20;
     reset = 1'b0;
 
-    wait (dut.init_done == 1'b1);
+    wait (ready == 1'b1);
 
     measuring_before = 1'b1;
     wait_frame;
@@ -99,12 +107,13 @@ initial begin
     end
 
     @(posedge clk);
-    cell_x <= 6'd0;
-    cell_y <= 5'd0;
-    cell_char <= "A";
-    cell_we <= 1'b1;
+    tile_addr <= 9'd0;
+    tile_wdata <= {"G", "E", "C", "A"};
+    tile_wstrb <= 4'b1111;
+    tile_we <= 1'b1;
     @(posedge clk);
-    cell_we <= 1'b0;
+    tile_we <= 1'b0;
+    tile_wstrb <= 4'b0000;
 
     measuring_after = 1'b1;
     wait_frame;
@@ -118,7 +127,11 @@ initial begin
         $display("FAIL: 写入口没有让目标 cell 产生字符像素");
         $finish;
     end
-    $display("PASS: vga_text_mode banner 初始化和写入口都正常");
+    if (!saw_vblank || frame_count == 0) begin
+        $display("FAIL: vblank/frame_count 状态没有随扫描更新");
+        $finish;
+    end
+    $display("PASS: vga_text_mode write-only packed tile 写口和扫描状态都正常");
     $finish;
 end
 
@@ -131,6 +144,9 @@ always @(negedge vga_vs) begin
 end
 
 always @(posedge clk) begin
+    if (vblank) begin
+        saw_vblank <= 1'b1;
+    end
     if (dut.active_video &&
         dut.pixel_x < dut.CELL_WIDTH &&
         dut.pixel_y < dut.CELL_HEIGHT &&

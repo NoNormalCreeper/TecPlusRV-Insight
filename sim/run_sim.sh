@@ -148,6 +148,12 @@ compile_minisoc_tb() {
         )
     fi
 
+    if [ "$tb_module" = "tb_bad_apple_minimal" ]; then
+        extra_params+=(
+            -P "$tb_module.ASSET_MEM_FILE=\"$ASSET_MEM\""
+        )
+    fi
+
     iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -I "$REPO_ROOT/rtl/core" \
         -s "$tb_module" \
         -P "$tb_module.CPU_IMPL=$cpu_impl" \
@@ -170,7 +176,10 @@ compile_minisoc_tb() {
         "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
         "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
         "$REPO_ROOT/sim/sdram_x16_model.v" \
-        "$REPO_ROOT/rtl/periph/buzzer_pwm.v"
+        "$REPO_ROOT/rtl/periph/buzzer_pwm.v" \
+        "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+        "$REPO_ROOT/rtl/periph/vga_timing_640x480.v" \
+        "$REPO_ROOT/rtl/periph/font_rom_8x8.v"
 }
 
 compile_minisoc_perf_tb() {
@@ -222,7 +231,10 @@ compile_minisoc_perf_tb() {
         "$REPO_ROOT/rtl/periph/uart_rx.v" \
         "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
         "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
-        "$REPO_ROOT/rtl/periph/buzzer_pwm.v"
+        "$REPO_ROOT/rtl/periph/buzzer_pwm.v" \
+        "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+        "$REPO_ROOT/rtl/periph/vga_timing_640x480.v" \
+        "$REPO_ROOT/rtl/periph/font_rom_8x8.v"
 }
 
 case "$SIM_KIND" in
@@ -313,6 +325,15 @@ case "$SIM_KIND" in
     bootloader_dark)
         compile_minisoc_tb "$BUILD_DIR/tb_bootloader_dark.out" 1 tb_minisoc_bootloader "$REPO_ROOT/sim/tb_minisoc_bootloader.v"
         run_and_check "$BUILD_DIR/tb_bootloader_dark.log" vvp "$BUILD_DIR/tb_bootloader_dark.out"
+        ;;
+    bad_apple_minimal_pico)
+        ASSET_MEM=${ASSET_MEM:-$BUILD_DIR/bad_apple_minimal.mem}
+        python3 "$REPO_ROOT/scripts/make_bad_apple_minimal_asset.py" \
+            --output "$BUILD_DIR/bad_apple_minimal.bin" \
+            --mem-output "$ASSET_MEM" >/dev/null
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/bad_apple_minimal.c"
+        compile_minisoc_tb "$BUILD_DIR/tb_bad_apple_minimal_pico.out" 0 tb_bad_apple_minimal "$REPO_ROOT/sim/tb_bad_apple_minimal.v"
+        run_and_check "$BUILD_DIR/tb_bad_apple_minimal_pico.log" vvp "$BUILD_DIR/tb_bad_apple_minimal_pico.out"
         ;;
     minisoc_smoke_pico)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_smoke_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
@@ -494,7 +515,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
+        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
         exit 1
         ;;
 esac

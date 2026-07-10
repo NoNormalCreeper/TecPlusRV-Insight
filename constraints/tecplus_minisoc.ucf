@@ -37,6 +37,17 @@ NET "tl[11]" LOC = "N4"  | IOSTANDARD = "LVCMOS33";
 # Probe 5c 已确认最小蜂鸣器路径只需要 SPK。
 NET "spk" LOC = "P4" | IOSTANDARD = "LVCMOS33";
 
+# VGA 引脚沿用 Probe 5 的约束。Mf/Clr/Qd 的极性尚未由板卡文档确认；
+# 顶层默认值与独立 probe 一致，上板无显示时优先核对这三根控制线。
+NET "vga_mf"  LOC = "A10" | IOSTANDARD = "LVCMOS33";
+NET "vga_clr" LOC = "F6"  | IOSTANDARD = "LVCMOS33";
+NET "vga_qd"  LOC = "J16" | IOSTANDARD = "LVCMOS33";
+NET "vga_r"   LOC = "T4"  | IOSTANDARD = "LVCMOS33";
+NET "vga_g"   LOC = "T5"  | IOSTANDARD = "LVCMOS33";
+NET "vga_b"   LOC = "T6"  | IOSTANDARD = "LVCMOS33";
+NET "vga_hs"  LOC = "T7"  | IOSTANDARD = "LVCMOS33";
+NET "vga_vs"  LOC = "T9"  | IOSTANDARD = "LVCMOS33";
+
 # U2 SDRAM 管脚沿用已上板通过的 Probe 4 / sdram_data_ctrl probe。
 # sh_clk 默认由顶层反相输出；若 MiniSoC 上板时序与 Probe 4 不一致，
 # 优先覆写 SDRAM_CLK_INVERT 参数，不要在 UCF 中交换普通时钟管脚。

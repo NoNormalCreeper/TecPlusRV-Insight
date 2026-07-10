@@ -122,6 +122,26 @@ class UartLoaderTest(unittest.TestCase):
         packet, _ = uart_loader.build_packet(bytes(uart_loader.BRAM_BYTES))
         self.assertEqual(len(packet), uart_loader.BRAM_BYTES + 14)
 
+    def test_image_packet_layout_and_crc(self) -> None:
+        firmware = b"\x13\x00\x00\x00"
+        asset = b"BAD!"
+        packet, crc32 = uart_loader.build_image_packet(
+            firmware, asset, 0x81000000
+        )
+
+        self.assertEqual(packet[:4], bytes.fromhex("1e bb da ba"))
+        self.assertEqual(packet[4], uart_loader.PROTOCOL_VERSION)
+        self.assertEqual(packet[5], uart_loader.COMMAND_LOAD_IMAGE)
+        self.assertEqual(struct.unpack_from("<I", packet, 6)[0], len(firmware))
+        self.assertEqual(struct.unpack_from("<I", packet, 10)[0], 0x81000000)
+        self.assertEqual(struct.unpack_from("<I", packet, 14)[0], len(asset))
+        self.assertEqual(packet[18:-4], firmware + asset)
+        self.assertEqual(crc32, binascii.crc32(packet[4:-4]) & 0xFFFFFFFF)
+
+    def test_image_packet_rejects_unaligned_asset(self) -> None:
+        with self.assertRaisesRegex(ValueError, "4-byte"):
+            uart_loader.build_image_packet(b"firmware", b"abc", 0x81000000)
+
     def test_monitor_forwards_bytes_until_ctrl_c(self) -> None:
         class BlockingInput:
             def readline(self) -> str:

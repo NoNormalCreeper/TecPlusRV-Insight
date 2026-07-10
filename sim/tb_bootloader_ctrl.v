@@ -22,10 +22,19 @@ wire bram_en;
 wire [ADDR_WIDTH-1:0] bram_addr;
 wire [31:0] bram_wdata;
 wire [3:0] bram_wstrb;
+wire sdram_req_valid;
+reg sdram_req_ready;
+wire [31:0] sdram_req_addr;
+wire [31:0] sdram_req_wdata;
+wire [3:0] sdram_req_wstrb;
+reg sdram_resp_valid;
+reg sdram_resp_error;
 wire cpu_release;
 wire [7:0] last_error;
 
 reg [31:0] mem [0:(1 << ADDR_WIDTH) - 1];
+reg [31:0] sdram_mem [0:3];
+reg sdram_response_pending;
 reg [7:0] responses [0:31];
 integer response_count;
 integer tx_busy_count;
@@ -52,6 +61,13 @@ bootloader_ctrl #(
     .bram_addr(bram_addr),
     .bram_wdata(bram_wdata),
     .bram_wstrb(bram_wstrb),
+    .sdram_req_valid(sdram_req_valid),
+    .sdram_req_ready(sdram_req_ready),
+    .sdram_req_addr(sdram_req_addr),
+    .sdram_req_wdata(sdram_req_wdata),
+    .sdram_req_wstrb(sdram_req_wstrb),
+    .sdram_resp_valid(sdram_resp_valid),
+    .sdram_resp_error(sdram_resp_error),
     .cpu_release(cpu_release),
     .last_error(last_error)
 );
@@ -64,6 +80,25 @@ always @(posedge clk) begin
         if (bram_wstrb[1]) mem[bram_addr][15:8] <= bram_wdata[15:8];
         if (bram_wstrb[2]) mem[bram_addr][23:16] <= bram_wdata[23:16];
         if (bram_wstrb[3]) mem[bram_addr][31:24] <= bram_wdata[31:24];
+    end
+end
+
+// 用一个最小 ready-first 模型检查 bootloader 发出的 SDRAM word write。
+always @(posedge clk) begin
+    if (reset) begin
+        sdram_resp_valid <= 1'b0;
+        sdram_response_pending <= 1'b0;
+    end else begin
+        sdram_resp_valid <= sdram_response_pending;
+        sdram_response_pending <= 1'b0;
+        if (sdram_req_valid && sdram_req_ready) begin
+            if (sdram_req_addr < 32'h8100_0000 || sdram_req_addr >= 32'h8100_0010) begin
+                $display("FAIL: SDRAM 地址越界：%08x", sdram_req_addr);
+                $finish;
+            end
+            sdram_mem[(sdram_req_addr - 32'h8100_0000) >> 2] <= sdram_req_wdata;
+            sdram_response_pending <= 1'b1;
+        end
     end
 end
 
@@ -112,6 +147,53 @@ task send_byte;
         rx_valid = 1'b1;
         @(negedge clk);
         rx_valid = 1'b0;
+    end
+endtask
+
+task send_image_packet;
+    reg [31:0] crc;
+    reg [31:0] final_crc;
+    reg [7:0] value;
+    integer byte_i;
+    begin
+        send_magic();
+        crc = 32'hffff_ffff;
+
+        send_byte(8'h01); crc = crc32_byte(crc, 8'h01);
+        send_byte(8'h02); crc = crc32_byte(crc, 8'h02);
+
+        // BRAM payload 长度：8 bytes。
+        send_byte(8'h08); crc = crc32_byte(crc, 8'h08);
+        send_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        send_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        send_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+
+        // SDRAM 目标地址：0x81000000，payload 长度：8 bytes。
+        send_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        send_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        send_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        send_byte(8'h81); crc = crc32_byte(crc, 8'h81);
+        send_byte(8'h08); crc = crc32_byte(crc, 8'h08);
+        send_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        send_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        send_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+
+        for (byte_i = 0; byte_i < 8; byte_i = byte_i + 1) begin
+            value = 8'hc0 + byte_i;
+            send_byte(value);
+            crc = crc32_byte(crc, value);
+        end
+        for (byte_i = 0; byte_i < 8; byte_i = byte_i + 1) begin
+            value = 8'he0 + byte_i;
+            send_byte(value);
+            crc = crc32_byte(crc, value);
+        end
+
+        final_crc = ~crc;
+        send_byte(final_crc[7:0]);
+        send_byte(final_crc[15:8]);
+        send_byte(final_crc[23:16]);
+        send_byte(final_crc[31:24]);
     end
 endtask
 
@@ -205,9 +287,15 @@ initial begin
     tx_ready = 1'b1;
     response_count = 0;
     tx_busy_count = 0;
+    sdram_req_ready = 1'b1;
+    sdram_resp_valid = 1'b0;
+    sdram_resp_error = 1'b0;
+    sdram_response_pending = 1'b0;
     test_crc = 32'hffff_ffff;
     for (i = 0; i < (1 << ADDR_WIDTH); i = i + 1)
         mem[i] = 32'hdead_beef;
+    for (i = 0; i < 4; i = i + 1)
+        sdram_mem[i] = 32'hdead_beef;
 
     $dumpfile("sim/build/tb_bootloader_ctrl.vcd");
     $dumpvars(0, tb_bootloader_ctrl);
@@ -297,7 +385,27 @@ initial begin
         $finish;
     end
 
-    $display("PASS: bootloader 协议、错误恢复、重传、CRC32 与 BRAM 清零");
+    // RESET 后用 LOAD_IMAGE 同时装载 BRAM 和 SDRAM，再次释放 CPU。
+    @(negedge clk);
+    reset = 1'b1;
+    repeat (2) @(negedge clk);
+    reset = 1'b0;
+    expect_response(14, 8'h52, 8'h00);
+    send_image_packet();
+    expect_response(16, 8'h79, 8'h00);
+    wait (cpu_release === 1'b1);
+
+    if (mem[0] !== 32'hc3c2_c1c0 || mem[1] !== 32'hc7c6_c5c4) begin
+        $display("FAIL: LOAD_IMAGE 的 BRAM payload 错误");
+        $finish;
+    end
+    if (sdram_mem[0] !== 32'he3e2_e1e0 || sdram_mem[1] !== 32'he7e6_e5e4) begin
+        $display("FAIL: LOAD_IMAGE 的 SDRAM payload 错误：%08x %08x",
+                 sdram_mem[0], sdram_mem[1]);
+        $finish;
+    end
+
+    $display("PASS: bootloader v1 兼容、LOAD_IMAGE 双段装载、错误恢复与 CRC32");
     $finish;
 end
 

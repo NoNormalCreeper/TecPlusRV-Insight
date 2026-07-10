@@ -18,6 +18,7 @@ reg [31:0] instret_rdata;
 reg [31:0] traffic_rdata;
 reg [31:0] buzzer_ctrl_rdata;
 reg [31:0] buzzer_period_rdata;
+reg [31:0] vga_status_rdata;
 reg [31:0] accel_rdata;
 
 wire [31:0] rdata;
@@ -33,6 +34,8 @@ wire        test_exit_sel;
 wire        traffic_sel;
 wire        buzzer_ctrl_sel;
 wire        buzzer_period_sel;
+wire        vga_status_sel;
+wire        vga_tile_sel;
 wire        accel_sel;
 wire [31:0] write_data;
 
@@ -49,6 +52,7 @@ tinybus_decode dut (
     .traffic_rdata(traffic_rdata),
     .buzzer_ctrl_rdata(buzzer_ctrl_rdata),
     .buzzer_period_rdata(buzzer_period_rdata),
+    .vga_status_rdata(vga_status_rdata),
     .accel_rdata(accel_rdata),
     .rdata(rdata),
     .ready(ready),
@@ -63,6 +67,8 @@ tinybus_decode dut (
     .traffic_sel(traffic_sel),
     .buzzer_ctrl_sel(buzzer_ctrl_sel),
     .buzzer_period_sel(buzzer_period_sel),
+    .vga_status_sel(vga_status_sel),
+    .vga_tile_sel(vga_tile_sel),
     .accel_sel(accel_sel),
     .write_data(write_data)
 );
@@ -80,6 +86,7 @@ initial begin
     traffic_rdata = 32'h0000_0A55;
     buzzer_ctrl_rdata = 32'h0000_0001;
     buzzer_period_rdata = 32'h0000_1388;
+    vga_status_rdata = 32'h1234_0003;
     accel_rdata = 32'hCAFE_BABE;
 
     #1;
@@ -140,6 +147,36 @@ initial begin
         $finish;
     end
 
+
+    addr = `TINYBUS_ADDR_VGA_STATUS;
+    #1;
+    if (!vga_status_sel || rdata !== vga_status_rdata) begin
+        $display("FAIL: VGA STATUS 译码或读回错误");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_VGA_TILE_BASE + 32'd1196;
+    #1;
+    if (vga_tile_sel || rdata !== 32'h0000_0000) begin
+        $display("FAIL: VGA tile 读访问应返回 0 且不命中 write-only window");
+        $finish;
+    end
+
+    wstrb = 4'b1111;
+    #1;
+    if (!vga_tile_sel || !write_en || write_data !== wdata) begin
+        $display("FAIL: VGA tile 写访问译码错误");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_VGA_TILE_BASE + `TINYBUS_VGA_TILE_BYTES;
+    wstrb = 4'b0000;
+    #1;
+    if (vga_tile_sel) begin
+        $display("FAIL: VGA tile window 上界发生地址别名");
+        $finish;
+    end
+
     addr = 32'h2000_0100;
     wstrb = 4'b0000;
     #1;
@@ -153,7 +190,7 @@ initial begin
     #1;
     if (gpio_led_sel || gpio_key_sel || uart_data_sel || uart_status_sel ||
         cycle_sel || instret_sel || test_exit_sel || traffic_sel ||
-        buzzer_ctrl_sel || buzzer_period_sel || accel_sel) begin
+        buzzer_ctrl_sel || buzzer_period_sel || vga_status_sel || vga_tile_sel || accel_sel) begin
         $display("FAIL: SDRAM 地址 %h 误触发了 TinyBus 选择信号", addr);
         $finish;
     end
@@ -171,7 +208,7 @@ initial begin
     #1;
     if (gpio_led_sel || gpio_key_sel || uart_data_sel || uart_status_sel ||
         cycle_sel || instret_sel || test_exit_sel || traffic_sel ||
-        buzzer_ctrl_sel || buzzer_period_sel || accel_sel) begin
+        buzzer_ctrl_sel || buzzer_period_sel || vga_status_sel || vga_tile_sel || accel_sel) begin
         $display("FAIL: SDRAM 地址 %h 误触发了 TinyBus 选择信号", addr);
         $finish;
     end

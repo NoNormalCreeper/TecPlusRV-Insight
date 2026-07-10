@@ -359,6 +359,12 @@
       "sim_target": "bootloader_dark"
     },
     {
+      "id": "bad_apple_minimal_pico",
+      "kind": "sim",
+      "sim_target": "bad_apple_minimal_pico",
+      "requires": ["rtl_syntax"]
+    },
+    {
       "id": "uart_loader_tool",
       "kind": "command",
       "command": ["python3", "scripts/test_uart_loader.py"]
@@ -522,6 +528,7 @@
       "minisoc_smoke_dark",
       "bootloader_pico",
       "bootloader_dark",
+      "bad_apple_minimal_pico",
       "uart_loader_tool",
       "firmware_output_isolation",
       "minisoc_sdram_pico",

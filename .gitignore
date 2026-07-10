@@ -1,6 +1,10 @@
 firmware/build/
 sim/build/
 build/
+firmware/assets/*.mp4
+firmware/assets/*.mid
+firmware/assets/bad_apple_minimal.bin
+firmware/assets/bad_apple_minimal.mem
 *.vcd
 *.lst
 *.log
