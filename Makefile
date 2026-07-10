@@ -12,13 +12,15 @@ UART_LOADER := $(REPO_ROOT)/scripts/uart_loader.py
 TEST_RUNNER := python3 $(REPO_ROOT)/scripts/test_runner.py
 WINDOWS_PYTHON ?= py.exe
 BOOTLOAD_BAUD ?= 9600
+BOOTLOAD_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bootload/firmware
 
 .PHONY: help check-env firmware bootload rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf ise-export
 
 help:
 	@echo "常用目标："
 	@echo "  make check-env                 检查本地工具链"
-	@echo "  make firmware                  构建 firmware 镜像"
+	@echo "  make firmware                  构建手动默认 firmware 镜像"
+	@echo "  make firmware FIRMWARE_OUT=... 构建到指定输出前缀"
 	@echo "  make bootload PORT=COM8        构建、上传并进入 serial monitor"
 	@echo "  make rtl-syntax                跑 RTL 语法 smoke"
 	@echo "  make sim TARGET=minisoc_pico   单独运行一个仿真目标"
@@ -43,11 +45,11 @@ bootload:
 	@if [ -z "$(PORT)" ]; then echo "用法：make bootload PORT=COM8" >&2; exit 1; fi
 	@if ! command -v wslpath >/dev/null 2>&1; then echo "bootload 需要在 WSL 中运行" >&2; exit 1; fi
 	@if ! command -v "$(WINDOWS_PYTHON)" >/dev/null 2>&1; then echo "找不到 Windows Python：$(WINDOWS_PYTHON)" >&2; exit 1; fi
-	@$(MAKE) --no-print-directory firmware
+	@FIRMWARE_OUT="$(BOOTLOAD_FIRMWARE_OUT)" "$(BUILD_FIRMWARE)"
 	"$(WINDOWS_PYTHON)" "$$(wslpath -w "$(UART_LOADER)")" \
 		--port "$(PORT)" \
 		--baud "$(BOOTLOAD_BAUD)" \
-		--input "$$(wslpath -w "$(REPO_ROOT)/firmware/build/firmware.bin")" \
+		--input "$$(wslpath -w "$(BOOTLOAD_FIRMWARE_OUT).bin")" \
 		--monitor
 
 rtl-syntax:
@@ -82,7 +84,7 @@ test-all:
 ci:
 	$(TEST_RUNNER) run-suite all --keep-going
 
-perf: firmware rtl-syntax
+perf: rtl-syntax
 ifneq ($(wildcard $(COMPARE_CPU_PERF)),)
 ifdef PERF_MAIN
 		"$(COMPARE_CPU_PERF)" "$(PERF_MAIN)"

@@ -2,6 +2,7 @@
 
 module tb_minisoc_counter_reset #(
     parameter integer CPU_IMPL = 0,
+    parameter FIRMWARE_MEM_FILE = "firmware/build/firmware.mem",
     parameter integer RUN_CYCLES_BEFORE_RESET = 20,
     parameter integer RESET_HOLD_CYCLES = 2
 );
@@ -20,7 +21,7 @@ tecplus_minisoc_top #(
     .UART_BAUD(100000),
     .CPU_IMPL(CPU_IMPL),
     .BRAM_ADDR_WIDTH(14),
-    .BRAM_INIT_FILE("firmware/build/firmware.mem")
+    .BRAM_INIT_FILE(FIRMWARE_MEM_FILE)
 ) dut (
     .clk(clk),
     .reset(reset),

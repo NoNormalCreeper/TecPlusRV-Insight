@@ -4,6 +4,7 @@
 
 module tb_minisoc_bootloader #(
     parameter integer CPU_IMPL = 0,
+    parameter FIRMWARE_MEM_FILE = "firmware/build/firmware.mem",
     parameter integer TIMEOUT_CYCLES = 300000
 );
 
@@ -33,7 +34,7 @@ tecplus_minisoc_top #(
     .BRAM_ADDR_WIDTH(14),
     .BOOTLOADER_ENABLE(1),
     .BOOT_TIMEOUT_CYCLES(2000),
-    .BRAM_INIT_FILE("firmware/build/firmware.mem")
+    .BRAM_INIT_FILE(FIRMWARE_MEM_FILE)
 ) dut (
     .clk(clk),
     .reset(reset),

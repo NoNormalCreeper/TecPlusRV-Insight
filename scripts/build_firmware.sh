@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
 # firmware 构建脚本。
-# 生成 firmware.elf / firmware.bin / firmware.mem；其中 .mem 供 Verilog $readmemh 使用。
+# 默认生成 firmware/build/firmware.{elf,bin,mem,lst}；其中 .mem 供 Verilog $readmemh 使用。
+# FIRMWARE_OUT 是不带扩展名的输出前缀，可同时指定目录和文件名。
 # 可通过环境变量覆盖 CC/OBJCOPY/OBJDUMP/PYTHON，方便不同机器调工具链。
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
-BUILD_DIR="$REPO_ROOT/firmware/build"
 CC=${CC:-riscv64-unknown-elf-gcc}
 OBJCOPY=${OBJCOPY:-riscv64-unknown-elf-objcopy}
 OBJDUMP=${OBJDUMP:-riscv64-unknown-elf-objdump}
 PYTHON=${PYTHON:-python3}
 FIRMWARE_MAIN=${FIRMWARE_MAIN:-$REPO_ROOT/firmware/main.c}
+FIRMWARE_OUT=${FIRMWARE_OUT:-$REPO_ROOT/firmware/build/firmware}
+
+case "$FIRMWARE_OUT" in
+    */) echo "FIRMWARE_OUT 必须是文件前缀，不能以 / 结尾：$FIRMWARE_OUT" >&2; exit 1 ;;
+    /*) ;;
+    *) FIRMWARE_OUT="$REPO_ROOT/$FIRMWARE_OUT" ;;
+esac
+
+OUTPUT_DIR=$(dirname "$FIRMWARE_OUT")
 
 need_tool() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -24,12 +33,21 @@ need_tool "$CC"
 need_tool "$OBJCOPY"
 need_tool "$PYTHON"
 
-mkdir -p "$BUILD_DIR"
-
 if [ ! -f "$FIRMWARE_MAIN" ]; then
     echo "找不到 firmware 入口文件：$FIRMWARE_MAIN" >&2
     exit 1
 fi
+
+mkdir -p "$OUTPUT_DIR"
+rm -f "$FIRMWARE_OUT.elf" "$FIRMWARE_OUT.bin" "$FIRMWARE_OUT.mem" "$FIRMWARE_OUT.lst"
+TMP_DIR=$(mktemp -d "$OUTPUT_DIR/.firmware-build.XXXXXX")
+TMP_OUT="$TMP_DIR/firmware"
+
+cleanup() {
+    rm -rf "$TMP_DIR"
+}
+
+trap cleanup EXIT
 
 # rv32i/ilp32 对齐 PicoRV32 最小配置；freestanding 表示不依赖标准 C runtime。
 # -fno-tree-loop-distribute-patterns：禁止编译器把 rt_memcpy/rt_memset 里的
@@ -56,17 +74,25 @@ $REPO_ROOT/firmware/tests/selftest.c
 # -lgcc 提供 rv32i 缺失的软件运算例程（如 __udivsi3/__umodsi3 软件除法），
 # firmware 里的十进制打印和 CPI 计算用到了除法/取模，必须链接它。
 # 放在源文件之后，保证链接器能解析到这些符号。
-"$CC" $CFLAGS $INCLUDES $LDFLAGS -o "$BUILD_DIR/firmware.elf" $SOURCES -lgcc
-"$OBJCOPY" -O binary "$BUILD_DIR/firmware.elf" "$BUILD_DIR/firmware.bin"
-"$PYTHON" "$REPO_ROOT/scripts/bin2mem.py" "$BUILD_DIR/firmware.bin" "$BUILD_DIR/firmware.mem" 16384
+"$CC" $CFLAGS $INCLUDES $LDFLAGS -o "$TMP_OUT.elf" $SOURCES -lgcc
+"$OBJCOPY" -O binary "$TMP_OUT.elf" "$TMP_OUT.bin"
+"$PYTHON" "$REPO_ROOT/scripts/bin2mem.py" "$TMP_OUT.bin" "$TMP_OUT.mem" 16384
 
 if command -v "$OBJDUMP" >/dev/null 2>&1; then
     # 反汇编不是仿真必需，但调启动代码和 memory map 时很有用。
-    "$OBJDUMP" -d "$BUILD_DIR/firmware.elf" > "$BUILD_DIR/firmware.lst"
+    "$OBJDUMP" -d "$TMP_OUT.elf" > "$TMP_OUT.lst"
+fi
+
+mv "$TMP_OUT.elf" "$FIRMWARE_OUT.elf"
+mv "$TMP_OUT.bin" "$FIRMWARE_OUT.bin"
+mv "$TMP_OUT.mem" "$FIRMWARE_OUT.mem"
+if [ -f "$TMP_OUT.lst" ]; then
+    mv "$TMP_OUT.lst" "$FIRMWARE_OUT.lst"
 fi
 
 echo "firmware 构建完成："
 echo "  entry: $FIRMWARE_MAIN"
-echo "  $BUILD_DIR/firmware.elf"
-echo "  $BUILD_DIR/firmware.bin"
-echo "  $BUILD_DIR/firmware.mem"
+echo "  output: $FIRMWARE_OUT"
+echo "  $FIRMWARE_OUT.elf"
+echo "  $FIRMWARE_OUT.bin"
+echo "  $FIRMWARE_OUT.mem"

@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # 构建一个 rv32ui case，并分别在 PicoRV32 / DarkRISCV MiniSoC 上运行。
-# 为了最小侵入复用现有 tb_minisoc，这里临时把生成的 .mem 覆盖到 firmware/build，
-# 结束后再恢复默认 firmware/main.c 构建产物。
+# 复用现有 tb_minisoc，但通过 FIRMWARE_MEM 显式传入每个 case 的独立 .mem。
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
-DEFAULT_MAIN="$REPO_ROOT/firmware/main.c"
 CASE_NAME=${1:-}
 SAFE_CASES=(
     simple
@@ -53,12 +51,6 @@ if [ -z "$CASE_NAME" ]; then
     exit 1
 fi
 
-restore_default() {
-    FIRMWARE_MAIN="$DEFAULT_MAIN" "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
-}
-
-trap restore_default EXIT
-
 run_one_case() {
     local case_name="$1"
     "$REPO_ROOT/scripts/build_riscv_test.sh" "$case_name"
@@ -70,15 +62,14 @@ run_one_case() {
         exit 1
     fi
 
-    mkdir -p "$REPO_ROOT/firmware/build" "$REPO_ROOT/sim/build/riscv_tests"
-    cp "$case_mem" "$REPO_ROOT/firmware/build/firmware.mem"
+    mkdir -p "$REPO_ROOT/sim/build/riscv_tests"
 
     echo "--- PicoRV32: $case_name ---"
-    "$REPO_ROOT/sim/run_sim.sh" minisoc_rvtest_pico
+    FIRMWARE_MEM="$case_mem" "$REPO_ROOT/sim/run_sim.sh" minisoc_rvtest_pico
     cp "$REPO_ROOT/sim/build/tb_minisoc_rvtest_pico.log" "$REPO_ROOT/sim/build/riscv_tests/${case_name}_pico.log"
 
     echo "--- DarkRISCV: $case_name ---"
-    "$REPO_ROOT/sim/run_sim.sh" minisoc_rvtest_dark
+    FIRMWARE_MEM="$case_mem" "$REPO_ROOT/sim/run_sim.sh" minisoc_rvtest_dark
     cp "$REPO_ROOT/sim/build/tb_minisoc_rvtest_dark.log" "$REPO_ROOT/sim/build/riscv_tests/${case_name}_dark.log"
 
     echo "riscv-test 仿真完成：$case_name"
