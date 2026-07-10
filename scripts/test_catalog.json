@@ -53,6 +53,12 @@
       "args": ["buzzer_pwm"]
     },
     {
+      "id": "rtl_syntax__machine_timer",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["machine_timer"]
+    },
+    {
       "id": "rtl_syntax__sdram_smoke_ctrl",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -485,6 +491,11 @@
       "id": "darkriscv_machine_trap",
       "kind": "sim",
       "sim_target": "darkriscv_machine_trap"
+    },
+    {
+      "id": "machine_timer",
+      "kind": "sim",
+      "sim_target": "machine_timer"
     }
   ],
   "suites": {
@@ -495,6 +506,7 @@
       "rtl_syntax__bootloader_ctrl",
       "rtl_syntax__traffic_light_gpio",
       "rtl_syntax__buzzer_pwm",
+      "rtl_syntax__machine_timer",
       "rtl_syntax__sdram_smoke_ctrl",
       "rtl_syntax__sdram_data_ctrl",
       "rtl_syntax__probe_sdram_smoke_top",
@@ -545,6 +557,7 @@
       "tinybus_decode",
       "mmio_test_exit",
       "darkriscv_machine_trap",
+      "machine_timer",
       "uart_rx",
       "bootloader_ctrl",
       "traffic_light_gpio",

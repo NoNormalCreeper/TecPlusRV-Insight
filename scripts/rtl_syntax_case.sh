@@ -84,6 +84,10 @@ case "$CASE_ID" in
         run_iverilog buzzer_pwm \
             "$REPO_ROOT/rtl/periph/buzzer_pwm.v"
         ;;
+    machine_timer)
+        run_iverilog machine_timer \
+            "$REPO_ROOT/rtl/periph/machine_timer.v"
+        ;;
     sdram_smoke_ctrl)
         run_iverilog sdram_smoke_ctrl \
             "$REPO_ROOT/rtl/probe/sdram_smoke_ctrl.v"
