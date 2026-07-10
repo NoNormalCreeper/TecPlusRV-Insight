@@ -7,7 +7,7 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 REGRESSION_DIR="$REPO_ROOT/sim/build/regression"
 DEFAULT_MAIN="$REPO_ROOT/firmware/main.c"
-TESTS=${TESTS:-"smoke alu_branch load_store counters perf_mix sdram_memtest runtime_heap_smoke"}
+TESTS=${TESTS:-"smoke alu_branch load_store counters perf_mix sdram_memtest runtime_heap_smoke sdram_overlap_read system_bench riscv_bench_median riscv_bench_memcpy"}
 
 mkdir -p "$REGRESSION_DIR"
 
@@ -20,7 +20,7 @@ for test_name in $TESTS; do
     firmware_out="$REPO_ROOT/firmware/build/regression/$test_name/firmware"
 
     case "$test_name" in
-        sdram_memtest|sdram_sum_bench|runtime_heap_smoke)
+        sdram_memtest|sdram_sum_bench|runtime_heap_smoke|sdram_overlap_read|system_bench|riscv_bench_median|riscv_bench_memcpy)
             pico_target="minisoc_sdram_pico"
             dark_target="minisoc_sdram_dark"
             pico_log="tb_minisoc_sdram_pico.log"

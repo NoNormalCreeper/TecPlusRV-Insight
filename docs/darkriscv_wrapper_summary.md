@@ -228,63 +228,19 @@ TinyBus 本身没改成另一套协议，但它的**地位**变了。
 
 以后就算继续改 master-slave / cache / SDRAM，也应该主要替换 fabric，而不是推翻 firmware、双核对比基线和整体理解模型。
 
-## 如何先做简单性能对比
+## 自动化性能对比
 
-已经补了一条最小可用的性能对比流，适合**现在先粗看两颗核差异**。
-
-### 直接运行
+最终性能实验入口是：
 
 ```bash
-scripts/compare_cpu_perf.sh
+make perf
 ```
 
-默认会：
+它会构建并分别运行 PicoRV32 / DarkRISCV 的 `perf_mix`、系统级滑动窗口程序，以及来自 `riscv-tests` 的 `median`、`memcpy`。每次运行会保存原始 UART 日志、CSV、Markdown 汇总表和环境快照；完整 workload、指标口径与瓶颈分析方式见 `docs/BENCHMARKS.md`。
 
-1. 构建 `firmware/tests/perf_mix.c`
-2. 分别跑 `minisoc_perf_pico` 和 `minisoc_perf_dark`
-3. 打印两颗核的：
-   - `cycles`
-   - `instret`
-   - `cpi_x1000`
+`scripts/compare_cpu_perf.sh` 保留为只看 `perf_mix` 最终 mixed case 的快速兼容入口，不再作为课程报告的主数据来源。
 
-相关文件：
-
-- benchmark: `firmware/tests/perf_mix.c`
-- perf testbench: `sim/tb_minisoc_perf.v`
-- 对比脚本: `scripts/compare_cpu_perf.sh`
-- 结果日志: `sim/build/perf/`
-
-### 当前示例结果
-
-在当前本地环境、当前 benchmark 下，脚本打印为：
-
-```text
-cpu          cycles       instret      cpi_x1000
-picorv32     858661       143853       5969
-darkriscv    402526       143853       2798
-```
-
-### 这个结果该怎么解读
-
-这条流的用途是：
-
-- 快速看两颗核在**同一 SoC 壳、同一 firmware、同一 memory map** 下的大致差异
-- 用来支撑“引入流水线后做量化对比”的第一版证据
-
-它的限制也很明确：
-
-- `cycle` / `instret` 现在来自 **core-backed counter source**
-- `instret` 对 PicoRV32 已经直接对应核内计数；DarkRISCV 当前来自其内部 `CSRINS`
-- 结果已经缩到 benchmark 测量区间，但仍然包含固定的测量读数开销
-
-所以这条流适合做：
-
-- 早期粗对比
-- 回归监测
-- 设计方向判断
-
-但**不适合直接拿来当最终课程报告里的严谨性能结论**。  
-如果后面要正式汇报性能，建议再把统计口径升级成更精确的 per-core 方案。
+需要注意：`cycle` / `instret` 来自 core-backed counter source；DarkRISCV 的 `instret` 来自内部 `CSRINS`。因此应首先确认同一 workload 的两核 `instret` 一致，再比较 CPI；板上频率则必须以 ISE post-route timing report 为准，不能直接使用 1 MHz testbench 的换算值。
 
 ### Counter source 一致性回归
 

@@ -432,6 +432,13 @@
       "script": "scripts/test_perf_targets_require_addrs.sh"
     },
     {
+      "id": "benchmark_report",
+      "kind": "script",
+      "script": "scripts/run_benchmarks.sh",
+      "requires": ["rtl_syntax"],
+      "timeout_sec": 180
+    },
+    {
       "id": "dual_core_regression",
       "kind": "script",
       "script": "scripts/test_dual_core_regression.sh",
@@ -563,6 +570,9 @@
     ],
     "dual_core": [
       "dual_core_regression"
+    ],
+    "performance": [
+      "benchmark_report"
     ],
     "rv32i_safe": [
       "rv32ui_safe"

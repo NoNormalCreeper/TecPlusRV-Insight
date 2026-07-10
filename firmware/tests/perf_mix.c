@@ -2,6 +2,7 @@
 #include "../drivers/perf.h"
 
 static volatile unsigned int perf_buf[64];
+#define MIXED_ROUNDS 32u
 volatile unsigned int perf_cycle_delta;
 volatile unsigned int perf_instret_delta;
 volatile unsigned int perf_mem_wait_delta;
@@ -74,7 +75,7 @@ static unsigned int run_mixed(void)
     unsigned int round;
     unsigned int i;
 
-    for (round = 0u; round < 128u; round++) {
+    for (round = 0u; round < MIXED_ROUNDS; round++) {
         for (i = 0u; i < 64u; i++) {
             unsigned int value = perf_buf[i];
             value = (value << 1) ^ (value + 0x9E3779B9u + round + i);
@@ -124,7 +125,7 @@ int main(void)
     perf_mem_wait_delta = snap.mem_wait;
     report_case("mixed", &snap);
 
-    test_expect(checksum == 0x907BE4BEu, 0x44u);
+    test_expect(checksum == 0x387C3121u, 0x44u);
     test_expect(perf_cycle_delta != 0u, 0x45u);
     test_expect(perf_instret_delta != 0u, 0x46u);
     test_expect(perf_mem_wait_delta != 0u, 0x47u);

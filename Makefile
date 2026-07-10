@@ -20,7 +20,7 @@ BAD_APPLE_REPORT := $(REPO_ROOT)/build/badapple/bad_apple_20s.json
 BAD_APPLE_VIDEO := $(REPO_ROOT)/firmware/assets/bad-apple.mp4
 BAD_APPLE_MIDI := $(REPO_ROOT)/firmware/assets/badapple-midifull.mid
 
-.PHONY: help check-env firmware bootload bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf ise-export
+.PHONY: help check-env firmware bootload bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf benchmark ise-export
 
 help:
 	@echo "常用目标："
@@ -40,7 +40,7 @@ help:
 	@echo "  make test-all                  跑全部正确性检查"
 	@echo "  make ci                        CI 入口，聚合失败后统一返回非零"
 	@echo "  python3 scripts/test_runner.py list   列出 catalog 里的 suite / case"
-	@echo "  make perf                      跑双核性能对比（如果当前分支提供）"
+	@echo "  make perf / make benchmark     跑完整双核 benchmark，并生成日志、表格和环境快照"
 	@echo "  make ise-export ISE_TARGET=minisoc   导出 ISE 工程所需文件到新目录"
 
 check-env:
@@ -113,17 +113,10 @@ test-all:
 ci:
 	$(TEST_RUNNER) run-suite all --keep-going
 
-perf: rtl-syntax
-ifneq ($(wildcard $(COMPARE_CPU_PERF)),)
-ifdef PERF_MAIN
-		"$(COMPARE_CPU_PERF)" "$(PERF_MAIN)"
-else
-		"$(COMPARE_CPU_PERF)"
-endif
-else
-	@echo "perf: 当前分支没有 scripts/compare_cpu_perf.sh"
-	@exit 1
-endif
+perf: benchmark
+
+benchmark: rtl-syntax
+	"$(REPO_ROOT)/scripts/run_benchmarks.sh"
 
 ISE_TARGET ?= minisoc
 ISE_EXPORT_DIR ?= $(REPO_ROOT)/build/ise-export/$(ISE_TARGET)
