@@ -21,7 +21,8 @@
 ## 说明
 
 - 这是当前第一版骨架的软件可见地址图草案。
-- 低地址 BRAM 先用于 reset 后的启动路径；后续 bootloader 可把小型用户程序放在同一窗口的高地址部分。
+- 低地址 BRAM 是唯一可执行区。bootloader v1 在 CPU reset 期间接管 BRAM A 口，清空整个窗口后从 `0x0000_0000` 顺序写入 payload。
+- bootloader wire protocol、RESET 后重复下载和 CRC32 定义见 `docs/BOOTLOADER_PROTOCOL.md`。
 - 近期真正会用到的主要是 LED、KEY、UART、交通灯和 `test_exit`。
 - 计数器和 accelerator 项先写入地址图，方便后续 firmware 与总线接口提前稳定。
 - SDRAM 已通过 `sdram_data_ctrl` 接入 MiniSoC 数据总线；`ifetch_*` 仍只从 BRAM 取指。

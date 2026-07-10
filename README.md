@@ -13,12 +13,12 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架 / 独立 8x8 字模
 - 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
 - U2 32 MiB SDRAM data-only 控制器与 MiniSoC 集成
+- UART RX -> BRAM -> CPU release 的 bootloader v1
 - 裸机 firmware 骨架
 - 本地构建和仿真入口
 
 当前版本还不提供：
 
-- UART RX bootloader（基础收发已经接入，bootloader 尚未实现）
 - 从 SDRAM 取指或启动的执行路径
 - ISE 工程文件或 bitstream
 
@@ -40,6 +40,8 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 项目目标与边界：`docs/PROJECT_SPEC.md`
 - 探针说明：`docs/PROBES.md`
 - 开发与验证流程：`docs/DEV_FLOW.md`
+- UART bootloader 协议：`docs/BOOTLOADER_PROTOCOL.md`
+- Windows + WSL2 串口下载：`docs/WINDOWS_WSL_UART.md`
 - 双核 wrapper 与 ISE/性能说明：`docs/darkriscv_wrapper_summary.md`
 
 ## 最简单环境配置教程
@@ -213,6 +215,25 @@ sim/run_sim.sh minisoc_smoke_pico
 sim/run_sim.sh minisoc_smoke_dark
 ```
 
+验证 bootloader 协议、双核启动与 RESET 后重复下载：
+
+```bash
+sim/run_sim.sh bootloader_ctrl
+sim/run_sim.sh bootloader_pico
+sim/run_sim.sh bootloader_dark
+python3 scripts/test_uart_loader.py
+```
+
+构建并检查可下载 payload：
+
+```bash
+FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" ./scripts/build_firmware.sh
+python3 scripts/uart_loader.py --input firmware/build/firmware.bin --dry-run
+```
+
+真实串口命令和 `0xBADABB1E` wire protocol 见 `docs/BOOTLOADER_PROTOCOL.md`。
+Windows `COMx`、usbipd、`/dev/ttyUSB0` 与 RESET 的完整配置流程见 `docs/WINDOWS_WSL_UART.md`。
+
 单独跑双核性能粗对比：
 
 ```bash
@@ -237,6 +258,8 @@ bash scripts/test_minisoc_tb_modes.sh
 ```bash
 make sim TARGET=uart_tx
 make sim TARGET=uart_rx
+make sim TARGET=bootloader_ctrl
+make sim TARGET=bootloader_pico
 make sim TARGET=traffic_light_gpio
 make sim TARGET=buzzer_pwm
 make sim TARGET=font_rom_8x8
@@ -263,6 +286,7 @@ make perf
 
 ```bash
 make ise-export ISE_TARGET=minisoc
+make ise-export ISE_TARGET=minisoc_bootloader
 make ise-export ISE_TARGET=probe_uart
 make ise-export ISE_TARGET=probe_minisoc_sdram
 make ise-export ISE_TARGET=probe_uart ISE_EXPORT_MODE=full
@@ -283,6 +307,8 @@ make ise-export ISE_TARGET=minisoc
 ```
 
 默认会生成到 `build/ise-export/<target>/`。其中 `.v` / `.vh` / `.ucf` 会摊平到导出目录根部，便于在 ISE 里直接 Import Sources；只有 `firmware/build/firmware.mem` 这类路径敏感文件继续保留目录结构。导出目录里还会附带 `files.list` 和 `README.txt`。
+
+`minisoc_bootloader` 导出包需要在 ISE 的 `Generics, Parameters` 中设置 `BOOTLOADER_ENABLE=1`；普通 `minisoc` 默认仍为 0，保持原有 `firmware.mem` 直接启动行为。
 
 - 默认 `ISE_EXPORT_MODE=minimal`：只导出当前 `ISE_TARGET` 直接需要的 `.v` / `.vh` / `.ucf`
 - `ISE_EXPORT_MODE=full`：额外把仓库内全部 `.v` / `.vh` / `.ucf` 也摊平导出，适合一次性导入后在 ISE 里自己选择 top 和 `.ucf`

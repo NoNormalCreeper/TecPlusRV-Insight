@@ -812,8 +812,39 @@ thin probe 的价值是早发现底层风险，不是替代后续完整系统。
 6. `Probe 4a`
 7. `Probe 5a`
 8. 板级 `MiniSoC bring-up`
+9. UART bootloader：模块仿真 -> 双核 SoC 仿真 -> ISE -> RESET 重复下载
 
 如果 `Probe 0` 和 `Probe 1` 还没稳定，就不要急着上完整 SoC。
+
+## UART bootloader 开发与上板顺序
+
+bootloader v1 固定走 `UART -> BRAM 0x0000_0000 -> CPU release`。默认 MiniSoC 参数 `BOOTLOADER_ENABLE=0`，因此旧 firmware 回归仍直接使用 `firmware.mem`；只有 bootloader ISE 目标需要把参数设为 1。
+
+本地先跑：
+
+```bash
+./sim/run_sim.sh bootloader_ctrl
+./sim/run_sim.sh bootloader_pico
+./sim/run_sim.sh bootloader_dark
+python3 scripts/test_uart_loader.py
+```
+
+再构建真实 payload 并检查封包：
+
+```bash
+FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" ./scripts/build_firmware.sh
+python3 scripts/uart_loader.py --input firmware/build/firmware.bin --dry-run
+```
+
+ISE 导出：
+
+```bash
+make ise-export ISE_TARGET=minisoc_bootloader
+```
+
+导入后在 ISE 的 `Generics, Parameters` 中设置 `BOOTLOADER_ENABLE=1`。上板时先打开 host 工具，再按下并松开 RESET；收到 READY 后发送，收到 ACK 后 CPU 才运行。换程序只需再次按 RESET，不需要重新下载 bitstream。
+
+协议字段、错误码和真实串口命令统一以 `docs/BOOTLOADER_PROTOCOL.md` 为准，不要在其他文档复制另一套常量。
 
 ## 不能误判的几点
 
