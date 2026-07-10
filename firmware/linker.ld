@@ -2,8 +2,14 @@
  * 代码 / 只读数据 / .data / .bss / 栈仍然放在 0x00000000 起始的 64 KiB BRAM，
  * 这与仿真的 reset 地址一致。
  *
- * M3 新增：SDRAM 数据窗口（0x8000_0000，16 MiB，与 rtl/soc/sdram_data_ctrl.v
- * 的 24 位地址空间对应），以及可显式落到 SDRAM 的 .sdram_data / .sdram_bss 段。
+ * M3 新增：SDRAM 数据窗口（0x8000_0000），以及可显式落到 SDRAM 的
+ * .sdram_data / .sdram_bss 段。
+ *
+ * 容量说明：板上物理芯片为 x16 SDRAM，地址线 A0..A12（13 位 row，见
+ * constraints/tecplus_sdram_smoke.ucf），物理容量约 32 MiB。但当前
+ * rtl/soc/sdram_data_ctrl.v 只用 12 位 row（译码 byte_addr[23:0]），
+ * 软件实际可达仅 16 MiB —— 芯片的下半部分。这里按“可达范围”填 16M；
+ * 待控制器把 row 扩到 13 位后，把下面 LENGTH 改成 32M 即可。
  *   - .sdram_data：有初值，运行地址在 SDRAM，加载地址在 BRAM（AT> 分离），
  *     由 startup.S 在复位后从加载地址拷到运行地址。
  *   - .sdram_bss ：运行时清零，NOLOAD 不占 firmware 镜像。
@@ -18,6 +24,7 @@ ENTRY(_start)
 MEMORY
 {
     BRAM  (rxw) : ORIGIN = 0x00000000, LENGTH = 64K
+    /* 16M = 当前控制器 12 位 row 可达范围；物理芯片约 32M，见上方容量说明。 */
     SDRAM (rw)  : ORIGIN = 0x80000000, LENGTH = 16M
 }
 
