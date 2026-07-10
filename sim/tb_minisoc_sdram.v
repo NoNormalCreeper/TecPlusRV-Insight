@@ -232,4 +232,25 @@ initial begin
     $finish;
 end
 
+// 将 firmware 的 UART 输出还原到仿真终端，保留 benchmark 的 cycle/instret 证据。
+localparam integer UART_CLKS_PER_BIT = 1000000 / 100000;
+localparam integer UART_CLK_PERIOD_NS = 10;
+localparam integer UART_BIT_NS = UART_CLKS_PER_BIT * UART_CLK_PERIOD_NS;
+
+integer uart_bit_i;
+reg [7:0] uart_rx_byte;
+
+initial begin
+    forever begin
+        @(negedge uart_txd);
+        #(UART_BIT_NS + UART_BIT_NS / 2);
+        for (uart_bit_i = 0; uart_bit_i < 8; uart_bit_i = uart_bit_i + 1) begin
+            uart_rx_byte[uart_bit_i] = uart_txd;
+            #(UART_BIT_NS);
+        end
+        $write("%c", uart_rx_byte);
+        $fflush;
+    end
+end
+
 endmodule

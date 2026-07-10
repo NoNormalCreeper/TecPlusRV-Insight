@@ -189,3 +189,30 @@ MODE_REG_VALUE	13'h220	模式寄存器值（BL=1, 顺序, CL=2）
 ✅ 读数据在 CAS 延迟后正确返回。
 
 ✅ 强制刷新机制在长时间忙碌时插入刷新（基于 refresh_age 与延期窗口观察）。
+
+8. M2.5 firmware 验收与 benchmark baseline
+
+`sdram_memtest` 覆盖固定 pattern、跨 bank/row 的散列地址、16/32 MiB 边界不 alias，以及连续 64 个 word 的顺序写读回。默认双核 regression 已包含该测试：
+
+```bash
+TESTS="smoke alu_branch load_store counters perf_mix sdram_memtest" \
+  bash scripts/test_dual_core_regression.sh
+```
+
+固定求和 benchmark 使用 `1024` 个 32-bit word，填充 `a[i] = i` 后顺序求和。运行方式：
+
+```bash
+FIRMWARE_MAIN="$PWD/firmware/tests/sdram_sum_bench.c" \
+  ./sim/run_sim.sh minisoc_sdram_pico
+FIRMWARE_MAIN="$PWD/firmware/tests/sdram_sum_bench.c" \
+  ./sim/run_sim.sh minisoc_sdram_dark
+```
+
+在当前 RTL、`1 MHz` testbench 时钟配置下，基线如下：
+
+| CPU | words | sum | cycle delta | instret delta |
+| --- | ---: | ---: | ---: | ---: |
+| PicoRV32 | 1024 | `0x0007fe00` | 51401 | 4101 |
+| DarkRISCV | 1024 | `0x0007fe00` | 34832 | 4101 |
+
+这里的 `cycle/instret` 是 firmware 测量区间内的 core counter 差值，只用于相同输入规模和相同 RTL 配置下的后续对比；CPU、控制器或时序策略变化后应重新采集。

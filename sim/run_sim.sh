@@ -9,7 +9,8 @@ REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 BUILD_DIR="$REPO_ROOT/sim/build"
 SIM_KIND=${1:-uart_tx}
 DEFAULT_FIRMWARE_MAIN="$REPO_ROOT/firmware/main.c"
-SDRAM_FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/sdram_memtest.c"
+# SDRAM 目标默认跑 memtest；显式传入 FIRMWARE_MAIN 时用于 benchmark/runtime 验收。
+SDRAM_FIRMWARE_MAIN=${FIRMWARE_MAIN:-$REPO_ROOT/firmware/tests/sdram_memtest.c}
 RESTORE_DEFAULT_FIRMWARE=0
 
 restore_default_firmware() {

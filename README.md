@@ -390,6 +390,19 @@ make test-all
 
 这些 probe 的意义是先回答“最小链路是不是活的”，再把风险逐步推到 SoC 集成层。
 
+M2.5 的 SDRAM firmware 验收使用以下入口：
+
+```bash
+TESTS="smoke alu_branch load_store counters perf_mix sdram_memtest" \
+  bash scripts/test_dual_core_regression.sh
+FIRMWARE_MAIN="$PWD/firmware/tests/sdram_sum_bench.c" \
+  ./sim/run_sim.sh minisoc_sdram_pico
+FIRMWARE_MAIN="$PWD/firmware/tests/sdram_sum_bench.c" \
+  ./sim/run_sim.sh minisoc_sdram_dark
+```
+
+功能覆盖和当前 benchmark baseline 记录在 `docs/SDRAM_DATA_CTRL.md`。
+
 ## PicoRV32 放置方式
 
 MiniSoC 使用的 PicoRV32 文件位于：
