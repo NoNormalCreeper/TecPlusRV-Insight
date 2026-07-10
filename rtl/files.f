@@ -10,6 +10,7 @@ rtl/periph/vga_text_mode.v
 rtl/soc/bram.v
 rtl/soc/tinybus_decode.v
 rtl/soc/mmio_test_exit.v
+rtl/soc/bootloader_ctrl.v
 rtl/soc/tecplus_minisoc_top.v
 rtl/probe/buzzer_tune_player.v
 rtl/probe/buzzer_uart_reporter.v
