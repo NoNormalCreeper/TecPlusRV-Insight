@@ -4,6 +4,8 @@ module tecplus_cpu_wrapper #(
 ) (
     input         clk,
     input         resetn,
+    input         irq_external,
+    input         irq_timer,
     output        ifetch_valid,
     output [31:0] ifetch_addr,
     input         ifetch_ready,
@@ -29,6 +31,8 @@ generate
         darkriscv_adapter u_cpu (
             .clk(clk),
             .resetn(resetn),
+            .irq_external(irq_external),
+            .irq_timer(irq_timer),
             .ifetch_valid(ifetch_valid),
             .ifetch_addr(ifetch_addr),
             .ifetch_ready(ifetch_ready),
@@ -44,6 +48,9 @@ generate
             .counter_instret(counter_instret)
         );
     end else begin : g_picorv32
+        // PicoRV32 profile 暂不启用 IRQ；保留 wrapper 端口以稳定 SoC 契约。
+        wire unused_irq = irq_external | irq_timer;
+
         picorv32_adapter #(
             .STACKADDR(STACKADDR)
         ) u_cpu (

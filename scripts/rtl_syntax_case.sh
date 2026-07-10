@@ -250,6 +250,7 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/periph/uart_tx.v" \
             "$REPO_ROOT/rtl/periph/uart_rx.v" \
             "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
+            "$REPO_ROOT/rtl/periph/machine_timer.v" \
             "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
             "$REPO_ROOT/rtl/periph/buzzer_pwm.v" \
             "$REPO_ROOT/rtl/periph/vga_text_mode.v" \

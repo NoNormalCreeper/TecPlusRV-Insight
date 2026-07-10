@@ -16,6 +16,11 @@
 `define TINYBUS_ADDR_BUZZER_CTRL  32'h1000_0050
 `define TINYBUS_ADDR_BUZZER_PERIOD 32'h1000_0054
 `define TINYBUS_ADDR_VGA_STATUS    32'h1000_0060
+// 尚未上板验证：首版沿用计划约定的 CLINT-like timer 窗口。
+`define TINYBUS_ADDR_MTIME_LO      32'h1000_0070
+`define TINYBUS_ADDR_MTIME_HI      32'h1000_0074
+`define TINYBUS_ADDR_MTIMECMP_LO   32'h1000_0078
+`define TINYBUS_ADDR_MTIMECMP_HI   32'h1000_007c
 `define TINYBUS_ADDR_VGA_TILE_BASE 32'h1001_0000
 // 40 * 30 个 byte tile，共 300 个 packed word。窗口严格收紧，避免 9-bit
 // tile_addr 在 4 KiB 空洞区域发生截断别名。

@@ -20,6 +20,10 @@ reg [31:0] traffic_rdata;
 reg [31:0] buzzer_ctrl_rdata;
 reg [31:0] buzzer_period_rdata;
 reg [31:0] vga_status_rdata;
+reg [31:0] mtime_lo_rdata;
+reg [31:0] mtime_hi_rdata;
+reg [31:0] mtimecmp_lo_rdata;
+reg [31:0] mtimecmp_hi_rdata;
 reg [31:0] accel_rdata;
 
 wire [31:0] rdata;
@@ -38,8 +42,15 @@ wire        buzzer_ctrl_sel;
 wire        buzzer_period_sel;
 wire        vga_status_sel;
 wire        vga_tile_sel;
+wire        mtime_lo_sel;
+wire        mtime_hi_sel;
+wire        mtimecmp_lo_sel;
+wire        mtimecmp_hi_sel;
 wire        accel_sel;
 wire [31:0] write_data;
+wire [3:0] timer_sel = {
+    mtimecmp_hi_sel, mtimecmp_lo_sel, mtime_hi_sel, mtime_lo_sel
+};
 
 tinybus_decode dut (
     .valid(valid),
@@ -56,6 +67,10 @@ tinybus_decode dut (
     .buzzer_ctrl_rdata(buzzer_ctrl_rdata),
     .buzzer_period_rdata(buzzer_period_rdata),
     .vga_status_rdata(vga_status_rdata),
+    .mtime_lo_rdata(mtime_lo_rdata),
+    .mtime_hi_rdata(mtime_hi_rdata),
+    .mtimecmp_lo_rdata(mtimecmp_lo_rdata),
+    .mtimecmp_hi_rdata(mtimecmp_hi_rdata),
     .accel_rdata(accel_rdata),
     .rdata(rdata),
     .ready(ready),
@@ -73,6 +88,10 @@ tinybus_decode dut (
     .buzzer_period_sel(buzzer_period_sel),
     .vga_status_sel(vga_status_sel),
     .vga_tile_sel(vga_tile_sel),
+    .mtime_lo_sel(mtime_lo_sel),
+    .mtime_hi_sel(mtime_hi_sel),
+    .mtimecmp_lo_sel(mtimecmp_lo_sel),
+    .mtimecmp_hi_sel(mtimecmp_hi_sel),
     .accel_sel(accel_sel),
     .write_data(write_data)
 );
@@ -92,6 +111,10 @@ initial begin
     buzzer_ctrl_rdata = 32'h0000_0001;
     buzzer_period_rdata = 32'h0000_1388;
     vga_status_rdata = 32'h1234_0003;
+    mtime_lo_rdata = 32'h0123_4567;
+    mtime_hi_rdata = 32'h89ab_cdef;
+    mtimecmp_lo_rdata = 32'h7654_3210;
+    mtimecmp_hi_rdata = 32'hfedc_ba98;
     accel_rdata = 32'hCAFE_BABE;
 
     #1;
@@ -168,7 +191,67 @@ initial begin
         $finish;
     end
 
+    addr = `TINYBUS_ADDR_MTIME_LO;
+    #1;
+    if (timer_sel !== 4'b0001 || rdata !== mtime_lo_rdata ||
+        vga_status_sel || vga_tile_sel || accel_sel) begin
+        $display("FAIL: MTIME_LO 译码、读回或窗口隔离错误");
+        $finish;
+    end
+    wstrb = 4'b1111;
+    #1;
+    if (timer_sel !== 4'b0001 || !write_en) begin
+        $display("FAIL: MTIME_LO 写 select 错误");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_MTIME_HI;
+    wstrb = 4'b0000;
+    #1;
+    if (timer_sel !== 4'b0010 || rdata !== mtime_hi_rdata ||
+        vga_status_sel || vga_tile_sel || accel_sel) begin
+        $display("FAIL: MTIME_HI 译码、读回或窗口隔离错误");
+        $finish;
+    end
+    wstrb = 4'b1111;
+    #1;
+    if (timer_sel !== 4'b0010 || !write_en) begin
+        $display("FAIL: MTIME_HI 写 select 错误");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_MTIMECMP_LO;
+    wstrb = 4'b0000;
+    #1;
+    if (timer_sel !== 4'b0100 || rdata !== mtimecmp_lo_rdata ||
+        vga_status_sel || vga_tile_sel || accel_sel) begin
+        $display("FAIL: MTIMECMP_LO 译码、读回或窗口隔离错误");
+        $finish;
+    end
+    wstrb = 4'b1111;
+    #1;
+    if (timer_sel !== 4'b0100 || !write_en) begin
+        $display("FAIL: MTIMECMP_LO 写 select 错误");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_MTIMECMP_HI;
+    wstrb = 4'b0000;
+    #1;
+    if (timer_sel !== 4'b1000 || rdata !== mtimecmp_hi_rdata ||
+        vga_status_sel || vga_tile_sel || accel_sel) begin
+        $display("FAIL: MTIMECMP_HI 译码、读回或窗口隔离错误");
+        $finish;
+    end
+    wstrb = 4'b1111;
+    #1;
+    if (timer_sel !== 4'b1000 || !write_en) begin
+        $display("FAIL: MTIMECMP_HI 写 select 错误");
+        $finish;
+    end
+
     addr = `TINYBUS_ADDR_VGA_TILE_BASE + 32'd1196;
+    wstrb = 4'b0000;
     #1;
     if (vga_tile_sel || rdata !== 32'h0000_0000) begin
         $display("FAIL: VGA tile 读访问应返回 0 且不命中 write-only window");
@@ -203,7 +286,8 @@ initial begin
     #1;
     if (gpio_led_sel || gpio_key_sel || uart_data_sel || uart_status_sel ||
         cycle_sel || instret_sel || mem_wait_sel || test_exit_sel || traffic_sel ||
-        buzzer_ctrl_sel || buzzer_period_sel || vga_status_sel || vga_tile_sel || accel_sel) begin
+        buzzer_ctrl_sel || buzzer_period_sel || vga_status_sel || vga_tile_sel ||
+        (|timer_sel) || accel_sel) begin
         $display("FAIL: SDRAM 地址 %h 误触发了 TinyBus 选择信号", addr);
         $finish;
     end
@@ -221,7 +305,8 @@ initial begin
     #1;
     if (gpio_led_sel || gpio_key_sel || uart_data_sel || uart_status_sel ||
         cycle_sel || instret_sel || mem_wait_sel || test_exit_sel || traffic_sel ||
-        buzzer_ctrl_sel || buzzer_period_sel || vga_status_sel || vga_tile_sel || accel_sel) begin
+        buzzer_ctrl_sel || buzzer_period_sel || vga_status_sel || vga_tile_sel ||
+        (|timer_sel) || accel_sel) begin
         $display("FAIL: SDRAM 地址 %h 误触发了 TinyBus 选择信号", addr);
         $finish;
     end
