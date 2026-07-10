@@ -480,6 +480,11 @@
       "script": "scripts/test_riscv_test_case.sh",
       "args": ["trapish"],
       "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "darkriscv_machine_trap",
+      "kind": "sim",
+      "sim_target": "darkriscv_machine_trap"
     }
   ],
   "suites": {

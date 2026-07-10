@@ -529,9 +529,32 @@ case "$SIM_KIND" in
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         run_and_check "$BUILD_DIR/tb_vga_text_mode.log" vvp "$BUILD_DIR/tb_vga_text_mode.out"
         ;;
+    darkriscv_machine_trap)
+        need_tool riscv64-unknown-elf-gcc
+        need_tool riscv64-unknown-elf-objcopy
+        # 本机 GCC 10 尚未接受 rv32i_zicsr spelling，但 rv32i 仍会正确汇编 CSR。
+        riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 \
+            -nostdlib -nostartfiles \
+            -T "$REPO_ROOT/tests/riscv_tests/tecplus_p/link.ld" \
+            -o "$BUILD_DIR/darkriscv_machine_trap.elf" \
+            "$REPO_ROOT/firmware/tests/darkriscv_machine_trap.S"
+        riscv64-unknown-elf-objcopy -O binary \
+            "$BUILD_DIR/darkriscv_machine_trap.elf" \
+            "$BUILD_DIR/darkriscv_machine_trap.bin"
+        python3 "$REPO_ROOT/scripts/bin2mem.py" \
+            "$BUILD_DIR/darkriscv_machine_trap.bin" \
+            "$BUILD_DIR/darkriscv_machine_trap.mem" 16384
+        iverilog -g2001 -D__INTERRUPT__ -I "$REPO_ROOT/rtl/core" \
+            -s tb_darkriscv_machine_trap \
+            -P "tb_darkriscv_machine_trap.FIRMWARE_MEM_FILE=\"$BUILD_DIR/darkriscv_machine_trap.mem\"" \
+            -o "$BUILD_DIR/tb_darkriscv_machine_trap.out" \
+            "$REPO_ROOT/sim/tb_darkriscv_machine_trap.v" \
+            "$REPO_ROOT/rtl/core/darkriscv.v"
+        run_and_check "$BUILD_DIR/tb_darkriscv_machine_trap.log" vvp "$BUILD_DIR/tb_darkriscv_machine_trap.out"
+        ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、boot_image_verify_pico、boot_image_verify_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
+        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、boot_image_verify_pico、boot_image_verify_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode、darkriscv_machine_trap" >&2
         exit 1
         ;;
 esac
