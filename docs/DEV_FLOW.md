@@ -842,7 +842,13 @@ ISE 导出：
 make ise-export ISE_TARGET=minisoc_bootloader
 ```
 
-导入后在 ISE 的 `Generics, Parameters` 中设置 `BOOTLOADER_ENABLE=1`。上板时先打开 host 工具，再按下并松开 RESET；收到 READY 后发送，收到 ACK 后 CPU 才运行。换程序只需再次按 RESET，不需要重新下载 bitstream。
+导入后在 ISE 的 `Generics, Parameters` 中设置 `BOOTLOADER_ENABLE=1`。Windows + WSL2 上板，可参考文档 WINDOWS_WSL_UART.md，推荐让串口留在 Windows，并在 WSL 执行：
+
+```bash
+make bootload PORT=COM8
+```
+
+该目标会依次构建、上传并进入 serial monitor。看到提示后按下并松开 RESET；收到 READY 后发送，收到 ACK 后 CPU 才运行。换程序只需退出 monitor、再次执行该目标并按 RESET，不需要重新下载 bitstream。
 
 协议字段、错误码和真实串口命令统一以 `docs/BOOTLOADER_PROTOCOL.md` 为准，不要在其他文档复制另一套常量。
 

@@ -183,6 +183,16 @@ python3 scripts/test_runner.py run-suite rtl_syntax_internal
 make firmware
 ```
 
+在 Windows + WSL2 中，推荐让 CP2102 保持为 Windows `COMx`，由 WSL 一条命令完成构建、上传并进入 serial monitor：
+
+```bash
+make bootload PORT=COM8
+```
+
+Windows 端只需预先安装一次 `pyserial`：`py -m pip install pyserial`。指定其他 firmware 入口时可附加 `FIRMWARE_MAIN=...`；完整配置和备用 USB/IP 流程见 `docs/WINDOWS_WSL_UART.md`。
+
+上传期间如果再次按 RESET，host 会检测 READY、废弃当前 attempt，并从 magic 自动整包重传。
+
 跑探针类仿真：
 
 ```bash
@@ -232,7 +242,7 @@ python3 scripts/uart_loader.py --input firmware/build/firmware.bin --dry-run
 ```
 
 真实串口命令和 `0xBADABB1E` wire protocol 见 `docs/BOOTLOADER_PROTOCOL.md`。
-Windows `COMx`、usbipd、`/dev/ttyUSB0` 与 RESET 的完整配置流程见 `docs/WINDOWS_WSL_UART.md`。
+Windows `COMx` 一键下载是推荐路径；usbipd、`/dev/ttyUSB0` 与 RESET 的备用配置流程见 `docs/WINDOWS_WSL_UART.md`。
 
 单独跑双核性能粗对比：
 

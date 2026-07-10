@@ -8,14 +8,18 @@ BUILD_FIRMWARE := $(REPO_ROOT)/scripts/build_firmware.sh
 RUN_SIM := $(REPO_ROOT)/sim/run_sim.sh
 COMPARE_CPU_PERF := $(REPO_ROOT)/scripts/compare_cpu_perf.sh
 EXPORT_ISE_PROJECT := $(REPO_ROOT)/scripts/export_ise_project.sh
+UART_LOADER := $(REPO_ROOT)/scripts/uart_loader.py
 TEST_RUNNER := python3 $(REPO_ROOT)/scripts/test_runner.py
+WINDOWS_PYTHON ?= py.exe
+BOOTLOAD_BAUD ?= 9600
 
-.PHONY: help check-env firmware rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf ise-export
+.PHONY: help check-env firmware bootload rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf ise-export
 
 help:
 	@echo "常用目标："
 	@echo "  make check-env                 检查本地工具链"
 	@echo "  make firmware                  构建 firmware 镜像"
+	@echo "  make bootload PORT=COM8        构建、上传并进入 serial monitor"
 	@echo "  make rtl-syntax                跑 RTL 语法 smoke"
 	@echo "  make sim TARGET=minisoc_pico   单独运行一个仿真目标"
 	@echo "  make test-probe                跑探针类仿真"
@@ -34,6 +38,17 @@ check-env:
 
 firmware:
 	"$(BUILD_FIRMWARE)"
+
+bootload:
+	@if [ -z "$(PORT)" ]; then echo "用法：make bootload PORT=COM8" >&2; exit 1; fi
+	@if ! command -v wslpath >/dev/null 2>&1; then echo "bootload 需要在 WSL 中运行" >&2; exit 1; fi
+	@if ! command -v "$(WINDOWS_PYTHON)" >/dev/null 2>&1; then echo "找不到 Windows Python：$(WINDOWS_PYTHON)" >&2; exit 1; fi
+	@$(MAKE) --no-print-directory firmware
+	"$(WINDOWS_PYTHON)" "$$(wslpath -w "$(UART_LOADER)")" \
+		--port "$(PORT)" \
+		--baud "$(BOOTLOAD_BAUD)" \
+		--input "$$(wslpath -w "$(REPO_ROOT)/firmware/build/firmware.bin")" \
+		--monitor
 
 rtl-syntax:
 	$(TEST_RUNNER) run-suite rtl_syntax_internal

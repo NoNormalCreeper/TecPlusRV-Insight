@@ -107,9 +107,19 @@ TEC-PLUS 的程序 RESET 与 FPGA CONFIG 是两件事。bootloader bitstream 下
 - payload 接收过程中使用 inter-byte timeout，不限制整个包的总下载时间。
 - version、command、长度、UART 或 CRC 错误都会保持 CPU reset。
 - 失败后硬件清空部分写入的 BRAM，再返回 NACK；host 收到 NACK 后可以直接重传，无需按 RESET。
+- host 按 64-byte chunk 发送并在块间检查响应。传输中收到 READY 表示发生 RESET，当前 attempt 立即废弃并从 magic 开始整包重传；不能从 payload 中间续传，因为 RESET 已清空 BRAM，CRC32 也覆盖完整 payload。
+- READY/NACK 默认最多触发 3 次自动重传；超过上限后 host 明确失败，避免无限循环。
 - 成功释放 CPU 后 bootloader 不再监听 UART，也不会在 CPU 运行时改写 BRAM。要换程序必须按 RESET 重新进入 loader。
 
 ## Host 工具
+
+Windows + WSL2 推荐直接在 WSL 仓库根目录执行：
+
+```bash
+make bootload PORT=COM8
+```
+
+该目标会构建 firmware，通过 Windows Python 打开 `COM8` 完成下载，并在收到 ACK 后使用同一个串口连接进入 serial monitor。完整环境配置见 `docs/WINDOWS_WSL_UART.md`。
 
 构建测试 payload：
 
@@ -130,10 +140,12 @@ python3 -m pip install pyserial
 python3 scripts/uart_loader.py \
   --port /dev/ttyUSB0 \
   --baud 9600 \
-  --input firmware/build/firmware.bin
+  --input firmware/build/firmware.bin \
+  --monitor
 ```
 
-Windows 串口名可写成 `COM3`。脚本打开串口后会提示按 RESET，并等待 READY。
+Windows 串口名可写成 `COM3`。脚本打开串口后会提示按 RESET，并等待 READY；`--monitor` 会在下载成功后持续显示 payload 输出，按 `Enter` 或 `Ctrl+C` 退出。
+传输期间再次按 RESET 时，host 会检测新的 READY 并自动从 magic 整包重传。可用 `--max-retries N` 覆盖默认的 3 次重传上限。
 Windows + WSL2 的 usbipd、`/dev/ttyUSB0`、权限与故障排查见 `docs/WINDOWS_WSL_UART.md`。
 
 ## RTL 与验证入口
