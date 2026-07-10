@@ -233,8 +233,11 @@ assign vga_tile_addr = (req_addr - `TINYBUS_ADDR_VGA_TILE_BASE) >> 2;
 assign same_as_last_req =
     last_req_valid &&
     (mem_addr == last_req_addr) &&
-    (mem_wdata == last_req_wdata) &&
-    (mem_wstrb == last_req_wstrb);
+    (mem_wstrb == last_req_wstrb) &&
+    // DarkRISCV 在 read 期间不保证 dbus_wdata 的值；读重放只比较地址和
+    // byte-enable，写重放才需要比较写数据。否则仿真中的 X 会传入
+    // req_is_replay，并阻断 SDRAM ready-first 请求。
+    ((mem_wstrb == 4'b0000) || (mem_wdata == last_req_wdata));
 
 // sdram_data_ctrl 使用 ready-first 握手：仅在 ready 已拉高时提交一次请求。
 // CPU 侧仍等待 resp_valid，sdram_req_sent 负责隔离“已提交”和“等待响应”。
