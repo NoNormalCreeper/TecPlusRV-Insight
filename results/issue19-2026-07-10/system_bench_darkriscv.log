@@ -1,0 +1,4 @@
+system_bench
+RESULT: benchmark=system_bench case=stencil memory=bram words=256 rounds=4 cycles=57046 instret=18333 mem_wait=16276
+RESULT: benchmark=system_bench case=stencil memory=sdram words=256 rounds=4 cycles=128186 instret=18333 mem_wait=91278
+PASS: MiniSoC SDRAM 集成通过，cycle=267792 read=3049 write=1784 bram=11092 mmio=2949 sdram=5047 ifetch=267786

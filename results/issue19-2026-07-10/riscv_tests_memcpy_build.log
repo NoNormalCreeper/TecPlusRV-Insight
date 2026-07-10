@@ -1,0 +1,6 @@
+firmware 构建完成：
+  entry: /tmp/NexysRV-Insight-issue19/firmware/tests/riscv_bench_memcpy.c
+  output: /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/riscv_tests_memcpy/firmware
+  /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/riscv_tests_memcpy/firmware.elf
+  /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/riscv_tests_memcpy/firmware.bin
+  /tmp/NexysRV-Insight-issue19/firmware/build/benchmarks/issue19-final/riscv_tests_memcpy/firmware.mem

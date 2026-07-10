@@ -1,0 +1,6 @@
+RESULT: benchmark=perf_mix case=alu_dep cycles=151655 instret=24592 mem_wait=10
+RESULT: benchmark=perf_mix case=branch_alternating cycles=157804 instret=26641 mem_wait=10
+RESULT: benchmark=perf_mix case=bram_load_store cycles=64610 instret=10255 mem_wait=4106
+RESULT: benchmark=perf_mix case=mixed cycles=214747 instret=35956 mem_wait=8202
+RESULT: cpu_impl=0 cycles=214747 instret=35956 cpi_x1000=5972
+PASS: MiniSoC perf measurement completed
