@@ -31,7 +31,7 @@ module tecplus_minisoc_top #(
 );
 
 localparam [31:0] BRAM_BYTES = (32'd1 << BRAM_ADDR_WIDTH) * 32'd4;
-localparam [31:0] SDRAM_SIZE = 32'h0200_0000; // 256Mbit = 32MB，要不要乘2？
+localparam [31:0] SDRAM_SIZE = 32'h0200_0000; // U2 x16 256 Mbit = 32 MiB
 
 wire resetn;
 wire rst;
@@ -244,7 +244,8 @@ sdram_data_ctrl #(
     .TRCD_CYCLES(3),
     .TWR_CYCLES(3),
     .CAS_LATENCY_CYCLES(2),
-    .REFI_CYCLES(780),
+    .REFI_CYCLES(300),
+    .REFRESH_DEFER_CYCLES(32),
     .MODE_REG_VALUE(13'h220)
 ) u_sdram (
     .clk(clk),

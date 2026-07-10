@@ -18,7 +18,7 @@ module sdram_x16_model #(
     output reg [31:0] write_command_count
 );
 
-// ponytail: 仅保存 64K halfword，并让高 row 在模型内别名；需要全容量遍历时再换芯片模型。
+// ponytail: 仅保存 64K halfword；hash 显式混入 A12，足以检查 16/32 MiB 地址不别名。
 reg [15:0] mem [0:65535];
 reg [1:0]  open_ba;
 reg [12:0] open_row;
@@ -36,8 +36,10 @@ function [15:0] mem_key;
     input [12:0] row;
     input [1:0]  bank;
     input [8:0]  col;
+    reg [4:0] row_key;
     begin
-        mem_key = {row[4:0], bank, col};
+        row_key = row[4:0] ^ {4'b0000, row[12]};
+        mem_key = {row_key, bank, col};
     end
 endfunction
 

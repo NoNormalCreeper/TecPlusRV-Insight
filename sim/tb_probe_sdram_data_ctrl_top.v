@@ -39,7 +39,7 @@ reg        row_open;
 reg        expect_is_write;
 integer    expect_phase;
 reg [1:0]  expect_bank;
-reg [11:0] expect_row;
+reg [12:0] expect_row;
 reg [8:0]  expect_col_lo;
 reg [8:0]  expect_col_hi;
 reg        misaligned_inflight;
@@ -83,10 +83,13 @@ probe_sdram_data_ctrl_top #(
 always #5 clk = ~clk;
 
 function [15:0] mk_addr_key;
+    input [12:0] row;
     input [1:0] ba;
-    input [12:0] rowcol;
+    input [8:0] col;
+    reg [4:0] row_key;
     begin
-        mk_addr_key = {ba, rowcol[7:0], rowcol[11:8]};
+        row_key = row[4:0] ^ {4'b0000, row[12]};
+        mk_addr_key = {row_key, ba, col};
     end
 endfunction
 
@@ -167,7 +170,7 @@ initial begin
     expect_is_write = 1'b0;
     expect_phase = 0;
     expect_bank = 2'b00;
-    expect_row = 12'd0;
+    expect_row = 13'd0;
     expect_col_lo = 9'd0;
     expect_col_hi = 9'd0;
     misaligned_inflight = 1'b0;
@@ -242,7 +245,7 @@ always @(posedge clk) begin
         expect_is_write <= 1'b0;
         expect_phase <= 0;
         expect_bank <= 2'b00;
-        expect_row <= 12'd0;
+        expect_row <= 13'd0;
         expect_col_lo <= 9'd0;
         expect_col_hi <= 9'd0;
         misaligned_inflight <= 1'b0;
@@ -265,7 +268,7 @@ always @(posedge clk) begin
                 expect_is_write <= dut.req_we;
                 expect_phase <= 1;
                 expect_bank <= dut.req_addr[11:10];
-                expect_row <= dut.req_addr[23:12];
+                expect_row <= dut.req_addr[24:12];
                 expect_col_lo <= dut.req_addr[9:1];
                 expect_col_hi <= dut.req_addr[9:1] + 9'd1;
                 misaligned_inflight <= 1'b0;
@@ -292,9 +295,9 @@ always @(posedge clk) begin
         // ACTIVE
         if (!sh_ncs && !sh_nras && sh_ncas && sh_nwe) begin
             if (expect_phase == 1) begin
-                if (sh_ba !== expect_bank || sh_a !== {1'b0, expect_row}) begin
+                if (sh_ba !== expect_bank || sh_a !== expect_row) begin
                     $display("FAIL: ACT address mismatch, got bank=%b row=%h exp bank=%b row=%h",
-                        sh_ba, sh_a[11:0], expect_bank, expect_row);
+                        sh_ba, sh_a, expect_bank, expect_row);
                     $finish;
                 end
                 expect_phase <= 2;
@@ -385,8 +388,8 @@ always @(posedge clk) begin
                 $display("FAIL: dq_oe not asserted during WRITE");
                 $finish;
             end
-            if (!sh_dqm[0]) mem[mk_addr_key(sh_ba, {5'd0, sh_a[8:0]})][7:0] <= dut.dq_out[7:0];
-            if (!sh_dqm[1]) mem[mk_addr_key(sh_ba, {5'd0, sh_a[8:0]})][15:8] <= dut.dq_out[15:8];
+            if (!sh_dqm[0]) mem[mk_addr_key(open_row, sh_ba, sh_a[8:0])][7:0] <= dut.dq_out[7:0];
+            if (!sh_dqm[1]) mem[mk_addr_key(open_row, sh_ba, sh_a[8:0])][15:8] <= dut.dq_out[15:8];
         end
 
         // READ
@@ -426,7 +429,7 @@ always @(posedge clk) begin
                 $display("FAIL: dq_oe asserted during READ");
                 $finish;
             end
-            read_data_latch <= mem[mk_addr_key(sh_ba, {5'd0, sh_a[8:0]})];
+            read_data_latch <= mem[mk_addr_key(open_row, sh_ba, sh_a[8:0])];
             read_wait <= 2;
             read_pending <= 1'b1;
         end

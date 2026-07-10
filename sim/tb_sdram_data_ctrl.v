@@ -105,11 +105,13 @@ integer saw_misaligned_resp;
 integer refresh_before_pressure;
 
 function [15:0] mk_addr_key;
+    input [12:0] row;
     input [1:0] ba;
-    input [12:0] rowcol; // [12:0] row in ACT, col in READ/WRITE
+    input [8:0] col;
+    reg [4:0] row_key;
     begin
-        // lightweight hash key for TB storage
-        mk_addr_key = {ba, rowcol[7:0], rowcol[11:8]};
+        row_key = row[4:0] ^ {4'b0000, row[12]};
+        mk_addr_key = {row_key, ba, col};
     end
 endfunction
 
@@ -120,7 +122,7 @@ reg        row_open;
 reg        expect_is_write;
 integer    expect_phase;
 reg [1:0]  expect_bank;
-reg [11:0] expect_row;
+reg [12:0] expect_row;
 reg [8:0]  expect_col_lo;
 reg [8:0]  expect_col_hi;
 
@@ -151,7 +153,7 @@ initial begin
     expect_is_write = 1'b0;
     expect_phase = 0;
     expect_bank = 2'b00;
-    expect_row = 12'd0;
+    expect_row = 13'd0;
     expect_col_lo = 9'd0;
     expect_col_hi = 9'd0;
 
@@ -186,12 +188,19 @@ initial begin
         $finish;
     end
 
-    // 4) 非零 row/bank 地址访问，固定“ACT 用旧地址”的回归
+    // 4) 成对访问仅相差 A12 的地址，固定 ACT 地址与 16/32 MiB alias 回归
     host_write32(32'h0012_0440, 32'hCAFE_BABE, 4'b1111);
+    host_write32(32'h0112_0440, 32'h1357_9BDF, 4'b1111);
     host_read32(32'h0012_0440);
     if (resp_rdata !== 32'hCAFE_BABE) begin
         $display("FAIL: non-zero bank/row readback mismatch, got=%h exp=%h",
                  resp_rdata, 32'hCAFE_BABE);
+        $finish;
+    end
+    host_read32(32'h0112_0440);
+    if (resp_rdata !== 32'h1357_9BDF) begin
+        $display("FAIL: A12 high readback mismatch, got=%h exp=%h",
+                 resp_rdata, 32'h1357_9BDF);
         $finish;
     end
 
@@ -302,7 +311,7 @@ begin
     expect_is_write = is_write;
     expect_phase = 1;
     expect_bank = addr[11:10];
-    expect_row = addr[23:12];
+    expect_row = addr[24:12];
     expect_col_lo = addr[9:1];
     expect_col_hi = addr[9:1] + 9'd1;
 end
@@ -473,7 +482,7 @@ always @(posedge clk) begin
         expect_is_write <= 1'b0;
         expect_phase <= 0;
         expect_bank <= 2'b00;
-        expect_row <= 12'd0;
+        expect_row <= 13'd0;
         expect_col_lo <= 9'd0;
         expect_col_hi <= 9'd0;
         init_stage <= 0;
@@ -491,9 +500,9 @@ always @(posedge clk) begin
     // ACTIVE: RAS=0 CAS=1 WE=1
     if (!sdram_cs_n && !sdram_ras_n && sdram_cas_n && sdram_we_n) begin
         if (expect_phase == 1) begin
-            if (sdram_ba !== expect_bank || sdram_addr !== {1'b0, expect_row}) begin
+            if (sdram_ba !== expect_bank || sdram_addr !== expect_row) begin
                 $display("FAIL: ACT address mismatch, got bank=%b row=%h exp bank=%b row=%h",
-                         sdram_ba, sdram_addr[11:0], expect_bank, expect_row);
+                         sdram_ba, sdram_addr, expect_bank, expect_row);
                 $finish;
             end
             expect_phase <= 2;
@@ -591,9 +600,8 @@ always @(posedge clk) begin
             $display("FAIL: dq_oe not asserted during WRITE");
             $finish;
         end
-        // key uses lower col bits only for this simple TB model
-        if (!sdram_dqm[0]) mem[mk_addr_key(sdram_ba, {5'd0,sdram_addr[8:0]})][7:0]   <= dq_out[7:0];
-        if (!sdram_dqm[1]) mem[mk_addr_key(sdram_ba, {5'd0,sdram_addr[8:0]})][15:8]  <= dq_out[15:8];
+        if (!sdram_dqm[0]) mem[mk_addr_key(open_row, sdram_ba, sdram_addr[8:0])][7:0]  <= dq_out[7:0];
+        if (!sdram_dqm[1]) mem[mk_addr_key(open_row, sdram_ba, sdram_addr[8:0])][15:8] <= dq_out[15:8];
     end
 
     // READ: RAS=1 CAS=0 WE=1
@@ -634,7 +642,7 @@ always @(posedge clk) begin
             $display("FAIL: dq_oe asserted during READ");
             $finish;
         end
-        read_data_latch <= mem[mk_addr_key(sdram_ba, {5'd0,sdram_addr[8:0]})];
+        read_data_latch <= mem[mk_addr_key(open_row, sdram_ba, sdram_addr[8:0])];
         read_wait <= CAS_LATENCY_CYCLES;
         read_pending <= 1'b1;
     end

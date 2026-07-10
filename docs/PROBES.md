@@ -460,7 +460,7 @@ scripts/check_rtl_syntax.sh
 - 初始化完成后 `req_ready` 变为可接收
 - aligned `32-bit` 全字写读
 - `wstrb` 部分写
-- 非零 `bank/row` 地址访问
+- 非零 `bank/row` 地址访问，并检查 A12 高低地址不 alias
 - misaligned `read/write` 返回 `resp_err`
 - 持续 `req_valid=1` 压力下至少插入一次 refresh
 - 写事务中途触发 probe 内部 `local reset`，随后重新 init 并恢复可用
@@ -509,7 +509,7 @@ scripts/check_rtl_syntax.sh
 - PicoRV32 / DarkRISCV 真实 CPU 从 BRAM 启动并访问 SDRAM
 - BRAM / TinyBus MMIO / SDRAM 三分流互斥，SDRAM 不进入 `tinybus_decode`
 - `ifetch_*` 保持 BRAM-only
-- SDRAM 固定 pattern、不同 bank/row、连续区域和当前 16 MiB 可达边界写读回
+- SDRAM 固定 pattern、不同 bank/row、连续区域及 16/32 MiB 边界成对写读回
 
 ### 本地验证
 

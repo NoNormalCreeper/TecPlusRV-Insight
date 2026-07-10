@@ -1,6 +1,6 @@
 // M2a 板级 probe 的自检 runner。
 // 它不模拟 SDRAM，本质上是固定脚本的 host driver：
-// 按顺序驱动 sdram_data_ctrl，覆盖全字写读、部分写、非零 bank/row、
+// 按顺序驱动 sdram_data_ctrl，覆盖全字写读、部分写、bank/row/A12、
 // misaligned 错误、持续压力下 refresh、以及事务中途 local reset 后恢复。
 module sdram_data_ctrl_probe_runner #(
     parameter integer WAIT_TIMEOUT_CYCLES = 24'd200000,
@@ -59,6 +59,8 @@ localparam [6:0]
     ST_OP_WAIT_READY           = 7'd20,
     ST_OP_WAIT_ACCEPT          = 7'd21,
     ST_OP_WAIT_RESP            = 7'd22,
+    ST_PREP_CASE3_WRITE_HIGH   = 7'd23,
+    ST_PREP_CASE3_READ_HIGH    = 7'd24,
     ST_PASS                    = 7'd62,
     ST_FAIL                    = 7'd63;
 
@@ -84,6 +86,7 @@ localparam [7:0]
 
 localparam [31:0] ADDR_BASE         = 32'h0000_0040;
 localparam [31:0] ADDR_BANK_ROW     = 32'h0012_0440;
+localparam [31:0] ADDR_BANK_ROW_HIGH = 32'h0112_0440;
 localparam [31:0] ADDR_RESET_TARGET = 32'h0012_0480;
 localparam [31:0] ADDR_MISALIGNED_R = 32'h0000_0042;
 localparam [31:0] ADDR_MISALIGNED_W = 32'h0012_0482;
@@ -92,6 +95,7 @@ localparam [31:0] DATA_BASE         = 32'h1234_abcd;
 localparam [31:0] DATA_PARTIAL      = 32'hdead_beef;
 localparam [31:0] DATA_PARTIAL_EXP  = 32'h1234_beef;
 localparam [31:0] DATA_BANK_ROW     = 32'hcafe_babe;
+localparam [31:0] DATA_BANK_ROW_HIGH = 32'h1357_9bdf;
 localparam [31:0] DATA_RESET_TARGET = 32'h0bad_f00d;
 
 reg [6:0]  state;
@@ -286,6 +290,22 @@ always @(posedge clk) begin
                 expected_rdata <= 32'd0;
                 op_expect_err <= 1'b0;
                 op_expect_rdata_valid <= 1'b0;
+                after_op_state <= ST_PREP_CASE3_WRITE_HIGH;
+                wait_count <= 24'd0;
+                state <= ST_OP_WAIT_READY;
+            end
+
+            ST_PREP_CASE3_WRITE_HIGH: begin
+                status_led <= 4'b0010;
+                current_case_id <= 8'h03;
+                current_step_id <= 8'h02;
+                req_we <= 1'b1;
+                req_addr <= ADDR_BANK_ROW_HIGH;
+                req_wdata <= DATA_BANK_ROW_HIGH;
+                req_wstrb <= 4'hf;
+                expected_rdata <= 32'd0;
+                op_expect_err <= 1'b0;
+                op_expect_rdata_valid <= 1'b0;
                 after_op_state <= ST_PREP_CASE3_READ;
                 wait_count <= 24'd0;
                 state <= ST_OP_WAIT_READY;
@@ -294,12 +314,28 @@ always @(posedge clk) begin
             ST_PREP_CASE3_READ: begin
                 status_led <= 4'b0010;
                 current_case_id <= 8'h03;
-                current_step_id <= 8'h02;
+                current_step_id <= 8'h03;
                 req_we <= 1'b0;
                 req_addr <= ADDR_BANK_ROW;
                 req_wdata <= 32'd0;
                 req_wstrb <= 4'd0;
                 expected_rdata <= DATA_BANK_ROW;
+                op_expect_err <= 1'b0;
+                op_expect_rdata_valid <= 1'b1;
+                after_op_state <= ST_PREP_CASE3_READ_HIGH;
+                wait_count <= 24'd0;
+                state <= ST_OP_WAIT_READY;
+            end
+
+            ST_PREP_CASE3_READ_HIGH: begin
+                status_led <= 4'b0010;
+                current_case_id <= 8'h03;
+                current_step_id <= 8'h04;
+                req_we <= 1'b0;
+                req_addr <= ADDR_BANK_ROW_HIGH;
+                req_wdata <= 32'd0;
+                req_wstrb <= 4'd0;
+                expected_rdata <= DATA_BANK_ROW_HIGH;
                 op_expect_err <= 1'b0;
                 op_expect_rdata_valid <= 1'b1;
                 after_op_state <= ST_PREP_CASE4_READ;

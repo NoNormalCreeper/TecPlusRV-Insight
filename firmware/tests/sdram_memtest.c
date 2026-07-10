@@ -28,7 +28,7 @@ static const unsigned int k_patterns[] = {
 
 #define PATTERN_COUNT (sizeof(k_patterns) / sizeof(k_patterns[0]))
 
-// 散列地址点覆盖不同 bank/row，并碰到当前 16 MiB 可达范围的最后一个 word。
+// 散列地址点覆盖不同 bank/row，并成对检查 16/32 MiB 边界不发生 alias。
 static const unsigned int k_scatter_index[] = {
     0u,
     1u,
@@ -40,6 +40,7 @@ static const unsigned int k_scatter_index[] = {
     1024u,
     17408u,
     4194303u,
+    8388607u,
 };
 
 #define SCATTER_COUNT (sizeof(k_scatter_index) / sizeof(k_scatter_index[0]))

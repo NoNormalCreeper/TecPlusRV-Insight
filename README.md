@@ -12,13 +12,14 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 蜂鸣器 UART debug probe
 - 最小 VGA timing / 彩条 probe / 字符型 VGA 骨架 / 独立 8x8 字模
 - 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
+- U2 32 MiB SDRAM data-only 控制器与 MiniSoC 集成
 - 裸机 firmware 骨架
 - 本地构建和仿真入口
 
 当前版本还不提供：
 
 - UART RX bootloader（基础收发已经接入，bootloader 尚未实现）
-- 通用 SDRAM 控制器
+- 从 SDRAM 取指或启动的执行路径
 - ISE 工程文件或 bitstream
 
 ## 仓库结构

@@ -20,10 +20,10 @@ Host 侧保留 32‑bit 访问语义，控制器内部拆为两个 16‑bit beat
 理由：与仓库现有 Probe 4a / Probe 4 的单片路径保持一致，状态机和验证矩阵更小，首版风险可控；后续扩展 x32 时不改变本版控制器的命令链路基本结论。
 
 2.2 地址映射（固定）
-内部使用半字地址 haddr = byte_addr[23:1]（即 req_addr >> 1），分解如下：
+内部使用半字地址 haddr = byte_addr[24:1]（即 SDRAM 窗口内 byte address >> 1），分解如下：
 
 text
-haddr[22:11] → row[11:0]   (12 bits)
+haddr[23:11] → row[12:0]   (13 bits)
 haddr[10:9]  → bank[1:0]   (2 bits)
 haddr[8:0]   → col[8:0]    (9 bits)
 32‑bit 访问对应两个 beat：
@@ -49,6 +49,8 @@ ACT → tRCD → (READ/WRITE beats) → (tWR for write) → PRECHARGE → tRP �
 2.4 刷新策略
 使用 refresh_age 统计距离上一次“实际发出 AUTO REFRESH”已经过去的周期数。
 当 refresh_age 到达 REFI_CYCLES 时置位 refresh_pending。
+
+HY57V2562 要求 8192 次 refresh / 64 ms，平均间隔不超过 7.8125 µs。板级默认按 50 MHz 使用 `REFI_CYCLES=300`（6.0 µs）和 `REFRESH_DEFER_CYCLES=32`，为正在执行的事务收尾留出余量。
 
 刷新仅在 ST_IDLE 状态启动，不会抢占正在进行的访问（符合单请求模型）。
 
@@ -158,7 +160,8 @@ TMRD_CYCLES	2	模式寄存器设置周期
 TRCD_CYCLES	3	行激活到读写命令延时
 TWR_CYCLES	3	写恢复时间
 CAS_LATENCY_CYCLES	2	CAS 延迟（读取时）
-REFI_CYCLES	780	刷新间隔（例如 50MHz 下约 15.6µs）
+REFI_CYCLES	300	刷新间隔（50 MHz 下 6.0 µs）
+REFRESH_DEFER_CYCLES	32	允许的延期窗口，之后强制在下一个 IDLE 刷新
 MODE_REG_VALUE	13'h220	模式寄存器值（BL=1, 顺序, CL=2）
 6. 复位行为
 复位（reset=1）将状态机置于 ST_PWRUP_WAIT，所有输出信号置为默认安全值（dq_oe=0，命令为 NOP 等）。
@@ -174,6 +177,8 @@ MODE_REG_VALUE	13'h220	模式寄存器值（BL=1, 顺序, CL=2）
 ✅ 初始化完成后至少观察到一次刷新命令。
 
 ✅ 对齐的 32‑bit 写 / 读回验证。
+
+✅ 对仅相差 A12 的低/高半区地址分别写读，确认 16/32 MiB 不发生 alias。
 
 ✅ 部分写（字节使能）后读回校验。
 

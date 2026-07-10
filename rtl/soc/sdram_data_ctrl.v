@@ -16,8 +16,8 @@ module sdram_data_ctrl #(
     parameter integer TRCD_CYCLES         = 16'd3,
     parameter integer TWR_CYCLES          = 16'd3,
     parameter integer CAS_LATENCY_CYCLES  = 16'd2,
-    parameter integer REFI_CYCLES         = 16'd780,   // example @50MHz for ~15.6us
-    parameter integer REFRESH_DEFER_CYCLES = 16'd100,  // allow a small overdue window
+    parameter integer REFI_CYCLES         = 16'd300,   // 6.0us @50MHz，满足 8192 refresh / 64ms
+    parameter integer REFRESH_DEFER_CYCLES = 16'd32,   // 为当前事务收尾保留刷新余量
     parameter [12:0] MODE_REG_VALUE       = 13'h220    // BL=1, sequential, CL=2 (example)
 ) (
     input              clk,
@@ -104,12 +104,12 @@ reg        latched_misaligned;
 reg [15:0] rd_lo;
 reg [15:0] rd_hi;
 
-reg [11:0] row_addr;
+reg [12:0] row_addr;
 reg [1:0]  bank_addr;
 reg [8:0]  col_addr_lo;
 reg [8:0]  col_addr_hi;
 
-wire [22:0] haddr = latched_addr[23:1]; // halfword address
+wire [23:0] haddr = latched_addr[24:1]; // halfword address
 
 // command helpers (active-low control signals)
 task cmd_nop;
@@ -169,14 +169,14 @@ endtask
 
 task cmd_active;
     input [1:0] ba;
-    input [11:0] row;
+    input [12:0] row;
 begin
     sdram_cs_n  <= 1'b0;
     sdram_ras_n <= 1'b0;
     sdram_cas_n <= 1'b1;
     sdram_we_n  <= 1'b1;
     sdram_ba    <= ba;
-    sdram_addr  <= {1'b0, row}; // A[12:0], row uses low 12 bits in this mapping
+    sdram_addr  <= row;
 end
 endtask
 
@@ -243,7 +243,7 @@ always @(posedge clk) begin
         latched_we <= 1'b0;
         latched_misaligned <= 1'b0;
 
-        row_addr <= 12'd0;
+        row_addr <= 13'd0;
         bank_addr <= 2'd0;
         col_addr_lo <= 9'd0;
         col_addr_hi <= 9'd0;
@@ -379,11 +379,11 @@ always @(posedge clk) begin
                         if (|req_addr[1:0]) begin
                             state <= ST_RESP;   // 直接返回错误
                         end else begin
-                            row_addr    <= req_addr[23:12];
+                            row_addr    <= req_addr[24:12];
                             bank_addr   <= req_addr[11:10];
                             col_addr_lo <= req_addr[9:1];
                             col_addr_hi <= req_addr[9:1] + 9'd1;
-                            cmd_active(req_addr[11:10], req_addr[23:12]);
+                            cmd_active(req_addr[11:10], req_addr[24:12]);
                             wait_count <= TRCD_CYCLES[15:0];
                             state <= ST_TRCD;
                         end
