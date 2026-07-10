@@ -365,6 +365,22 @@
       "requires": ["rtl_syntax"]
     },
     {
+      "id": "boot_image_verify_pico",
+      "kind": "sim",
+      "sim_target": "boot_image_verify_pico",
+      "requires": ["rtl_syntax"]
+    },
+    {
+      "id": "boot_image_verify_dark",
+      "kind": "sim",
+      "sim_target": "boot_image_verify_dark"
+    },
+    {
+      "id": "boot_image_asset_tool",
+      "kind": "command",
+      "command": ["python3", "scripts/test_boot_image_asset.py"]
+    },
+    {
       "id": "uart_loader_tool",
       "kind": "command",
       "command": ["python3", "scripts/test_uart_loader.py"]
@@ -529,6 +545,9 @@
       "bootloader_pico",
       "bootloader_dark",
       "bad_apple_minimal_pico",
+      "boot_image_verify_pico",
+      "boot_image_verify_dark",
+      "boot_image_asset_tool",
       "uart_loader_tool",
       "firmware_output_isolation",
       "minisoc_sdram_pico",

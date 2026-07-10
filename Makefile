@@ -19,8 +19,12 @@ BAD_APPLE_PREVIEW := $(REPO_ROOT)/build/badapple/bad_apple_20s.gif
 BAD_APPLE_REPORT := $(REPO_ROOT)/build/badapple/bad_apple_20s.json
 BAD_APPLE_VIDEO := $(REPO_ROOT)/firmware/assets/bad-apple.mp4
 BAD_APPLE_MIDI := $(REPO_ROOT)/firmware/assets/badapple-midifull.mid
+BOOT_IMAGE_TEST_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/boot_image_verify
+BOOT_IMAGE_TEST_ASSET := $(REPO_ROOT)/build/bootloader-test/pattern.bin
+DATA_BYTES ?= 65536
+SEED ?= 0x12345678
 
-.PHONY: help check-env firmware bootload bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf ise-export
+.PHONY: help check-env firmware bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf ise-export
 
 help:
 	@echo "常用目标："
@@ -28,6 +32,8 @@ help:
 	@echo "  make firmware                  构建手动默认 firmware 镜像"
 	@echo "  make firmware FIRMWARE_OUT=... 构建到指定输出前缀"
 	@echo "  make bootload PORT=COM8        构建、上传并进入 serial monitor"
+	@echo "  make boot-image-test-build     构建 LOAD_IMAGE 全量读回 firmware/asset"
+	@echo "  make boot-image-test-load PORT=COM8  上传并显示正确性/吞吐结果"
 	@echo "  make bad-apple-build           构建保留的 BAM1 仿真原型与媒体预览"
 	@echo "  make bad-apple-load PORT=COM8  重 VGA 资源实验入口（LX9 已知 overmap）"
 	@echo "  make rtl-syntax                跑 RTL 语法 smoke"
@@ -58,6 +64,25 @@ bootload:
 		--port "$(PORT)" \
 		--baud "$(BOOTLOAD_BAUD)" \
 		--input "$$(wslpath -w "$(BOOTLOAD_FIRMWARE_OUT).bin")" \
+		--monitor
+
+boot-image-test-build:
+	python3 "$(REPO_ROOT)/scripts/make_boot_image_test_asset.py" \
+		--data-bytes "$(DATA_BYTES)" --seed "$(SEED)" \
+		--output "$(BOOT_IMAGE_TEST_ASSET)"
+	FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/boot_image_verify.c" \
+		FIRMWARE_OUT="$(BOOT_IMAGE_TEST_FIRMWARE_OUT)" "$(BUILD_FIRMWARE)"
+
+boot-image-test-load: boot-image-test-build
+	@if [ -z "$(PORT)" ]; then echo "用法：make boot-image-test-load PORT=COM8" >&2; exit 1; fi
+	@if ! command -v wslpath >/dev/null 2>&1; then echo "boot-image-test-load 需要在 WSL 中运行" >&2; exit 1; fi
+	@if ! command -v "$(WINDOWS_PYTHON)" >/dev/null 2>&1; then echo "找不到 Windows Python：$(WINDOWS_PYTHON)" >&2; exit 1; fi
+	"$(WINDOWS_PYTHON)" "$$(wslpath -w "$(UART_LOADER)")" \
+		--port "$(PORT)" \
+		--baud "$(BOOTLOAD_BAUD)" \
+		--input "$$(wslpath -w "$(BOOT_IMAGE_TEST_FIRMWARE_OUT).bin")" \
+		--sdram-input "$$(wslpath -w "$(BOOT_IMAGE_TEST_ASSET)")" \
+		--sdram-address 0x81000000 \
 		--monitor
 
 bad-apple-build:

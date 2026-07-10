@@ -51,6 +51,21 @@ def host_print(message: str, *, error: bool = False, stream=None) -> None:
     print(text, file=stream, flush=True)
 
 
+def format_transfer_stats(
+    packet_bytes: int, elapsed_seconds: float, baud: int, retries: int
+) -> str:
+    """按 8N1 理论上限格式化 READY 到 ACK 的传输统计。"""
+    if packet_bytes <= 0 or elapsed_seconds <= 0 or baud <= 0 or retries < 0:
+        raise ValueError("传输统计参数必须为正数，重传次数不能为负")
+    bytes_per_second = packet_bytes / elapsed_seconds
+    utilization = bytes_per_second / (baud / 10.0) * 100.0
+    return (
+        f"传输统计：{packet_bytes} bytes / {elapsed_seconds:.3f} s = "
+        f"{bytes_per_second:.1f} B/s，理论利用率 {utilization:.1f}%，"
+        f"重传 {retries} 次"
+    )
+
+
 def build_packet(payload: bytes) -> tuple[bytes, int]:
     """构造 wire packet；CRC32 不包含 magic。"""
     if not payload:
@@ -151,7 +166,7 @@ def transfer_packet(
     packet: bytes,
     ready_timeout: float,
     max_retries: int,
-) -> None:
+) -> int:
     """发送 packet；RESET/READY 或 NACK 会触发有限次整包重传。"""
     retries = 0
     while True:
@@ -159,7 +174,7 @@ def transfer_packet(
         if status == RESPONSE_ACK:
             if code != 0:
                 raise RuntimeError(f"ACK 携带了非法状态码：0x{code:02x}")
-            return
+            return retries
 
         if status == RESPONSE_READY and code != 0:
             raise RuntimeError(f"READY 携带了非法状态码：0x{code:02x}")
@@ -244,8 +259,11 @@ def send_packet(
         host_print(
             f"收到 READY，按 {TX_CHUNK_BYTES}-byte chunk 发送 {len(packet)} bytes..."
         )
-        transfer_packet(serial_port, packet, ready_timeout, max_retries)
+        transfer_started = time.monotonic()
+        retries = transfer_packet(serial_port, packet, ready_timeout, max_retries)
+        elapsed_seconds = time.monotonic() - transfer_started
         host_print("收到 ACK，CPU 已释放并开始运行 payload。")
+        host_print(format_transfer_stats(len(packet), elapsed_seconds, baud, retries))
         if monitor:
             monitor_serial(serial_port)
 

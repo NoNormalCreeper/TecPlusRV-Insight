@@ -211,3 +211,6 @@ RTL 仿真只能证明协议和所有权切换逻辑。首次上板仍必须记�
 - 错 CRC 是否返回 `NACK 04`
 - 再次 RESET 后是否能下载第二份 payload
 - ISE 资源占用、timing 与 BRAM inference 是否正常
+
+`LOAD_IMAGE` 的确定性 pattern、CPU 全量读回、RESET 恢复和吞吐测试步骤见
+`docs/BOOTLOADER_BOARD_TEST.md`。

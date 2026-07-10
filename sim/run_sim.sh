@@ -148,7 +148,8 @@ compile_minisoc_tb() {
         )
     fi
 
-    if [ "$tb_module" = "tb_bad_apple_minimal" ]; then
+    if [ "$tb_module" = "tb_bad_apple_minimal" ] ||
+       [ "$tb_module" = "tb_boot_image_verify" ]; then
         extra_params+=(
             -P "$tb_module.ASSET_MEM_FILE=\"$ASSET_MEM\""
         )
@@ -335,6 +336,21 @@ case "$SIM_KIND" in
         compile_minisoc_tb "$BUILD_DIR/tb_bad_apple_minimal_pico.out" 0 tb_bad_apple_minimal "$REPO_ROOT/sim/tb_bad_apple_minimal.v"
         run_and_check "$BUILD_DIR/tb_bad_apple_minimal_pico.log" vvp "$BUILD_DIR/tb_bad_apple_minimal_pico.out"
         ;;
+    boot_image_verify_pico|boot_image_verify_dark)
+        ASSET_MEM=${ASSET_MEM:-$BUILD_DIR/boot_image_test.mem}
+        python3 "$REPO_ROOT/scripts/make_boot_image_test_asset.py" \
+            --data-bytes 256 --seed 0x12345678 \
+            --output "$BUILD_DIR/boot_image_test.bin" \
+            --mem-output "$ASSET_MEM" >/dev/null
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/boot_image_verify.c"
+        if [ "$SIM_KIND" = "boot_image_verify_pico" ]; then
+            compile_minisoc_tb "$BUILD_DIR/tb_boot_image_verify_pico.out" 0 tb_boot_image_verify "$REPO_ROOT/sim/tb_boot_image_verify.v"
+            run_and_check "$BUILD_DIR/tb_boot_image_verify_pico.log" vvp "$BUILD_DIR/tb_boot_image_verify_pico.out"
+        else
+            compile_minisoc_tb "$BUILD_DIR/tb_boot_image_verify_dark.out" 1 tb_boot_image_verify "$REPO_ROOT/sim/tb_boot_image_verify.v"
+            run_and_check "$BUILD_DIR/tb_boot_image_verify_dark.log" vvp "$BUILD_DIR/tb_boot_image_verify_dark.out"
+        fi
+        ;;
     minisoc_smoke_pico)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_smoke_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
         run_and_check "$BUILD_DIR/tb_minisoc_smoke_pico.log" vvp "$BUILD_DIR/tb_minisoc_smoke_pico.out"
@@ -515,7 +531,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
+        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、boot_image_verify_pico、boot_image_verify_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
         exit 1
         ;;
 esac

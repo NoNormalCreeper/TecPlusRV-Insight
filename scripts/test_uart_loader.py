@@ -48,11 +48,27 @@ class UartLoaderTest(unittest.TestCase):
 
         serial_port = FakeSerial()
         with contextlib.redirect_stdout(io.StringIO()):
-            uart_loader.transfer_packet(serial_port, packet, 0.1, max_retries=3)
+            retries = uart_loader.transfer_packet(
+                serial_port, packet, 0.1, max_retries=3
+            )
 
         self.assertEqual(bytes(serial_port.attempts[0]), packet[:64])
         self.assertEqual(bytes(serial_port.attempts[1]), packet)
         self.assertEqual(serial_port.output_resets, 1)
+        self.assertEqual(retries, 1)
+
+    def test_transfer_stats_report_8n1_utilization(self) -> None:
+        self.assertEqual(
+            uart_loader.format_transfer_stats(9600, 10.0, 9600, 2),
+            "传输统计：9600 bytes / 10.000 s = 960.0 B/s，"
+            "理论利用率 100.0%，重传 2 次",
+        )
+
+    def test_transfer_stats_reject_invalid_values(self) -> None:
+        for args in ((0, 1.0, 9600, 0), (1, 0.0, 9600, 0), (1, 1.0, 0, 0)):
+            with self.subTest(args=args):
+                with self.assertRaises(ValueError):
+                    uart_loader.format_transfer_stats(*args)
 
     def test_repeated_ready_eventually_fails(self) -> None:
         class ResettingSerial:

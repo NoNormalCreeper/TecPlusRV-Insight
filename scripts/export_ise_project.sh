@@ -316,7 +316,7 @@ case "$ISE_TARGET" in
         package_minisoc
         ;;
     minisoc_bootloader|bootloader)
-        package_minisoc "$REPO_ROOT/firmware/tests/boot_payload.c" "这是 UART bootloader 目标。请在 ISE 的 Generics, Parameters 中设置 BOOTLOADER_ENABLE=1；程序复位后等待 READY，再通过 scripts/uart_loader.py 下发 firmware.bin。"
+        package_minisoc "$REPO_ROOT/firmware/tests/boot_payload.c" "这是 UART bootloader 目标。请在 ISE 的 Generics, Parameters 中设置 BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0，并让 UART_BAUD 与 host --baud 一致；程序复位后等待 READY。LOAD_IMAGE 全量读回与吞吐测试见 docs/BOOTLOADER_BOARD_TEST.md。"
         ;;
     bad_apple_minimal|bad_apple)
         package_minisoc "$REPO_ROOT/firmware/tests/bad_apple_minimal.c" "这是保留的 BAM1 仿真/资源实验原型，不是当前可上板目标。若要重现实验，请显式设置 BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=1；已知 writable text/tile RAM 会让 LX9 MiniSoC overmap。后续 1bpp 改造见 docs/BAD_APPLE_FUTURE.md。"
