@@ -218,6 +218,7 @@ package_minisoc() {
 
     need_file "rtl/periph/uart_tx.v"
     need_file "rtl/periph/uart_rx.v"
+    need_file "rtl/soc/bootloader_ctrl.v"
     need_file "rtl/periph/traffic_light_gpio.v"
     need_file "rtl/periph/buzzer_pwm.v"
     need_file "rtl/soc/tinybus_decode.v"
@@ -229,6 +230,7 @@ package_minisoc() {
 
     copy_flat "rtl/periph/uart_tx.v"
     copy_flat "rtl/periph/uart_rx.v"
+    copy_flat "rtl/soc/bootloader_ctrl.v"
     copy_flat "rtl/periph/traffic_light_gpio.v"
     copy_flat "rtl/periph/buzzer_pwm.v"
     copy_flat "rtl/soc/tinybus_decode.v"
@@ -292,6 +294,9 @@ case "$ISE_TARGET" in
         ;;
     minisoc|minisoc_pico|minisoc_dark)
         package_minisoc
+        ;;
+    minisoc_bootloader|bootloader)
+        package_minisoc "$REPO_ROOT/firmware/tests/boot_payload.c" "这是 UART bootloader 目标。请在 ISE 的 Generics, Parameters 中设置 BOOTLOADER_ENABLE=1；程序复位后等待 READY，再通过 scripts/uart_loader.py 下发 firmware.bin。"
         ;;
     probe_minisoc_sdram|minisoc_sdram_probe|m2b_probe)
         package_minisoc "$REPO_ROOT/firmware/tests/sdram_memtest.c" "这是 M2b 板级 probe：真实 CPU 从 BRAM 取指，经数据总线访问 BRAM、TinyBus MMIO 与 U2 SDRAM。LED=5 且 UART 打印 all patterns verified 表示通过。"
