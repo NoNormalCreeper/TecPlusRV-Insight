@@ -9,8 +9,7 @@
 //
 // 运行目标：M2b 接通 0x8000_0000 后，heap 落在 SDRAM（linker.ld），
 // 所以本测试须跑在 minisoc_sdram_pico / minisoc_sdram_dark 上（带 SDRAM 模型）。
-// 在无 SDRAM 的 minisoc_pico/dark 上，SDRAM 段与 heap 读写检查会被
-// sdram_present() 探测跳过，只剩纯计算类断言，不构成完整验收。
+// 如果 SDRAM 探测失败，本测试直接 FAIL，不再跳过关键检查。
 #include "testlib.h"
 #include "../runtime/rt_string.h"
 #include "../runtime/rt_alloc.h"
@@ -19,6 +18,10 @@
 // linker.ld 导出的 heap 边界，用于耗尽测试算容量。
 extern unsigned char _heap_start[];
 extern unsigned char _heap_end[];
+extern unsigned int __data_start[];
+extern unsigned int __data_end[];
+extern volatile unsigned int __startup_data_copy_words;
+extern volatile unsigned int __startup_data_copy_checksum;
 
 // ---- 启动搬运的验证素材 ----
 // 有初值的普通全局：走 .data，验证 startup 的 .data copy 语义。
@@ -50,6 +53,9 @@ int main(void)
     unsigned char buf[16];
     unsigned char seq[8];
     unsigned int i;
+    unsigned int *data_ptr;
+    unsigned int data_words;
+    unsigned int data_checksum;
     void *p0;
     void *p1;
     void *p2;
@@ -60,26 +66,30 @@ int main(void)
     // ================= 1) 启动级 =================
     // .data：有初值全局应保留初值。即使当前 LMA/VMA 都在 BRAM，也由 startup copy。
     test_expect(data_marker == 0x1234ABCDu, 0xdead0001u);
+    data_words = 0u;
+    data_checksum = 0u;
+    for (data_ptr = __data_start; data_ptr < __data_end; data_ptr++) {
+        data_checksum += *data_ptr;
+        data_words++;
+    }
+    test_expect(data_words != 0u, 0xdead0007u);
+    test_expect(__startup_data_copy_words == data_words, 0xdead0008u);
+    test_expect(__startup_data_copy_checksum == data_checksum, 0xdead0009u);
     // .bss：未初始化全局应被清零。现在就能验。
     test_expect(bss_marker == 0u, 0xdead0002u);
 
     // .sdram_data / .sdram_bss 的运行地址在 0x8000_0000（SDRAM 窗口）。
-    // M2b 把该窗口接上总线前，这些地址写被丢弃、读回不成立，无法真验证，
-    // 所以先运行时探测：接通后自动校验（同一份固件无需重编），未接通则跳过。
-    if (sdram_present()) {
-        // .sdram_data：应被 startup 从加载地址搬到运行地址，内容保留。
-        test_expect(sdram_data_marker == 0xCAFEF00Du, 0xdead0003u);
-        // .sdram_bss：应被 startup 清零。
-        test_expect(sdram_bss_marker == 0u, 0xdead0004u);
-        // 写回验证运行时地址确实可读写（不是只读的加载副本）。
-        sdram_data_marker = 0x55AA55AAu;
-        test_expect(sdram_data_marker == 0x55AA55AAu, 0xdead0005u);
-        sdram_bss_marker = 0x99u;
-        test_expect(sdram_bss_marker == 0x99u, 0xdead0006u);
-        rt_puts("runtime_heap_smoke: sdram window present, sdram segments verified\n");
-    } else {
-        rt_puts("runtime_heap_smoke: sdram window absent, skipping sdram segment checks (pending M2b)\n");
-    }
+    test_expect(sdram_present(), 0xdead0010u);
+    // .sdram_data：应被 startup 从加载地址搬到运行地址，内容保留。
+    test_expect(sdram_data_marker == 0xCAFEF00Du, 0xdead0003u);
+    // .sdram_bss：应被 startup 清零。
+    test_expect(sdram_bss_marker == 0u, 0xdead0004u);
+    // 写回验证运行时地址确实可读写（不是只读的加载副本）。
+    sdram_data_marker = 0x55AA55AAu;
+    test_expect(sdram_data_marker == 0x55AA55AAu, 0xdead0005u);
+    sdram_bss_marker = 0x99u;
+    test_expect(sdram_bss_marker == 0x99u, 0xdead0006u);
+    rt_puts("runtime_heap_smoke: sdram window present, sdram segments verified\n");
 
     // ================= 2) 库函数级 =================
     // memset：整块设值。
@@ -165,9 +175,7 @@ int main(void)
 
     // ============ 4) SDRAM heap 真实读写 ============
     // 通过 allocator 分配到的指针真正写入再读回，证明 heap 落在 SDRAM 且可用。
-    // 依赖 SDRAM 接通，故门控；无 SDRAM 时跳过（此时上面的地址已指向 0x8000_0000，
-    // 解引用无意义）。
-    if (sdram_present()) {
+    {
         unsigned int *blk;
         unsigned int k;
 
@@ -181,8 +189,6 @@ int main(void)
             test_expect(blk[k] == (0xB000u + k), 0xdead2210u + k);
         }
         rt_puts("runtime_heap_smoke: sdram heap read/write verified\n");
-    } else {
-        rt_puts("runtime_heap_smoke: sdram absent, skipping heap read/write (need minisoc_sdram target)\n");
     }
 
     rt_puts("runtime_heap_smoke: all runtime checks passed\n");
