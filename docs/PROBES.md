@@ -19,18 +19,20 @@
 | Probe 4a | `SDRAM smoke probe` | 已实现 | 是 |
 | Probe 4 | `SDRAM standalone tester` | 独立 tester 初版已实现 | 是 |
 | M2a probe | `sdram_data_ctrl contract probe` | 已实现 | 是 |
+| M2b probe | `MiniSoC SDRAM data-only probe` | 已实现 | 是 |
 | Probe 5a | `bigboard traffic-light thin probe` | 已实现 | 是 |
 | Probe 5c | `buzzer UART debug probe` | 已实现 | 是 |
 | Probe 5b | `VGA thin probe` | 已实现 | 是 |
 | Probe 5 | `字符型 VGA 显示骨架` | 独立骨架初版已实现 | 是 |
 
-这里要特别说明六点：
+这里要特别说明八点：
 
 - `Probe 4a`、`Probe 5a`、`Probe 5b` 和 `Probe 5c` 都是 thin probe，目标是提早排雷，不是假装 full 功能已经完成。
 - `Probe 4` 已有独立 tester 初版，但仍然不是 SoC 级通用 SDRAM controller。
 - `M2a probe` 跑的是真实 `sdram_data_ctrl` contract，自检目标是控制器核心，不是 `M2b` 的 SoC 集成。
+- `M2b probe` 直接复用生产 MiniSoC top 和 `sdram_memtest`，不维护第二套 SoC RTL。
 - `Probe 5` 当前已经有独立字符型 VGA 骨架，但它仍然不是 SoC 级显示外设。
-- 任务说明明确要求不要伪造 `SDRAM controller`，因此当前 `Probe 4` 只宣称“独立 tester”，不宣称已经能给 MiniSoC 当 SDRAM 子系统。
+- 任务说明明确要求不要伪造 `SDRAM controller`，因此 `Probe 4` 仍只宣称“独立 tester”；MiniSoC 的 data-only 路径由 `sdram_data_ctrl` 和双核 SoC 回归另行验收。
 - `Probe 5c` 虽然用了 `uart_tx` 做辅助调试，但它仍然是 probe，不是 SoC 串口外设方案。
 - 当前 `Probe 5` 只提供 banner 和最小写口，不承诺 `Mf / Clr / Qd` 的真实板级语义已经完全收敛。
 
@@ -46,10 +48,11 @@
 6. `Probe 4a`
 7. `Probe 4`
 8. `M2a probe`
-9. `Probe 5a`
-10. `Probe 5c`
-11. `Probe 5b`
-12. `Probe 5`
+9. `M2b probe`
+10. `Probe 5a`
+11. `Probe 5c`
+12. `Probe 5b`
+13. `Probe 5`
 
 不建议的顺序：
 
@@ -497,7 +500,33 @@ scripts/check_rtl_syntax.sh
 
 ### 这一步的边界
 
-它仍然只是 `M2a` 控制器核心的 board-side contract probe，不是 `M2b` 的 SoC 集成。它不负责把 SDRAM 接进 `MiniSoC`，也不替代后续的 runtime / memtest / benchmark 路线。
+它仍然只是 `M2a` 控制器核心的 board-side contract probe，不是 `M2b` 的 SoC 集成。当前 M2b 已在 `tecplus_minisoc_top` 中另行接入同一控制器，并由 `minisoc_sdram_pico/dark` 运行 `sdram_memtest`；本 probe 不替代这些 SoC 级证据。
+
+## M2b probe：MiniSoC SDRAM data-only
+
+### 覆盖范围
+
+- PicoRV32 / DarkRISCV 真实 CPU 从 BRAM 启动并访问 SDRAM
+- BRAM / TinyBus MMIO / SDRAM 三分流互斥，SDRAM 不进入 `tinybus_decode`
+- `ifetch_*` 保持 BRAM-only
+- SDRAM 固定 pattern、不同 bank/row、连续区域和当前 16 MiB 可达边界写读回
+
+### 本地验证
+
+```bash
+sim/run_sim.sh minisoc_sdram_pico
+sim/run_sim.sh minisoc_sdram_dark
+```
+
+### 上板步骤
+
+1. 运行 `make ise-export ISE_TARGET=probe_minisoc_sdram`。
+2. 在 ISE 中导入导出目录，top 设为 `tecplus_minisoc_top`，约束使用 `tecplus_minisoc.ucf`。
+3. 先用默认 `CPU_IMPL=0`，再覆写为 `CPU_IMPL=1` 各生成一次 bitstream。
+4. 串口使用 `9600 8N1`；LED 最终为 `0101`，UART 打印 `sdram_memtest: all patterns verified` 表示通过。
+5. 多次按下并释放 reset，确认结果可重复。
+
+该 probe 复用生产 top、现有 UCF 和 firmware，不新增平行 wrapper。仿真不能替代 SDRAM 时钟相位、引脚、时序和完整容量的板级确认。
 
 ## Probe 5a：bigboard traffic-light thin probe
 

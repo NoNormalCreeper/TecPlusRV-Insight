@@ -152,7 +152,8 @@ initial begin
     addr = `TINYBUS_ADDR_SDRAM_BASE;  // 0x8000_0000
     #1;
     if (gpio_led_sel || gpio_key_sel || uart_data_sel || uart_status_sel ||
-        cycle_sel || instret_sel || test_exit_sel || traffic_sel || accel_sel) begin
+        cycle_sel || instret_sel || test_exit_sel || traffic_sel ||
+        buzzer_ctrl_sel || buzzer_period_sel || accel_sel) begin
         $display("FAIL: SDRAM 地址 %h 误触发了 TinyBus 选择信号", addr);
         $finish;
     end
@@ -169,7 +170,8 @@ initial begin
     addr = `TINYBUS_ADDR_SDRAM_BASE + 32'h0000_1000;  // 范围内任意地址
     #1;
     if (gpio_led_sel || gpio_key_sel || uart_data_sel || uart_status_sel ||
-        cycle_sel || instret_sel || test_exit_sel || traffic_sel || accel_sel) begin
+        cycle_sel || instret_sel || test_exit_sel || traffic_sel ||
+        buzzer_ctrl_sel || buzzer_period_sel || accel_sel) begin
         $display("FAIL: SDRAM 地址 %h 误触发了 TinyBus 选择信号", addr);
         $finish;
     end

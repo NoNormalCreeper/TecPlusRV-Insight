@@ -1,6 +1,5 @@
-// TEC-PLUS MiniSoC board top.
-// This is the ISE top-level wrapper: only real board pins leave the FPGA.
-// PicoRV32 buses stay internal and are decoded into BRAM plus TinyBus MMIO.
+// TEC-PLUS MiniSoC 板级顶层。
+// CPU 总线留在 FPGA 内部，数据访问分流到 BRAM、TinyBus MMIO 与 SDRAM。
 `include "tinybus_defs.vh"
 
 module tecplus_minisoc_top #(
@@ -8,6 +7,7 @@ module tecplus_minisoc_top #(
     parameter integer UART_BAUD = 9600,
     parameter integer CPU_IMPL = 0,
     parameter integer BRAM_ADDR_WIDTH = 14,
+    parameter integer SDRAM_CLK_INVERT = 1,
     parameter BRAM_INIT_FILE = "firmware/build/firmware.mem"
 ) (
     input        clk,
@@ -17,7 +17,17 @@ module tecplus_minisoc_top #(
     input        uart_rxd,
     output       uart_txd,
     output [11:0] tl,
-    output       spk
+    output       spk,
+    output       sh_clk,
+    output       sh_cke,
+    output       sh_ncs,
+    output       sh_nwe,
+    output       sh_ncas,
+    output       sh_nras,
+    output [1:0] sh_dqm,
+    output [1:0] sh_ba,
+    output [12:0] sh_a,
+    inout  [15:0] sh_db
 );
 
 localparam [31:0] BRAM_BYTES = (32'd1 << BRAM_ADDR_WIDTH) * 32'd4;
@@ -40,7 +50,6 @@ wire [3:0]  mem_wstrb;
 reg  [31:0] mem_rdata;
 
 wire        start_req;
-wire        start_is_bram;
 wire        bram_en;
 wire [BRAM_ADDR_WIDTH-1:0] bram_addr;
 wire [31:0] bram_data_rdata;
@@ -55,8 +64,9 @@ reg         ifetch_pending;
 reg         req_is_bram;
 reg         req_is_sdram;
 reg         req_is_mmio;
-reg         req_we_reg;     //SDRAM写使能
+reg         req_we_reg;
 reg         req_is_replay;
+reg         sdram_req_sent;
 reg  [31:0] req_addr;
 reg  [31:0] req_wdata;
 reg  [3:0]  req_wstrb;
@@ -64,6 +74,7 @@ reg         last_req_valid;
 reg  [31:0] last_req_addr;
 reg  [31:0] last_req_wdata;
 reg  [3:0]  last_req_wstrb;
+reg  [31:0] last_req_rdata;
 
 wire [31:0] gpio_key_rdata;
 wire [31:0] uart_data_rdata;
@@ -100,38 +111,37 @@ wire        buzzer_period_write;
 wire        buzzer_enabled;
 wire [31:0] buzzer_half_period;
 wire        mmio_stall;
-//wire        respond;
-
-// SDRAM内部
+// SDRAM 内部请求与物理数据通路。
+wire        sdram_req_valid;
+wire        sdram_req_fire;
 wire        sdram_req_ready;
 wire        sdram_resp_valid;
 wire [31:0] sdram_resp_rdata;
 wire        sdram_resp_err;
-wire [15:0] sdram_dq_in  = 16'h0000;   // 仿真占位，板级需连到引脚
+wire [15:0] sdram_dq_in;
 wire [15:0] sdram_dq_out;
 wire        sdram_dq_oe;
-wire [1:0]  sdram_dqm;
-wire        sdram_cke, sdram_cs_n, sdram_ras_n, sdram_cas_n, sdram_we_n;
-wire [1:0]  sdram_ba;
-wire [12:0] sdram_addr;
 
 wire        test_exited;
 wire [31:0] test_exit_code;
 wire        same_as_last_req;
+wire [31:0] response_rdata;
 
 wire bram_done   = req_is_bram;
 wire mmio_done   = req_is_mmio && !mmio_stall;
-wire sdram_done  = req_is_sdram && sdram_resp_valid;
+wire sdram_done  = req_is_sdram && (req_is_replay || sdram_resp_valid);
 wire respond     = pending && (bram_done || mmio_done || sdram_done);
 
 assign resetn = reset;
 assign rst = !reset;
+assign sh_clk = (SDRAM_CLK_INVERT != 0) ? !clk : clk;
+assign sh_db = sdram_dq_oe ? sdram_dq_out : 16'hzzzz;
+assign sdram_dq_in = sh_db;
 
 assign start_req = mem_valid && !pending && !mem_ready;
 wire is_bram   = (mem_addr < BRAM_BYTES);
 wire is_sdram  = (mem_addr >= `TINYBUS_ADDR_SDRAM_BASE && mem_addr < `TINYBUS_ADDR_SDRAM_BASE + SDRAM_SIZE);
 wire is_mmio   = !(is_bram || is_sdram);   // 包括 0x1000_0000 和 0x2000_0000 等
-//assign start_is_bram = (mem_addr < BRAM_BYTES);
 assign bram_en = start_req && is_bram;
 assign bram_addr = mem_addr[BRAM_ADDR_WIDTH+1:2];
 assign ifetch_is_bram = (ifetch_addr < BRAM_BYTES);
@@ -162,6 +172,16 @@ assign same_as_last_req =
     (mem_addr == last_req_addr) &&
     (mem_wdata == last_req_wdata) &&
     (mem_wstrb == last_req_wstrb);
+
+// sdram_data_ctrl 使用 ready-first 握手：仅在 ready 已拉高时提交一次请求。
+// CPU 侧仍等待 resp_valid，sdram_req_sent 负责隔离“已提交”和“等待响应”。
+assign sdram_req_valid =
+    pending && req_is_sdram && !req_is_replay && !sdram_req_sent && sdram_req_ready;
+assign sdram_req_fire = sdram_req_valid && sdram_req_ready;
+assign response_rdata =
+    (req_is_replay && req_is_sdram) ? last_req_rdata :
+    req_is_bram   ? bram_data_rdata :
+    req_is_sdram  ? sdram_resp_rdata : mmio_rdata;
 
 assign mmio_stall = pending && req_is_mmio && !req_is_replay && uart_data_sel && mmio_write_en && !uart_tx_ready;
 //assign respond = pending && !mmio_stall;
@@ -229,9 +249,9 @@ sdram_data_ctrl #(
 ) u_sdram (
     .clk(clk),
     .reset(rst),
-    .req_valid(pending && req_is_sdram),   // req_is_sdram 将在状态机中定义
+    .req_valid(sdram_req_valid),
     .req_ready(sdram_req_ready),
-    .req_we(req_we_reg),                  // req_we_reg 将在状态机中定义
+    .req_we(req_we_reg),
     .req_addr(req_addr),
     .req_wdata(req_wdata),
     .req_wstrb(req_wstrb),
@@ -241,14 +261,14 @@ sdram_data_ctrl #(
     .dq_in(sdram_dq_in),
     .dq_oe(sdram_dq_oe),
     .dq_out(sdram_dq_out),
-    .sdram_cke(sdram_cke),
-    .sdram_cs_n(sdram_cs_n),
-    .sdram_ras_n(sdram_ras_n),
-    .sdram_cas_n(sdram_cas_n),
-    .sdram_we_n(sdram_we_n),
-    .sdram_ba(sdram_ba),
-    .sdram_addr(sdram_addr),
-    .sdram_dqm(sdram_dqm),
+    .sdram_cke(sh_cke),
+    .sdram_cs_n(sh_ncs),
+    .sdram_ras_n(sh_nras),
+    .sdram_cas_n(sh_ncas),
+    .sdram_we_n(sh_nwe),
+    .sdram_ba(sh_ba),
+    .sdram_addr(sh_a),
+    .sdram_dqm(sh_dqm),
     .dbg_state(),
     .dbg_refresh_pending()
 );
@@ -351,6 +371,7 @@ always @(posedge clk) begin
         req_is_mmio  <= 1'b0;
         req_we_reg   <= 1'b0;
         req_is_replay <= 1'b0;
+        sdram_req_sent <= 1'b0;
         req_addr <= 32'h0000_0000;
         req_wdata <= 32'h0000_0000;
         req_wstrb <= 4'b0000;
@@ -358,6 +379,7 @@ always @(posedge clk) begin
         last_req_addr <= 32'h0000_0000;
         last_req_wdata <= 32'h0000_0000;
         last_req_wstrb <= 4'b0000;
+        last_req_rdata <= 32'h0000_0000;
         mem_ready <= 1'b0;
         mem_rdata <= 32'h0000_0000;
         led <= 4'h0;
@@ -377,17 +399,15 @@ always @(posedge clk) begin
         if (respond) begin
             pending <= 1'b0;
             mem_ready <= 1'b1;
-            
-            if (req_is_bram)
-                mem_rdata <= bram_data_rdata;
-            else if (req_is_sdram)
-                mem_rdata <= sdram_resp_rdata;
-            else // MMIO
-                mem_rdata <= mmio_rdata;
+            mem_rdata <= response_rdata;
+            sdram_req_sent <= 1'b0;
             last_req_valid <= 1'b1;
             last_req_addr <= req_addr;
             last_req_wdata <= req_wdata;
             last_req_wstrb <= req_wstrb;
+            if (!req_is_replay) begin
+                last_req_rdata <= response_rdata;
+            end
 
             if (!req_is_bram && !req_is_replay && gpio_led_sel && mmio_write_en) begin
                 led <= req_wdata[3:0];
@@ -398,9 +418,13 @@ always @(posedge clk) begin
             req_is_sdram <= is_sdram;
             req_is_mmio  <= is_mmio;
             req_we_reg   <= (mem_wstrb != 4'b0);   // 只要有任一字节有效，即视为写操作
+            req_is_replay <= same_as_last_req;
+            sdram_req_sent <= 1'b0;
             req_addr     <= mem_addr;
             req_wdata    <= mem_wdata;
             req_wstrb    <= mem_wstrb;
+        end else if (sdram_req_fire) begin
+            sdram_req_sent <= 1'b1;
         end
     end
 end

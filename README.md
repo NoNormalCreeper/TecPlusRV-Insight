@@ -263,6 +263,7 @@ make perf
 ```bash
 make ise-export ISE_TARGET=minisoc
 make ise-export ISE_TARGET=probe_uart
+make ise-export ISE_TARGET=probe_minisoc_sdram
 make ise-export ISE_TARGET=probe_uart ISE_EXPORT_MODE=full
 ```
 
@@ -378,6 +379,8 @@ make test-all
 
 - `Probe 4a` 不是通用 `SDRAM controller`，只是一个脚本式 `write -> read back -> compare` smoke probe
 - `Probe 4` 是独立 SDRAM tester，会对一段地址窗口和多组 pattern 重复写入、读回、校验，但仍不接 MiniSoC
+- MiniSoC 另行接入 `sdram_data_ctrl` 作为 data-only 区，`minisoc_sdram_pico/dark` 使用真实 CPU 写读回验证
+- `probe_minisoc_sdram` 打包同一生产 top 和 `sdram_memtest`，用于 M2b 上板验收，不复制另一套 probe RTL
 - `Probe 4 UART debug` 是可选验证顶层，用板载 KEY1，也就是 RTL 的 `key[0]`，做受控注错，并通过 UART 输出 `error_count` 和首错信息
 - `Probe 5a` 不是完整显示/大板外设系统，只是交通灯输出存在性探针
 - `Probe 5c` 是蜂鸣器 thin probe 的 UART debug 变体，主要拿来做“听到什么”和“RTL 认为自己在播什么”的对照

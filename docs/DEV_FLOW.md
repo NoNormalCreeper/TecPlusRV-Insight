@@ -530,6 +530,7 @@ ISE 自己做：
 ```bash
 make ise-export ISE_TARGET=minisoc
 make ise-export ISE_TARGET=probe_uart
+make ise-export ISE_TARGET=probe_minisoc_sdram
 ```
 
 导出目录默认是 `build/ise-export/<target>/`。其中 `.v` / `.vh` / `.ucf` 会摊平到导出目录根部，便于 ISE 直接导入；只有 `firmware/build/firmware.mem` 这类路径敏感文件继续保留目录结构，避免 `$readmemh` 路径失效。

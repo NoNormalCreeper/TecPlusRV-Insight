@@ -28,14 +28,18 @@ static const unsigned int k_patterns[] = {
 
 #define PATTERN_COUNT (sizeof(k_patterns) / sizeof(k_patterns[0]))
 
-// 散列地址点：故意选跨度较大的下标，探不同 row/col，避免只命中相邻单元。
+// 散列地址点覆盖不同 bank/row，并碰到当前 16 MiB 可达范围的最后一个 word。
 static const unsigned int k_scatter_index[] = {
     0u,
     1u,
     7u,
-    64u,
     255u,
+    256u,
+    512u,
     1023u,
+    1024u,
+    17408u,
+    4194303u,
 };
 
 #define SCATTER_COUNT (sizeof(k_scatter_index) / sizeof(k_scatter_index[0]))

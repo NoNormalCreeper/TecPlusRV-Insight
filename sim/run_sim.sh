@@ -8,6 +8,22 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 BUILD_DIR="$REPO_ROOT/sim/build"
 SIM_KIND=${1:-uart_tx}
+DEFAULT_FIRMWARE_MAIN="$REPO_ROOT/firmware/main.c"
+SDRAM_FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/sdram_memtest.c"
+RESTORE_DEFAULT_FIRMWARE=0
+
+restore_default_firmware() {
+    if [ "$RESTORE_DEFAULT_FIRMWARE" -eq 1 ]; then
+        FIRMWARE_MAIN="$DEFAULT_FIRMWARE_MAIN" "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null || true
+    fi
+}
+
+build_sdram_firmware() {
+    RESTORE_DEFAULT_FIRMWARE=1
+    FIRMWARE_MAIN="$SDRAM_FIRMWARE_MAIN" "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
+}
+
+trap restore_default_firmware EXIT
 
 need_tool() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -29,7 +45,7 @@ run_and_check() {
     cat "$out_file"
 
     # testbench 统一用 "FAIL:" / "TIMEOUT:" 标记失败，脚本只解析这两个关键词。
-    if grep -Eq '(^|[[:space:]])(FAIL|TIMEOUT):' "$out_file"; then
+    if grep -Eq '(FAIL|TIMEOUT):' "$out_file"; then
         return 1
     fi
 }
@@ -114,6 +130,7 @@ compile_minisoc_tb() {
     fi
 
     iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -I "$REPO_ROOT/rtl/core" \
+        -s "$tb_module" \
         -P "$tb_module.CPU_IMPL=$cpu_impl" \
         "${extra_params[@]}" \
         -o "$out_file" \
@@ -131,6 +148,7 @@ compile_minisoc_tb() {
         "$REPO_ROOT/rtl/periph/uart_rx.v" \
         "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
         "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
+        "$REPO_ROOT/sim/sdram_x16_model.v" \
         "$REPO_ROOT/rtl/periph/buzzer_pwm.v"
 }
 
@@ -158,6 +176,7 @@ compile_minisoc_perf_tb() {
     fi
 
     iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -I "$REPO_ROOT/rtl/core" \
+        -s "$tb_module" \
         -P "$tb_module.CPU_IMPL=$cpu_impl" \
         -P "$tb_module.RESULT_CYCLE_ADDR=$result_cycle_addr" \
         -P "$tb_module.RESULT_INSTRET_ADDR=$result_instret_addr" \
@@ -175,6 +194,7 @@ compile_minisoc_perf_tb() {
         "$REPO_ROOT/rtl/periph/uart_tx.v" \
         "$REPO_ROOT/rtl/periph/uart_rx.v" \
         "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
+        "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
         "$REPO_ROOT/rtl/periph/buzzer_pwm.v"
 }
 
@@ -261,11 +281,13 @@ case "$SIM_KIND" in
         run_and_check "$BUILD_DIR/tb_minisoc_smoke_dark.log" vvp "$BUILD_DIR/tb_minisoc_smoke_dark.out"
         ;;
     minisoc_sdram_pico)
-        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
+        build_sdram_firmware
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_pico.out" 0 tb_minisoc_sdram "$REPO_ROOT/sim/tb_minisoc_sdram.v"
         run_and_check "$BUILD_DIR/tb_minisoc_sdram_pico.log" vvp "$BUILD_DIR/tb_minisoc_sdram_pico.out"
         ;;
     minisoc_sdram_dark)
-        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
+        build_sdram_firmware
+        compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_dark.out" 1 tb_minisoc_sdram "$REPO_ROOT/sim/tb_minisoc_sdram.v"
         run_and_check "$BUILD_DIR/tb_minisoc_sdram_dark.log" vvp "$BUILD_DIR/tb_minisoc_sdram_dark.out"
         ;;
     minisoc_uart_once_pico)
@@ -430,7 +452,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
+        echo "支持的目标：uart_tx、uart_rx、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
         exit 1
         ;;
 esac

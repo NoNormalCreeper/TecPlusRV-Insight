@@ -16,7 +16,7 @@
 | `0x1000_0050` | 32 位 | 蜂鸣器控制寄存器 |
 | `0x1000_0054` | 32 位 | 蜂鸣器方波半周期 |
 | `0x2000_0000` | 区域基址 | accelerator base |
-| `0x8000_0000` | 区域基址 | SDRAM 预留区域 |
+| `0x8000_0000` | 区域基址 | SDRAM data-only 区域 |
 
 ## 说明
 
@@ -24,7 +24,7 @@
 - 低地址 BRAM 先用于 reset 后的启动路径；后续 bootloader 可把小型用户程序放在同一窗口的高地址部分。
 - 近期真正会用到的主要是 LED、KEY、UART、交通灯和 `test_exit`。
 - 计数器和 accelerator 项先写入地址图，方便后续 firmware 与总线接口提前稳定。
-- SDRAM 当前只做地址预留，不宣称已经实现控制器。
+- SDRAM 已通过 `sdram_data_ctrl` 接入 MiniSoC 数据总线；`ifetch_*` 仍只从 BRAM 取指。
 
 ## UART 寄存器
 
