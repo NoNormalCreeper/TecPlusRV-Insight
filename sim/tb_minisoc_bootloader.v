@@ -5,6 +5,7 @@
 module tb_minisoc_bootloader #(
     parameter integer CPU_IMPL = 0,
     parameter FIRMWARE_MEM_FILE = "firmware/build/firmware.mem",
+    parameter integer IMAGE_SDRAM_WORDS = 68,
     parameter integer TIMEOUT_CYCLES = 300000
 );
 
@@ -166,22 +167,27 @@ task send_image_packet;
         drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
         drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
         drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
-        // SDRAM 地址 0x81000000，长度 8 bytes。
+        // SDRAM 地址 0x81000000，长度由参数决定；68 words 可覆盖 refresh
+        // 与 bootloader ready-first 请求相遇的边界。
         drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
         drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
         drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
         drive_uart_byte(8'h81); crc = crc32_byte(crc, 8'h81);
-        drive_uart_byte(8'h08); crc = crc32_byte(crc, 8'h08);
-        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
-        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
-        drive_uart_byte(8'h00); crc = crc32_byte(crc, 8'h00);
+        drive_uart_byte((IMAGE_SDRAM_WORDS * 4) & 8'hff);
+        crc = crc32_byte(crc, (IMAGE_SDRAM_WORDS * 4) & 8'hff);
+        drive_uart_byte(((IMAGE_SDRAM_WORDS * 4) >> 8) & 8'hff);
+        crc = crc32_byte(crc, ((IMAGE_SDRAM_WORDS * 4) >> 8) & 8'hff);
+        drive_uart_byte(((IMAGE_SDRAM_WORDS * 4) >> 16) & 8'hff);
+        crc = crc32_byte(crc, ((IMAGE_SDRAM_WORDS * 4) >> 16) & 8'hff);
+        drive_uart_byte(((IMAGE_SDRAM_WORDS * 4) >> 24) & 8'hff);
+        crc = crc32_byte(crc, ((IMAGE_SDRAM_WORDS * 4) >> 24) & 8'hff);
 
         for (byte_index = 0; byte_index < PAYLOAD_LEN; byte_index = byte_index + 1) begin
             value = payload_byte(byte_index, exit_code);
             drive_uart_byte(value);
             crc = crc32_byte(crc, value);
         end
-        for (byte_index = 0; byte_index < 8; byte_index = byte_index + 1) begin
+        for (byte_index = 0; byte_index < IMAGE_SDRAM_WORDS * 4; byte_index = byte_index + 1) begin
             value = 8'he0 + byte_index;
             drive_uart_byte(value);
             crc = crc32_byte(crc, value);
@@ -330,13 +336,23 @@ initial begin
     receive_response(8'h79, 8'h00);
     wait_exit_code(32'h0000_0002);
 
-    if (boot_sdram_req_count != 2 || model_write_command_count != 4) begin
-        $display("FAIL: LOAD_IMAGE 没有形成 2 个 32-bit / 4 个 x16 SDRAM write：req=%0d cmd=%0d",
+    if (boot_sdram_req_count != IMAGE_SDRAM_WORDS ||
+        model_write_command_count != IMAGE_SDRAM_WORDS * 2) begin
+        $display("FAIL: LOAD_IMAGE 没有形成 %0d 个 32-bit / %0d 个 x16 SDRAM write：req=%0d cmd=%0d",
+                 IMAGE_SDRAM_WORDS, IMAGE_SDRAM_WORDS * 2,
                  boot_sdram_req_count, model_write_command_count);
         $finish;
     end
 
     $display("PASS: bootloader CPU=%0d 支持 v1 重传与 LOAD_IMAGE 真实 SDRAM 写入", CPU_IMPL);
+    $finish;
+end
+
+initial begin
+    repeat (TIMEOUT_CYCLES) @(posedge clk);
+    $display("TIMEOUT: bootloader 长 LOAD_IMAGE 未完成 req=%0d ready=%b valid=%b ctrl_state=%0d",
+             boot_sdram_req_count, dut.sdram_req_ready, dut.boot_sdram_req_valid,
+             dut.u_sdram.dbg_state);
     $finish;
 end
 

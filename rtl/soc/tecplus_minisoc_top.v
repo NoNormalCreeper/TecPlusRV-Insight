@@ -241,7 +241,11 @@ assign same_as_last_req =
 assign cpu_sdram_req_valid =
     pending && req_is_sdram && !req_is_replay && !sdram_req_sent && sdram_req_ready;
 // bootloader 运行时 CPU 保持 reset，因此这里只需切换 SDRAM 所有权，不需要通用 arbiter。
-assign sdram_req_valid = boot_active ? boot_sdram_req_valid : cpu_sdram_req_valid;
+// 两个 requester 都必须遵守 controller 的 ready-first 约定：若 refresh 期间
+// ready 为低，不能提前暴露 valid，否则 controller 会接收请求而 bootloader
+// 仍停在等待 ready 的状态。
+assign sdram_req_valid = boot_active
+    ? (boot_sdram_req_valid && sdram_req_ready) : cpu_sdram_req_valid;
 assign sdram_req_fire = !boot_active && cpu_sdram_req_valid && sdram_req_ready;
 assign response_rdata =
     (req_is_replay && req_is_sdram) ? last_req_rdata :
