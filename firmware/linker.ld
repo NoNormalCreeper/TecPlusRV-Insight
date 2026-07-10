@@ -8,8 +8,8 @@
  * 容量说明：板上物理芯片为 x16 SDRAM，地址线 A0..A12（13 位 row，见
  * constraints/tecplus_sdram_smoke.ucf），控制器使用 byte_addr[24:1]，
  * 因此 U2 的 32 MiB 空间全部可达。
- *   - .data：有初值，运行地址与加载地址当前都在 BRAM，但仍导出 LMA/VMA
- *     边界并由 startup.S 执行拷贝，后续迁移内存布局时不用重写启动流程。
+ *   - .data：有初值，加载地址与运行地址使用 BRAM 内两个相邻槽位，
+ *     由 startup.S 从 LMA 拷到 VMA，确保普通 .data 搬运可真实验证。
  *   - .sdram_data：有初值，运行地址在 SDRAM，加载地址在 BRAM（AT> 分离），
  *     由 startup.S 在复位后从加载地址拷到运行地址。
  *   - .sdram_bss ：运行时清零，NOLOAD 不占 firmware 镜像。
@@ -39,14 +39,14 @@ SECTIONS
         *(.rodata*)
     } > BRAM
 
-    . = ALIGN(4);
-    .data : {
+    .data : AT(__data_load_slot_start) {
+        . = ALIGN(4);
         __data_start = .;
         *(.sdata*)
         *(.data*)
         . = ALIGN(4);
         __data_end = .;
-    } > BRAM AT> BRAM
+    } > BRAM
     __data_load_start = LOADADDR(.data);
 
     .bss : {
@@ -56,6 +56,15 @@ SECTIONS
         *(.bss*)
         *(COMMON)
         __bss_end = .;
+    } > BRAM
+
+    /* 为 .data 初值保留独立 LMA 槽位；NOLOAD 表示槽位本身不生成重复内容，
+     * 真正写入该地址的是 .data 输出段的 load image。 */
+    .data_load (NOLOAD) : {
+        . = ALIGN(4);
+        __data_load_slot_start = .;
+        . = . + SIZEOF(.data);
+        __data_load_slot_end = .;
     } > BRAM
 
     . = ALIGN(16);

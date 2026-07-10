@@ -3,8 +3,7 @@
     # 这里没有 C runtime，也没有中断/异常入口；它只是最薄的启动骨架。
     #
     # M3 新增：
-    #   - .data 拷贝：当前 LMA/VMA 都在 BRAM，但仍按标准启动流程做一次 copy，
-    #     后续如果把运行地址迁到别处，不需要再改 startup。
+    #   - .data 拷贝：LMA/VMA 使用 BRAM 内两个相邻槽位，启动时真实搬运。
     #   - .sdram_data 拷贝：SDRAM 上电内容随机，不像 BRAM 由 firmware.mem 初始化，
     #     所以有初值、运行地址在 SDRAM 的对象必须在这里从加载地址（BRAM）拷到运行地址。
     #   - .sdram_bss 清零：与 .bss 同理，运行时清零。
@@ -19,15 +18,11 @@ _start:
     la t0, __data_load_start
     la t1, __data_start
     la t2, __data_end
-    li t4, 0
-    li t5, 0
 
 1:
     bgeu t1, t2, 2f
     lw   t3, 0(t0)
     sw   t3, 0(t1)
-    add  t5, t5, t3
-    addi t4, t4, 1
     addi t0, t0, 4
     addi t1, t1, 4
     j 1b
@@ -44,12 +39,6 @@ _start:
     j 3b
 
 4:
-    # 记录 .data copy 的最小证据，供 runtime smoke 确认启动路径真的执行过。
-    la t0, __startup_data_copy_words
-    sw t4, 0(t0)
-    la t0, __startup_data_copy_checksum
-    sw t5, 0(t0)
-
     # 搬运 .sdram_data：从加载地址（LMA，在 BRAM）逐字拷到运行地址（VMA，在 SDRAM）。
     # t0=源(load)，t1=目的(run 起点)，t2=目的结束。逐字拷贝，段边界已按 4 字节对齐。
     la t0, _sdram_data_load_start
@@ -81,12 +70,3 @@ _start:
 
 9:
     j 9b
-
-    .section .bss
-    .align 2
-    .globl __startup_data_copy_words
-__startup_data_copy_words:
-    .word 0
-    .globl __startup_data_copy_checksum
-__startup_data_copy_checksum:
-    .word 0

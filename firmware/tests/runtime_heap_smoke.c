@@ -1,7 +1,7 @@
 // M3 最小 runtime 冒烟测试。
 // 覆盖 issue 要求的四层验收：
-//   1) 启动级：.data copy 生效、.bss zero 生效、显式放到 .sdram_data/.sdram_bss
-//      的对象在运行时地址和内容都正确。
+//   1) 启动级：普通 .data copy 和 .bss zero 正确，LMA/VMA 分离的
+//      .sdram_data 搬运与 .sdram_bss 清零生效。
 //   2) 库函数级：memcpy / memset / memmove（含重叠区间）和 rt_* 薄封装。
 //   3) allocator 级：连续分配、对齐、空间耗尽、reset 后重新初始化，
 //      并通过分配到的指针真实读写 SDRAM heap。
@@ -18,13 +18,9 @@
 // linker.ld 导出的 heap 边界，用于耗尽测试算容量。
 extern unsigned char _heap_start[];
 extern unsigned char _heap_end[];
-extern unsigned int __data_start[];
-extern unsigned int __data_end[];
-extern volatile unsigned int __startup_data_copy_words;
-extern volatile unsigned int __startup_data_copy_checksum;
 
 // ---- 启动搬运的验证素材 ----
-// 有初值的普通全局：走 .data，验证 startup 的 .data copy 语义。
+// 有初值的普通全局：LMA/VMA 位于 BRAM 内不同槽位，删除 startup copy 后应失败。
 static volatile unsigned int data_marker = 0x1234ABCDu;
 // 未初始化全局：走 .bss，C 语义要求启动后为 0。
 static unsigned int bss_marker;
@@ -53,9 +49,6 @@ int main(void)
     unsigned char buf[16];
     unsigned char seq[8];
     unsigned int i;
-    unsigned int *data_ptr;
-    unsigned int data_words;
-    unsigned int data_checksum;
     void *p0;
     void *p1;
     void *p2;
@@ -64,17 +57,8 @@ int main(void)
     test_banner("runtime_heap_smoke");
 
     // ================= 1) 启动级 =================
-    // .data：有初值全局应保留初值。即使当前 LMA/VMA 都在 BRAM，也由 startup copy。
+    // 普通 .data：startup 应从 BRAM load 槽搬到独立 runtime 槽。
     test_expect(data_marker == 0x1234ABCDu, 0xdead0001u);
-    data_words = 0u;
-    data_checksum = 0u;
-    for (data_ptr = __data_start; data_ptr < __data_end; data_ptr++) {
-        data_checksum += *data_ptr;
-        data_words++;
-    }
-    test_expect(data_words != 0u, 0xdead0007u);
-    test_expect(__startup_data_copy_words == data_words, 0xdead0008u);
-    test_expect(__startup_data_copy_checksum == data_checksum, 0xdead0009u);
     // .bss：未初始化全局应被清零。现在就能验。
     test_expect(bss_marker == 0u, 0xdead0002u);
 
