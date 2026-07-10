@@ -52,3 +52,18 @@ void *rt_memmove(void *dest, const void *src, size_t n)
 
     return dest;
 }
+
+void *memcpy(void *dest, const void *src, size_t n)
+{
+    return rt_memcpy(dest, src, n);
+}
+
+void *memset(void *dest, int value, size_t n)
+{
+    return rt_memset(dest, value, n);
+}
+
+void *memmove(void *dest, const void *src, size_t n)
+{
+    return rt_memmove(dest, src, n);
+}

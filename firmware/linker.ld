@@ -8,13 +8,15 @@
  * 容量说明：板上物理芯片为 x16 SDRAM，地址线 A0..A12（13 位 row，见
  * constraints/tecplus_sdram_smoke.ucf），控制器使用 byte_addr[24:1]，
  * 因此 U2 的 32 MiB 空间全部可达。
+ *   - .data：有初值，运行地址与加载地址当前都在 BRAM，但仍导出 LMA/VMA
+ *     边界并由 startup.S 执行拷贝，后续迁移内存布局时不用重写启动流程。
  *   - .sdram_data：有初值，运行地址在 SDRAM，加载地址在 BRAM（AT> 分离），
  *     由 startup.S 在复位后从加载地址拷到运行地址。
  *   - .sdram_bss ：运行时清零，NOLOAD 不占 firmware 镜像。
  *
- * heap：M3 阶段先放 BRAM，让 bump allocator 在现有 minisoc 仿真里就能真跑通。
- * 等 SoC 侧把 0x8000_0000 接上总线（M2b）后，只需把下面 `.heap` 的
- * 归属从 `> BRAM` 改成 `> SDRAM`（单点开关），无需改动 allocator 代码。
+ * heap：M2b 接通 0x8000_0000 后，heap 落在 SDRAM（bump allocator 的线性池），
+ * BRAM 只保留 .text/.data/.bss/栈。切换 heap 归属只需改下面 `.heap` 的
+ * 内存区这一处（单点开关），allocator 代码无需改动。
  */
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
@@ -25,8 +27,8 @@ MEMORY
     SDRAM (rw)  : ORIGIN = 0x80000000, LENGTH = 32M
 }
 
-/* heap 预留大小（放在 BRAM 内，位于 .bss 之后、栈之前）。 */
-_heap_size = 8K;
+/* heap 预留大小（放在 SDRAM 内，位于 .sdram_bss 之后）。 */
+_heap_size = 64K;
 
 SECTIONS
 {
@@ -37,24 +39,23 @@ SECTIONS
         *(.rodata*)
     } > BRAM
 
+    . = ALIGN(4);
     .data : {
+        __data_start = .;
+        *(.sdata*)
         *(.data*)
-    } > BRAM
+        . = ALIGN(4);
+        __data_end = .;
+    } > BRAM AT> BRAM
+    __data_load_start = LOADADDR(.data);
 
     .bss : {
         /* startup.S 用这两个符号清零 .bss。 */
         __bss_start = .;
+        *(.sbss*)
         *(.bss*)
         *(COMMON)
         __bss_end = .;
-    } > BRAM
-
-    /* bump allocator 的 heap 区。M3 阶段落在 BRAM，符号供 alloc.c 使用。 */
-    .heap (NOLOAD) : {
-        . = ALIGN(16);
-        _heap_start = .;
-        . = . + _heap_size;
-        _heap_end = .;
     } > BRAM
 
     . = ALIGN(16);
@@ -81,5 +82,14 @@ SECTIONS
         *(.sdram_bss*)
         . = ALIGN(4);
         _sdram_bss_end = .;
+    } > SDRAM
+
+    /* bump allocator 的 heap 区。M2b 后落在 SDRAM，位于 .sdram_bss 之后。
+     * NOLOAD：不占 firmware 镜像；符号 _heap_start/_heap_end 供 rt_alloc.c 使用。 */
+    .heap (NOLOAD) : {
+        . = ALIGN(16);
+        _heap_start = .;
+        . = . + _heap_size;
+        _heap_end = .;
     } > SDRAM
 }
