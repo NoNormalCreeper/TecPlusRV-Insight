@@ -544,7 +544,7 @@ case "$SIM_KIND" in
         python3 "$REPO_ROOT/scripts/bin2mem.py" \
             "$BUILD_DIR/darkriscv_machine_trap.bin" \
             "$BUILD_DIR/darkriscv_machine_trap.mem" 16384
-        iverilog -g2001 -D__INTERRUPT__ -I "$REPO_ROOT/rtl/core" \
+        iverilog -g2001 -D__INTERRUPT__ -DSIMULATION -I "$REPO_ROOT/rtl/core" \
             -s tb_darkriscv_machine_trap \
             -P "tb_darkriscv_machine_trap.FIRMWARE_MEM_FILE=\"$BUILD_DIR/darkriscv_machine_trap.mem\"" \
             -o "$BUILD_DIR/tb_darkriscv_machine_trap.out" \

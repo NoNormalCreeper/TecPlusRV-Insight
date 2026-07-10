@@ -544,6 +544,7 @@
       "bram_dualport",
       "tinybus_decode",
       "mmio_test_exit",
+      "darkriscv_machine_trap",
       "uart_rx",
       "bootloader_ctrl",
       "traffic_light_gpio",

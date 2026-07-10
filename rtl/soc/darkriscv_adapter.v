@@ -45,6 +45,9 @@ assign mem_wstrb = dbus_wr ? dbus_be : 4'b0000;
 darkriscv u_cpu (
     .CLK(clk),
     .RES(!resetn),
+    // Task 4 再由 SoC 接入真实 external/timer IRQ；当前保持现有行为。
+    .IRQ(1'b0),
+    .MTIP(1'b0),
     .IDREQ(ibus_req),
     .IADDR(ibus_addr),
     .IDATA(ifetch_rdata),

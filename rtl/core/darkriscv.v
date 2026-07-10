@@ -64,6 +64,7 @@ module darkriscv
 
 `ifdef __INTERRUPT__
     input             IRQ,   // interrupt request
+    input             MTIP,  // machine timer interrupt pending
 `endif
 
     // instr-bus
@@ -443,7 +444,9 @@ module darkriscv
 
     // exceptions
 
-    wire IERR = FLUSH ? 0 : !(XLUI||XAUIPC||XJAL||XJALR||XBCC||XLCC||XSCC||XMCC||XRCC||XCUS||XSYS);
+    // 当前单 hart、无 cache，标准 FENCE 作为合法 NOP；FENCE.I 仍留给后续实现。
+    wire FENCE = !FLUSH && XIDATA[6:0]==7'b0001111 && XIDATA[14:12]==3'b000;
+    wire IERR = FLUSH ? 0 : !(XLUI||XAUIPC||XJAL||XJALR||XBCC||XLCC||XSCC||XMCC||XRCC||XCUS||XSYS||FENCE);
 
     wire DBER = DBERR;
     wire IBER = IBERR;
@@ -455,7 +458,7 @@ module darkriscv
     wire CSRX  = SYS && FCT3[1:0];
 
     `ifdef __INTERRUPT__
-        reg [31:0] MSTATUS  = 0;
+        reg [31:0] MSTATUS  = 32'h0000_1800;
         reg [31:0] MSCRATCH = 0;
         reg [31:0] MCAUSE   = 0;
         reg [31:0] MEPC     = 0;
@@ -464,6 +467,31 @@ module darkriscv
         reg [31:0] MIP      = 0;
 
         wire MRET = SYS && FCT3==0 && XIDATA[31:20]==12'b001100000010;
+        wire ECALL = SYS && FCT3==0 && XIDATA[31:20]==12'h000;
+        wire EBREAK = EBRK;
+
+        wire instruction_address_misaligned = IAER;
+        wire instruction_access_fault = IBER;
+        wire illegal_instruction = IERR;
+        wire load_address_misaligned = DAER && DRD;
+        wire load_access_fault = DBER && DRD;
+        wire store_address_misaligned = DAER && DWR;
+        wire store_access_fault = DBER && DWR;
+        wire synchronous_trap = instruction_address_misaligned ||
+                                instruction_access_fault ||
+                                illegal_instruction || EBREAK ||
+                                load_address_misaligned || load_access_fault ||
+                                store_address_misaligned || store_access_fault ||
+                                ECALL;
+        wire [31:0] synchronous_cause =
+            instruction_address_misaligned ? 32'd0 :
+            instruction_access_fault ? 32'd1 :
+            illegal_instruction ? 32'd2 :
+            EBREAK ? 32'd3 :
+            load_address_misaligned ? 32'd4 :
+            load_access_fault ? 32'd5 :
+            store_address_misaligned ? 32'd6 :
+            store_access_fault ? 32'd7 : 32'd11;
     `endif
 
     `ifdef __EBREAK__
@@ -605,6 +633,14 @@ module darkriscv
     wire        JREQ = JAL||JALR||(BCC && BMUX);
     wire [31:0] JVAL = JALR ? DADDR : PCSIMM; // SIMM + (JALR ? U1REG : PC);
 
+`ifdef __INTERRUPT__
+    wire take_mei = MIP[11] && MIE[11] && MSTATUS[3];
+    wire take_mti = MIP[7] && MIE[7] && MSTATUS[3];
+    wire IREQ = !HLT && !(|FLUSH) && (take_mei || take_mti);
+    wire [31:0] interrupt_cause = take_mei ? 32'h8000_000b : 32'h8000_0007;
+    wire [31:0] MTVEC_ALIGNED = {MTVEC[31:2], 2'b00};
+`endif
+
 `ifdef __DBNZ__
     wire DBNZT = DBNZ && S1REG!=0; // branch when not zero!
 `endif
@@ -621,7 +657,9 @@ module darkriscv
                                   SRET ? 2 : // sret returns from system level, i.e. PC = sepc
     `endif
     `ifdef __INTERRUPT__
-                 MRET ? 2 :         // mret returns from interrupt, i.e. PC = mepc
+       synchronous_trap ? 2 :       // ecall/ebreak/fault enters mtvec
+                 MRET ? 2 :         // mret returns from trap, i.e. PC = mepc
+                 IREQ ? 2 :         // interrupt enters mtvec independently of JREQ
     `endif
                  JREQ ? 2 : 0;      // flush the pipeline! (when jump requested)
 `else
@@ -631,47 +669,54 @@ module darkriscv
 `endif
 
 `ifdef __INTERRUPT__
-
-    `ifdef __EBREAK__
-        MIP[11] <= IRQ&&MSTATUS[3]&&MIE[11]&&!SIP[1];
-    `else
-        MIP[11] <= IRQ&&MSTATUS[3]&&MIE[11];
-    `endif
-    
         if(XRES)
         begin
             MTVEC    <= 0;
             MEPC     <= 0;
             MIE      <= 0;
+            MIP      <= 0;
             MCAUSE   <= 0;
-            MSTATUS  <= 0;
+            MSTATUS  <= 32'h0000_1800;
             MSCRATCH <= 0;
         end
-        else
-        if(!HLT && !FLUSH)
-        begin
-            if(CSRX)
+        else begin
+            // pending 位始终反映原始硬件电平，不受 enable 位预先屏蔽。
+            MIP[11] <= IRQ;
+            MIP[7] <= MTIP;
+
+            if(!HLT && !FLUSH)
             begin
-                case(XIDATA[31:20])
-                    12'h300: MSTATUS  <= WRDATA;
-                    12'h340: MSCRATCH <= WRDATA;
-                    12'h305: MTVEC    <= WRDATA;
-                    12'h341: MEPC     <= WRDATA;
-                    12'h304: MIE      <= WRDATA;
-                endcase
-            end
-            else
-            if(MIP[11] && JREQ)
-            begin
-                MEPC   <= JVAL;             // interrupt saves the next PC!
-                MSTATUS[3] <= 0;            // no interrupts when handling ebreak!
-                MSTATUS[7] <= MSTATUS[3];   // copy old MIE bit
-                MCAUSE <= 32'h8000000b;     // ext interrupt
-            end
-            else
-            if(MRET)
-            begin
-                MSTATUS[3] <= MSTATUS[7]; // return last MIE bit
+                if(CSRX)
+                begin
+                    case(XIDATA[31:20])
+                        12'h300: MSTATUS  <= 32'h0000_1800 | (WRDATA & 32'h0000_0088);
+                        12'h340: MSCRATCH <= WRDATA;
+                        12'h305: MTVEC    <= {WRDATA[31:2], 2'b00};
+                        12'h341: MEPC     <= {WRDATA[31:2], 2'b00};
+                        12'h304: MIE      <= WRDATA & 32'h0000_0880;
+                    endcase
+                end
+                else if(synchronous_trap)
+                begin
+                    // XIDATA 与 IDPC 属于同一条 execute-stage 指令。
+                    MEPC <= {IDPC[31:2], 2'b00};
+                    MCAUSE <= synchronous_cause;
+                    MSTATUS[7] <= MSTATUS[3];
+                    MSTATUS[3] <= 1'b0;
+                end
+                else if(IREQ)
+                begin
+                    // 当前 XIDATA 仍会提交，IFPC 是被 flush、需要恢复的下一条指令。
+                    MEPC <= {IFPC[31:2], 2'b00};
+                    MCAUSE <= interrupt_cause;
+                    MSTATUS[7] <= MSTATUS[3];
+                    MSTATUS[3] <= 1'b0;
+                end
+                else if(MRET)
+                begin
+                    MSTATUS[3] <= MSTATUS[7];
+                    MSTATUS[7] <= 1'b1;
+                end
             end
         end
 `endif
@@ -790,9 +835,10 @@ module darkriscv
         `endif
 
         `ifdef __INTERRUPT__
-                     MRET ? MEPC :  // return from interrupt
-                    MIP[11]&&
-                    JREQ ? MTVEC : // pending interrupt + pipeline flush
+                     // 3-stage flush 会丢弃重定向后的首个 fetch，因此先取前一 word。
+                     MRET ? MEPC - 32'd4 :
+         synchronous_trap ? MTVEC_ALIGNED - 32'd4 :
+                     IREQ ? MTVEC_ALIGNED - 32'd4 :
         `endif
                      JREQ ? JVAL :                    // jmp/bra
         `ifdef __DBNZ__
@@ -842,7 +888,7 @@ module darkriscv
 
     
 `ifdef __INTERRUPT__
-    assign DEBUG = { IRQ, MIP, MIE, MRET };
+    assign DEBUG = { IRQ, MTIP, IREQ, MRET };
 `else
     assign DEBUG = { XRES, |FLUSH, SCC, LCC };
 `endif
@@ -918,11 +964,13 @@ module darkriscv
                 end
             end
         `ifndef __EBREAK__
+        `ifndef __INTERRUPT__
             if(!HLT&&!FLUSH&&EBRK)
             begin
                 $display("breakpoint at %x",PC);
                 $stop();
             end
+        `endif
         `endif        
             if(!HLT && !FLUSH && (XIDATA===32'dx || XIDATA[6:0]==0))
             begin
