@@ -72,6 +72,10 @@ case "$CASE_ID" in
         run_iverilog uart_rx \
             "$REPO_ROOT/rtl/periph/uart_rx.v"
         ;;
+    bootloader_ctrl)
+        run_iverilog bootloader_ctrl \
+            "$REPO_ROOT/rtl/soc/bootloader_ctrl.v"
+        ;;
     traffic_light_gpio)
         run_iverilog traffic_light_gpio \
             "$REPO_ROOT/rtl/periph/traffic_light_gpio.v"
@@ -230,6 +234,7 @@ case "$CASE_ID" in
             -s tecplus_minisoc_top \
             -o "$BUILD_DIR/tecplus_minisoc_top.syntax.out" \
             "$REPO_ROOT/rtl/soc/tecplus_minisoc_top.v" \
+            "$REPO_ROOT/rtl/soc/bootloader_ctrl.v" \
             "$REPO_ROOT/rtl/soc/tecplus_cpu_wrapper.v" \
             "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
             "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \

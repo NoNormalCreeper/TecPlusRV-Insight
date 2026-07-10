@@ -139,6 +139,7 @@ compile_minisoc_tb() {
         "$REPO_ROOT/rtl/core/picorv32.v" \
         "$REPO_ROOT/rtl/core/darkriscv.v" \
         "$REPO_ROOT/rtl/soc/tecplus_minisoc_top.v" \
+        "$REPO_ROOT/rtl/soc/bootloader_ctrl.v" \
         "$REPO_ROOT/rtl/soc/tecplus_cpu_wrapper.v" \
         "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
         "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
@@ -186,6 +187,7 @@ compile_minisoc_perf_tb() {
         "$REPO_ROOT/rtl/core/picorv32.v" \
         "$REPO_ROOT/rtl/core/darkriscv.v" \
         "$REPO_ROOT/rtl/soc/tecplus_minisoc_top.v" \
+        "$REPO_ROOT/rtl/soc/bootloader_ctrl.v" \
         "$REPO_ROOT/rtl/soc/tecplus_cpu_wrapper.v" \
         "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
         "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
@@ -211,6 +213,13 @@ case "$SIM_KIND" in
             "$REPO_ROOT/sim/tb_uart_rx.v" \
             "$REPO_ROOT/rtl/periph/uart_rx.v"
         run_and_check "$BUILD_DIR/tb_uart_rx.log" vvp "$BUILD_DIR/tb_uart_rx.out"
+        ;;
+    bootloader_ctrl)
+        iverilog -g2001 -s tb_bootloader_ctrl \
+            -o "$BUILD_DIR/tb_bootloader_ctrl.out" \
+            "$REPO_ROOT/sim/tb_bootloader_ctrl.v" \
+            "$REPO_ROOT/rtl/soc/bootloader_ctrl.v"
+        run_and_check "$BUILD_DIR/tb_bootloader_ctrl.log" vvp "$BUILD_DIR/tb_bootloader_ctrl.out"
         ;;
     traffic_light_gpio)
         iverilog -g2001 -o "$BUILD_DIR/tb_traffic_light_gpio.out" \
@@ -272,6 +281,14 @@ case "$SIM_KIND" in
     minisoc_dark)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v"
         run_and_check "$BUILD_DIR/tb_minisoc_dark.log" vvp "$BUILD_DIR/tb_minisoc_dark.out"
+        ;;
+    bootloader_pico)
+        compile_minisoc_tb "$BUILD_DIR/tb_bootloader_pico.out" 0 tb_minisoc_bootloader "$REPO_ROOT/sim/tb_minisoc_bootloader.v"
+        run_and_check "$BUILD_DIR/tb_bootloader_pico.log" vvp "$BUILD_DIR/tb_bootloader_pico.out"
+        ;;
+    bootloader_dark)
+        compile_minisoc_tb "$BUILD_DIR/tb_bootloader_dark.out" 1 tb_minisoc_bootloader "$REPO_ROOT/sim/tb_minisoc_bootloader.v"
+        run_and_check "$BUILD_DIR/tb_bootloader_dark.log" vvp "$BUILD_DIR/tb_bootloader_dark.out"
         ;;
     minisoc_smoke_pico)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_smoke_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
@@ -453,7 +470,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
+        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
         exit 1
         ;;
 esac

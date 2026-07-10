@@ -24,6 +24,12 @@
       "args": ["uart_rx"]
     },
     {
+      "id": "rtl_syntax__bootloader_ctrl",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["bootloader_ctrl"]
+    },
+    {
       "id": "rtl_syntax__traffic_light_gpio",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -252,6 +258,11 @@
       "sim_target": "uart_rx"
     },
     {
+      "id": "bootloader_ctrl",
+      "kind": "sim",
+      "sim_target": "bootloader_ctrl"
+    },
+    {
       "id": "traffic_light_gpio",
       "kind": "sim",
       "sim_target": "traffic_light_gpio"
@@ -336,6 +347,22 @@
       "id": "minisoc_smoke_dark",
       "kind": "sim",
       "sim_target": "minisoc_smoke_dark"
+    },
+    {
+      "id": "bootloader_pico",
+      "kind": "sim",
+      "sim_target": "bootloader_pico",
+      "requires": ["firmware", "rtl_syntax"]
+    },
+    {
+      "id": "bootloader_dark",
+      "kind": "sim",
+      "sim_target": "bootloader_dark"
+    },
+    {
+      "id": "uart_loader_tool",
+      "kind": "command",
+      "command": ["python3", "scripts/test_uart_loader.py"]
     },
     {
       "id": "minisoc_counter_source_pico",
@@ -427,6 +454,7 @@
       "rtl_syntax__probe_led_key_top",
       "rtl_syntax__probe_uart_top",
       "rtl_syntax__uart_rx",
+      "rtl_syntax__bootloader_ctrl",
       "rtl_syntax__traffic_light_gpio",
       "rtl_syntax__buzzer_pwm",
       "rtl_syntax__sdram_smoke_ctrl",
@@ -479,6 +507,7 @@
       "tinybus_decode",
       "mmio_test_exit",
       "uart_rx",
+      "bootloader_ctrl",
       "traffic_light_gpio",
       "buzzer_pwm",
       "font_rom_8x8",
@@ -487,6 +516,9 @@
     "soc": [
       "minisoc_smoke_pico",
       "minisoc_smoke_dark",
+      "bootloader_pico",
+      "bootloader_dark",
+      "uart_loader_tool",
       "minisoc_sdram_pico",
       "minisoc_sdram_dark",
       "minisoc_counter_source_pico",
