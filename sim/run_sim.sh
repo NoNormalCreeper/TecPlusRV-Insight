@@ -542,8 +542,14 @@ case "$SIM_KIND" in
     darkriscv_machine_trap)
         need_tool riscv64-unknown-elf-gcc
         need_tool riscv64-unknown-elf-objcopy
-        # 本机 GCC 10 尚未接受 rv32i_zicsr spelling，但 rv32i 仍会正确汇编 CSR。
-        riscv64-unknown-elf-gcc -march=rv32i -mabi=ilp32 \
+        # 新版工具链要求显式声明 Zicsr；旧 GCC 10 只接受 rv32i，
+        # 但其 assembler 仍会正确接受 CSR 指令。
+        trap_march=rv32i
+        if riscv64-unknown-elf-gcc -march=rv32i_zicsr -mabi=ilp32 \
+            -E -x c /dev/null -o /dev/null >/dev/null 2>&1; then
+            trap_march=rv32i_zicsr
+        fi
+        riscv64-unknown-elf-gcc -march="$trap_march" -mabi=ilp32 \
             -nostdlib -nostartfiles \
             -T "$REPO_ROOT/tests/riscv_tests/tecplus_p/link.ld" \
             -o "$BUILD_DIR/darkriscv_machine_trap.elf" \
