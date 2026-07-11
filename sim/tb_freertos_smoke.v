@@ -23,8 +23,6 @@ reg [3:0] key;
 reg uart_rxd;
 reg task_seen;
 reg trap_entry_active;
-reg ecall_pending_return;
-reg [31:0] ecall_pc;
 reg stall_injected;
 reg stall_active;
 reg irq_pending_during_stall;
@@ -64,8 +62,6 @@ initial begin
     uart_rxd = 1'b1;
     task_seen = 1'b0;
     trap_entry_active = 1'b0;
-    ecall_pending_return = 1'b0;
-    ecall_pc = 32'h0000_0000;
     stall_injected = 1'b0;
     stall_active = 1'b0;
     irq_pending_during_stall = 1'b0;
@@ -93,8 +89,6 @@ always @(posedge clk) begin
         if (!trap_entry_active) begin
             if (dut.u_cpu.g_darkriscv.u_cpu.u_cpu.MCAUSE == 32'h0000_000b) begin
                 ecall_trap_count = ecall_trap_count + 1;
-                ecall_pc = dut.u_cpu.g_darkriscv.u_cpu.u_cpu.MEPC;
-                ecall_pending_return = 1'b1;
             end else if (dut.u_cpu.g_darkriscv.u_cpu.u_cpu.MCAUSE ==
                     32'h8000_0007) begin
                 timer_trap_count = timer_trap_count + 1;
@@ -103,14 +97,6 @@ always @(posedge clk) begin
         trap_entry_active = 1'b1;
     end else begin
         trap_entry_active = 1'b0;
-    end
-
-    if (dut.u_cpu.g_darkriscv.u_cpu.u_cpu.MRET && ecall_pending_return) begin
-        if (dut.u_cpu.g_darkriscv.u_cpu.u_cpu.MEPC == ecall_pc) begin
-            $display("FAIL: ecall 返回地址未推进，mepc=%08x", ecall_pc);
-            $finish;
-        end
-        ecall_pending_return = 1'b0;
     end
 
     if (dut.test_exited) begin

@@ -61,9 +61,7 @@ void queue_producer_task(void *argument)
         }
     }
 
-    for (;;) {
-        taskYIELD();
-    }
+    vTaskDelete(0);
 }
 
 void queue_consumer_task(void *argument)
@@ -104,13 +102,16 @@ int main(void)
     if (demo_queue == 0) {
         fail(0xf6010004u);
     }
+    if (uxQueueMessagesWaiting(demo_queue) == 0u) {
+        queue_states |= QUEUE_SAW_EMPTY;
+    }
 
     if (xTaskCreateStatic(queue_consumer_task, "consumer", 512u, 0,
             tskIDLE_PRIORITY + 1u, task_stack[0], &task_tcb[0]) == 0) {
         fail(0xf6010005u);
     }
     if (xTaskCreateStatic(queue_producer_task, "producer", 512u, 0,
-            tskIDLE_PRIORITY + 1u, task_stack[1], &task_tcb[1]) == 0) {
+            tskIDLE_PRIORITY + 2u, task_stack[1], &task_tcb[1]) == 0) {
         fail(0xf6010006u);
     }
 

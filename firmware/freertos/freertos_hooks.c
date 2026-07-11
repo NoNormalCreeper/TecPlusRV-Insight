@@ -37,6 +37,14 @@ void freertos_task_returned(void)
 
 void freertos_fatal_trap(const struct trap_frame *frame)
 {
+    uart_puts("freertos fatal: task=");
+    uart_puts(pcTaskGetName(0));
+    uart_puts(" mepc=");
+    uart_put_hex(frame->mepc);
+    uart_puts(" mcause=");
+    uart_put_hex(frame->mcause);
+    uart_puts("\n");
+    uart_flush();
     freertos_stop(0xf1030000u | (frame->mcause & 0xffffu));
 }
 
