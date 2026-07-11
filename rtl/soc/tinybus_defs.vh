@@ -25,6 +25,10 @@
 // 40 * 30 个 byte tile，共 300 个 packed word。窗口严格收紧，避免 9-bit
 // tile_addr 在 4 KiB 空洞区域发生截断别名。
 `define TINYBUS_VGA_TILE_BYTES     32'h0000_04b0
+// 64 * 48 * 1bpp = 384 bytes = 96 个 write-only word。
+// 与旧 tile 原型复用基址，但窗口严格收紧，供轻量 bitmap 路径独立译码。
+`define TINYBUS_ADDR_VGA_FB_BASE   32'h1001_0000
+`define TINYBUS_VGA_FB_BYTES       32'h0000_0180
 `define TINYBUS_ADDR_ACCEL_BASE   32'h2000_0000
 `define TINYBUS_ADDR_SDRAM_BASE   32'h8000_0000
 

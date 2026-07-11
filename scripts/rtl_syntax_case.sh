@@ -170,6 +170,11 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/periph/font_rom_8x8.v" \
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         ;;
+    vga_bitmap_1bpp)
+        run_iverilog vga_bitmap_1bpp \
+            "$REPO_ROOT/rtl/periph/vga_bitmap_1bpp.v" \
+            "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
+        ;;
     probe_vga_top)
         run_iverilog probe_vga_top \
             "$REPO_ROOT/rtl/probe/probe_vga_top.v" \
@@ -254,6 +259,7 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
             "$REPO_ROOT/rtl/periph/buzzer_pwm.v" \
             "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
+            "$REPO_ROOT/rtl/periph/vga_bitmap_1bpp.v" \
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v" \
             "$REPO_ROOT/rtl/periph/font_rom_8x8.v"
         ;;

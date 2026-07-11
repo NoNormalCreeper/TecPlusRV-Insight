@@ -39,6 +39,7 @@ module tinybus_decode (
     output            buzzer_period_sel,
     output            vga_status_sel,
     output            vga_tile_sel,
+    output            vga_fb_sel,
     output            mtime_lo_sel,
     output            mtime_hi_sel,
     output            mtimecmp_lo_sel,
@@ -68,6 +69,9 @@ assign mtimecmp_hi_sel = valid && (addr == `TINYBUS_ADDR_MTIMECMP_HI);
 assign vga_tile_sel = write_en &&
     (addr >= `TINYBUS_ADDR_VGA_TILE_BASE) &&
     (addr < `TINYBUS_ADDR_VGA_TILE_BASE + `TINYBUS_VGA_TILE_BYTES);
+assign vga_fb_sel = write_en &&
+    (addr >= `TINYBUS_ADDR_VGA_FB_BASE) &&
+    (addr < `TINYBUS_ADDR_VGA_FB_BASE + `TINYBUS_VGA_FB_BYTES);
 assign accel_sel = valid && (addr[31:28] == 4'h2);
 assign write_en = valid && (wstrb != 4'b0000);
 assign write_data = wdata;

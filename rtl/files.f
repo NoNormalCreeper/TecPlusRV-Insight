@@ -8,6 +8,7 @@ rtl/periph/machine_timer.v
 rtl/periph/vga_timing_640x480.v
 rtl/periph/font_rom_8x8.v
 rtl/periph/vga_text_mode.v
+rtl/periph/vga_bitmap_1bpp.v
 rtl/soc/bram.v
 rtl/soc/tinybus_decode.v
 rtl/soc/mmio_test_exit.v

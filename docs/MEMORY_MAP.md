@@ -21,7 +21,8 @@
 | `0x1000_0074` | 32 位 | `mtime[63:32]` |
 | `0x1000_0078` | 32 位 | `mtimecmp[31:0]` |
 | `0x1000_007C` | 32 位 | `mtimecmp[63:32]` |
-| `0x1001_0000 - 0x1001_04AF` | 1200 B | 实验性 write-only `40x30` packed tile window |
+| `0x1001_0000 - 0x1001_017F` | 384 B | `VGA_BITMAP_ENABLE=1` 时的 write-only `64x48` 1bpp framebuffer |
+| `0x1001_0000 - 0x1001_04AF` | 1200 B | `VGA_TEXT_ENABLE=1` 时保留的实验性 `40x30` packed tile window |
 | `0x2000_0000` | 区域基址 | accelerator base |
 | `0x8000_0000 - 0x81FF_FFFF` | 32 MiB | U2 SDRAM data-only 区域 |
 

@@ -42,6 +42,7 @@ wire        buzzer_ctrl_sel;
 wire        buzzer_period_sel;
 wire        vga_status_sel;
 wire        vga_tile_sel;
+wire        vga_fb_sel;
 wire        mtime_lo_sel;
 wire        mtime_hi_sel;
 wire        mtimecmp_lo_sel;
@@ -88,6 +89,7 @@ tinybus_decode dut (
     .buzzer_period_sel(buzzer_period_sel),
     .vga_status_sel(vga_status_sel),
     .vga_tile_sel(vga_tile_sel),
+    .vga_fb_sel(vga_fb_sel),
     .mtime_lo_sel(mtime_lo_sel),
     .mtime_hi_sel(mtime_hi_sel),
     .mtimecmp_lo_sel(mtimecmp_lo_sel),
@@ -262,6 +264,20 @@ initial begin
     #1;
     if (!vga_tile_sel || !write_en || write_data !== wdata) begin
         $display("FAIL: VGA tile 写访问译码错误");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_VGA_FB_BASE + `TINYBUS_VGA_FB_BYTES - 4;
+    #1;
+    if (!vga_fb_sel || !vga_tile_sel) begin
+        $display("FAIL: VGA 1bpp framebuffer 末 word 未命中");
+        $finish;
+    end
+
+    addr = `TINYBUS_ADDR_VGA_FB_BASE + `TINYBUS_VGA_FB_BYTES;
+    #1;
+    if (vga_fb_sel || !vga_tile_sel) begin
+        $display("FAIL: VGA framebuffer 上界错误或破坏旧 tile window");
         $finish;
     end
 

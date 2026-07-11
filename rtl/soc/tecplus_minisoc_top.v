@@ -13,6 +13,9 @@ module tecplus_minisoc_top #(
     // 当前 writable text/tile 原型在 LX9 MiniSoC 中会 overmap，默认不参与综合。
     // 只在保留的 Bad Apple 仿真或后续资源实验中显式设为 1。
     parameter integer VGA_TEXT_ENABLE = 0,
+    // 64x48 1bpp framebuffer 以 distributed RAM 为综合目标；最终资源类型以 ISE Map 为准。
+    // 若与 VGA_TEXT_ENABLE 同时打开，bitmap 路径优先。
+    parameter integer VGA_BITMAP_ENABLE = 0,
     parameter VGA_MF_DEFAULT = 1'b0,
     parameter VGA_CLR_DEFAULT = 1'b1,
     parameter VGA_QD_DEFAULT = 1'b0,
@@ -125,6 +128,7 @@ wire        buzzer_ctrl_sel;
 wire        buzzer_period_sel;
 wire        vga_status_sel;
 wire        vga_tile_sel;
+wire        vga_fb_sel;
 wire        mtime_lo_sel;
 wire        mtime_hi_sel;
 wire        mtimecmp_lo_sel;
@@ -164,6 +168,7 @@ wire        traffic_write;
 wire        buzzer_ctrl_write;
 wire        buzzer_period_write;
 wire        vga_tile_write;
+wire        vga_bitmap_write;
 wire        mtime_lo_write;
 wire        mtime_hi_write;
 wire        mtimecmp_lo_write;
@@ -172,6 +177,7 @@ wire        vga_ready;
 wire        vga_vblank;
 wire [15:0] vga_frame_count;
 wire [8:0]  vga_tile_addr;
+wire [6:0]  vga_bitmap_addr;
 wire        buzzer_enabled;
 wire [31:0] buzzer_half_period;
 wire        mmio_stall;
@@ -242,6 +248,7 @@ assign buzzer_ctrl_rdata = {31'h00000000, buzzer_enabled};
 assign buzzer_period_rdata = buzzer_half_period;
 assign vga_status_rdata = {vga_frame_count, 14'h0000, vga_ready, vga_vblank};
 assign vga_tile_addr = (req_addr - `TINYBUS_ADDR_VGA_TILE_BASE) >> 2;
+assign vga_bitmap_addr = (req_addr - `TINYBUS_ADDR_VGA_FB_BASE) >> 2;
 
 assign same_as_last_req =
     last_req_valid &&
@@ -289,8 +296,12 @@ assign traffic_write = respond && req_is_mmio && !req_is_replay && traffic_sel &
 assign buzzer_ctrl_write = respond && !req_is_bram && !req_is_replay && buzzer_ctrl_sel && mmio_write_en;
 assign buzzer_period_write = respond && !req_is_bram && !req_is_replay && buzzer_period_sel && mmio_write_en;
 assign vga_tile_write =
-    (VGA_TEXT_ENABLE != 0) && respond && req_is_mmio && !req_is_replay &&
+    (VGA_BITMAP_ENABLE == 0) && (VGA_TEXT_ENABLE != 0) &&
+    respond && req_is_mmio && !req_is_replay &&
     vga_tile_sel && mmio_write_en;
+assign vga_bitmap_write =
+    (VGA_BITMAP_ENABLE != 0) && respond && req_is_mmio && !req_is_replay &&
+    vga_fb_sel && mmio_write_en;
 assign mtime_lo_write =
     respond && req_is_mmio && !req_is_replay && mtime_lo_sel && mmio_write_en;
 assign mtime_hi_write =
@@ -414,6 +425,7 @@ tinybus_decode u_decode (
     .buzzer_period_sel(buzzer_period_sel),
     .vga_status_sel(vga_status_sel),
     .vga_tile_sel(vga_tile_sel),
+    .vga_fb_sel(vga_fb_sel),
     .mtime_lo_sel(mtime_lo_sel),
     .mtime_hi_sel(mtime_hi_sel),
     .mtimecmp_lo_sel(mtimecmp_lo_sel),
@@ -538,7 +550,23 @@ buzzer_pwm u_buzzer (
 );
 
 generate
-    if (VGA_TEXT_ENABLE != 0) begin : g_vga_text
+    if (VGA_BITMAP_ENABLE != 0) begin : g_vga_bitmap
+        vga_bitmap_1bpp u_vga_bitmap (
+            .clk(clk),
+            .reset(rst),
+            .fb_we(vga_bitmap_write),
+            .fb_addr(vga_bitmap_addr),
+            .fb_wdata(req_wdata),
+            .ready(vga_ready),
+            .vblank(vga_vblank),
+            .frame_count(vga_frame_count),
+            .vga_r(vga_r),
+            .vga_g(vga_g),
+            .vga_b(vga_b),
+            .vga_hs(vga_hs),
+            .vga_vs(vga_vs)
+        );
+    end else if (VGA_TEXT_ENABLE != 0) begin : g_vga_text
         vga_text_mode u_vga_text (
             .clk(clk),
             .reset(rst),

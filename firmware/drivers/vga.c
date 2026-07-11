@@ -22,3 +22,10 @@ void vga_write_word(unsigned int word_index, unsigned int value)
         mmio_write(TINYBUS_VGA_TILE_BASE + word_index * 4u, value);
     }
 }
+
+void vga_bitmap_write_word(unsigned int word_index, unsigned int value)
+{
+    if (word_index < VGA_BITMAP_WORDS) {
+        mmio_write(TINYBUS_VGA_FB_BASE + word_index * 4u, value);
+    }
+}

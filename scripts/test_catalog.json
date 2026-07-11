@@ -161,6 +161,12 @@
       "args": ["vga_text_mode"]
     },
     {
+      "id": "rtl_syntax__vga_bitmap_1bpp",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["vga_bitmap_1bpp"]
+    },
+    {
       "id": "rtl_syntax__probe_vga_top",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -336,6 +342,11 @@
       "id": "vga_text_mode",
       "kind": "sim",
       "sim_target": "vga_text_mode"
+    },
+    {
+      "id": "vga_bitmap_1bpp",
+      "kind": "sim",
+      "sim_target": "vga_bitmap_1bpp"
     },
     {
       "id": "font_rom_8x8",
@@ -572,6 +583,12 @@
       "kind": "sim",
       "sim_target": "minisoc_timer_irq_dark",
       "requires": ["rtl_syntax"]
+    },
+    {
+      "id": "minisoc_vga_bitmap_dark",
+      "kind": "sim",
+      "sim_target": "minisoc_vga_bitmap_dark",
+      "requires": ["rtl_syntax"]
     }
   ],
   "suites": {
@@ -600,6 +617,7 @@
       "rtl_syntax__vga_timing_640x480",
       "rtl_syntax__font_rom_8x8",
       "rtl_syntax__vga_text_mode",
+      "rtl_syntax__vga_bitmap_1bpp",
       "rtl_syntax__probe_vga_top",
       "rtl_syntax__probe_vga_text_top",
       "rtl_syntax__tinybus_decode",
@@ -635,6 +653,7 @@
       "darkriscv_machine_trap",
       "machine_timer",
       "minisoc_timer_irq_dark",
+      "vga_bitmap_1bpp",
       "uart_rx",
       "bootloader_ctrl",
       "traffic_light_gpio",
@@ -645,6 +664,7 @@
     "soc": [
       "minisoc_smoke_pico",
       "minisoc_smoke_dark",
+      "minisoc_vga_bitmap_dark",
       "bootloader_pico",
       "bootloader_dark",
       "bad_apple_minimal_pico",

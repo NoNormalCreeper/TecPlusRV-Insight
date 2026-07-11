@@ -247,6 +247,7 @@ package_minisoc() {
     need_file "rtl/periph/buzzer_pwm.v"
     need_file "rtl/periph/machine_timer.v"
     need_file "rtl/periph/vga_text_mode.v"
+    need_file "rtl/periph/vga_bitmap_1bpp.v"
     need_file "rtl/periph/vga_timing_640x480.v"
     need_file "rtl/periph/font_rom_8x8.v"
     need_file "rtl/soc/tinybus_decode.v"
@@ -262,6 +263,7 @@ package_minisoc() {
     copy_flat "rtl/periph/buzzer_pwm.v"
     copy_flat "rtl/periph/machine_timer.v"
     copy_flat "rtl/periph/vga_text_mode.v"
+    copy_flat "rtl/periph/vga_bitmap_1bpp.v"
     copy_flat "rtl/periph/vga_timing_640x480.v"
     copy_flat "rtl/periph/font_rom_8x8.v"
     copy_flat "rtl/soc/tinybus_decode.v"
@@ -329,6 +331,9 @@ case "$ISE_TARGET" in
     minisoc_dark)
         package_minisoc "$REPO_ROOT/firmware/tests/timer_irq_smoke.c" "这是 DarkRISCV machine timer IRQ 验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包同时包含 firmware/build/firmware.bin，可通过共用 bootloader 装载；仓库中也可运行 make timer-irq-load PORT=COM8。UART 输出 timer irq pass: ticks=<次数> loops=<前台循环次数> 表示 firmware 验收通过。2026-07-11 当前 revision 已完成 Map/PAR 与真实上板：50 MHz post-route timing slack 为 0.462 ns，上板输出 ticks=3 loops=46；后续 RTL 或约束变化必须重新验收。" "dark_irq"
         ;;
+    minisoc_vga_bitmap_dark|vga_bitmap_dark)
+        package_minisoc "$REPO_ROOT/firmware/tests/vga_bitmap_smoke.c" "这是 64x48 1bpp VGA MMIO 的 DarkRISCV 上板验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_BITMAP_ENABLE=1、VGA_TEXT_ENABLE=0。烧录后用 firmware/build/firmware.bin 通过共用 bootloader 装载；屏幕应显示白色边框和中心十字，UART 应输出 vga bitmap smoke pass。动态写入可另行运行 make bootload PORT=COM8 FIRMWARE_MAIN=firmware/tests/vga_bitmap_animation.c。2026-07-11 已通过 ISE 综合与 PAR：4216/5720 LUT（73%）、1585/11440 registers（13%），framebuffer 已推断为 LUT Memory，50 MHz slack 为 +0.620 ns；固件真实上板显示仍待验证。"
+        ;;
     minisoc_bootloader|bootloader)
         package_minisoc "$REPO_ROOT/firmware/tests/boot_payload.c" "这是 UART bootloader 目标。请在 ISE 的 Generics, Parameters 中设置 BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0，并让 UART_BAUD 与 host --baud 一致；程序复位后等待 READY。LOAD_IMAGE 全量读回与吞吐测试见 docs/BOOTLOADER_BOARD_TEST.md。"
         ;;
@@ -340,7 +345,7 @@ case "$ISE_TARGET" in
         ;;
     *)
         echo "未知 ISE 导出目标：$ISE_TARGET" >&2
-        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_minisoc_sdram, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark, bad_apple_minimal" >&2
+        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_minisoc_sdram, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark, minisoc_vga_bitmap_dark, bad_apple_minimal" >&2
         exit 1
         ;;
 esac
