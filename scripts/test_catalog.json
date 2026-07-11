@@ -616,6 +616,12 @@
       "timeout_sec": 60
     },
     {
+      "id": "freertos_acceptance",
+      "kind": "sim",
+      "sim_target": "freertos_acceptance",
+      "timeout_sec": 180
+    },
+    {
       "id": "darkriscv_machine_trap",
       "kind": "sim",
       "sim_target": "darkriscv_machine_trap"
@@ -783,7 +789,8 @@
       "freertos_first_task",
       "freertos_yield_smoke",
       "freertos_smoke",
-      "freertos_queue"
+      "freertos_queue",
+      "freertos_acceptance"
     ],
     "local": [
       "@probe",
