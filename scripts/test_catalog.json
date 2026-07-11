@@ -394,6 +394,18 @@
       "requires": ["rtl_syntax"]
     },
     {
+      "id": "bad_apple_full_asset",
+      "kind": "command",
+      "command": ["python3", "scripts/test_bad_apple_full_asset.py"]
+    },
+    {
+      "id": "bad_apple_full",
+      "kind": "sim",
+      "sim_target": "bad_apple_full",
+      "timeout_sec": 180,
+      "requires": ["rtl_syntax"]
+    },
+    {
       "id": "boot_image_verify_pico",
       "kind": "sim",
       "sim_target": "boot_image_verify_pico",
@@ -721,6 +733,7 @@
       "bootloader_pico",
       "bootloader_dark",
       "bad_apple_minimal_pico",
+      "bad_apple_full_asset",
       "boot_image_verify_pico",
       "boot_image_verify_dark",
       "boot_image_asset_tool",
@@ -790,7 +803,8 @@
       "freertos_yield_smoke",
       "freertos_smoke",
       "freertos_queue",
-      "freertos_acceptance"
+      "freertos_acceptance",
+      "bad_apple_full"
     ],
     "local": [
       "@probe",

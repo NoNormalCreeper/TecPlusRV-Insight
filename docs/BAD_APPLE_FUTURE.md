@@ -1,9 +1,10 @@
-# Bad Apple 1bpp 后续设计与实施计划
+# Bad Apple 1bpp / BAM2 实现说明
 
 ## 文档状态
 
-本文档固定当前 BAM1/text-tile 原型之后的改造方向。当前清理回合不实施 bitmap
-RTL、BAM2 或 FreeRTOS；后续实现应按本文的资源门和任务顺序推进。
+原计划中的 bitmap RTL、BAM2、FreeRTOS 双 task player 和完整媒体 packer 已经实现。
+当前自动 Gate 已通过，ISE Map/PAR 与真实上板仍待完成；B3 通过前不把本功能写成
+“已上板完成”。
 
 当前原型状态、可运行命令和 overmap 证据见 `docs/BAD_APPLE_MINIMAL.md`。
 
@@ -30,7 +31,7 @@ MiniSoC 默认 `VGA_TEXT_ENABLE=0`。
   -> LOAD_IMAGE
        |-- BRAM firmware
        `-- SDRAM asset
-  -> bare-metal player_step(vga_tick)
+  -> FreeRTOS playback/audio tasks
        |-- VGA framebuffer MMIO
        |-- buzzer MMIO
        |-- LED
@@ -38,8 +39,7 @@ MiniSoC 默认 `VGA_TEXT_ENABLE=0`。
 ```
 
 VGA scanout 和蜂鸣器 PWM 在硬件中自行运行。CPU 负责 asset 解码和事件调度；
-后续 FreeRTOS 只替换调用 `player_step()` 的 scheduler，不改变显示、asset 或
-bootloader 协议。
+FreeRTOS 不改变显示、asset 或 bootloader 协议。
 
 ## VGA 显示契约
 
@@ -157,17 +157,13 @@ opcode、压缩字典或 custom glyph。
 2. area scale 到 `64x48` grayscale。
 3. 二值化并打包为 96 words。
 4. 生成 replacement diff、BAM2、JSON report 和带黑边 GIF。
-5. 复用现有 MIDI parser 和同步参数。
+5. 使用正式两轨钢琴 MIDI 的 `compact-piano` reducer：低音和弦生成降频鼓包络，
+   第 2 轨保护主旋律，唯一长间奏由第 3 轨填充。
 
 ## player 与 FreeRTOS 边界
 
-播放器只建立两个软件边界：
-
-- `player_init()`：验证 BAM2 header、offset 和 record 边界
-- `player_step(current_vga_tick)`：处理已经到期的视频和音符事件
-
-首版 bare-metal `main()` 轮询 frame counter 调用 `player_step()`。driver 不包含
-busy-wait scheduler。
+`firmware/tests/bad_apple_full.c` 在启动时完整验证 BAM2 header、offset、所有 video
+records 和 audio tick；播放时以 hardware VGA frame counter 为唯一时间基准。
 
 FreeRTOS 是独立的通用 firmware profile，不是 Bad Apple 私有依赖，也不能用 Bad
 Apple 代替 port bring-up。必须先由 `freertos-smoke` 验证 tick/yield/delay/抢占，再由
@@ -178,7 +174,57 @@ FreeRTOS 版本拆成两个 owner task：video/playback task 调用播放器边�
 buzzer。首轮不增加 mutex，status/log task 也不作为播放成立的前提。FreeRTOS port
 设计见 [`FREERTOS_PORT_DESIGN.md`](FREERTOS_PORT_DESIGN.md)。
 
-## 实施任务
+## 当前验证与上板命令
+
+完整资源当前实测：
+
+- MP4 输入 `219.099 s`；BAM2 播放时间 `219.1392 s`；
+- 2174 个 `64x48` 1bpp frames；
+- 1376 个单音 MIDI events，解析正式两轨钢琴 MIDI；
+- asset `902048 bytes`；
+- FreeRTOS firmware BRAM image `20876 bytes`。
+
+自动验证：
+
+```bash
+python3 scripts/test_runner.py run-case bad_apple_full_asset
+python3 scripts/test_runner.py run-case bad_apple_full
+make bad-apple-full-build
+make bad-apple-full-preview
+make bad-apple-source-audio-preview
+```
+
+预览直接反向解码最终 BAM2，输出
+`build/badapple_full/bad_apple_full_preview.mp4` 和同目录 WAV。MP4 使用与板上一致的
+`64x48` 1bpp、`8x8` nearest-neighbor 放大和 640x480 黑边；WAV 模拟单路方波 buzzer，
+用于检查画面、MIDI reducer、同步和完整时长，不代表实体蜂鸣器的实际响度与音色。
+
+`bad-apple-source-audio-preview` 是独立实验：从 MP4 AAC 解码 mono PCM，以 16 ms hop
+做 harmonic-summation pitch detection，再输出 12-TET 方波 WAV。它依赖 host 的
+NumPy/SciPy，只用于先试听“原视频提取”路线；用户确认听感前不会替换 BAM2 的 MIDI
+事件或增加 firmware 依赖。
+
+正式路径使用 `touhou-bad-apple-featnomico-26035-nonstop2k.com.mid`，把 MIDI 完整尾点
+对齐到 MP4 有效音频尾点 `217.080 s`，offset 为约 `+1.400954 s`。低音双音/四音不会
+作为持续音高，而会变成三段降频 kick/accent；第 2 轨从约 `29.23 s` 起作为受保护
+主旋律，句间空隙不允许第 3 轨插入单音。唯一长间奏 `111.836..126.618 s` 使用第 3
+轨最高音连续填充，并折叠到 MIDI 52..76；主旋律结束后，第 3 轨提供尾奏降频节奏。
+`make bad-apple-compact-midi-preview` 仅作为 `bad-apple-full-preview` 的兼容别名保留。
+
+上板：
+
+```bash
+make ise-export ISE_TARGET=bad_apple_full_dark
+# ISE 设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_BITMAP_ENABLE=1、
+# VGA_TEXT_ENABLE=0；UART_BAUD 与 BOOTLOAD_BAUD 一致（默认 9600）
+# 然后生成并烧录 bitstream
+make bad-apple-full-load PORT=COM8
+```
+
+约 219 秒后 UART 应输出 `bad apple full pass`、LED=`5`，随后循环。真实板仍需检查
+画面黑白方向、完整时长、音频连续性与 reset 后重新上传。
+
+## 历史实施任务
 
 ### 任务 1：1bpp VGA module
 

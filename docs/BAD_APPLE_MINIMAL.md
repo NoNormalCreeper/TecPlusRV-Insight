@@ -85,16 +85,18 @@ make bad-apple-build
 `make bad-apple-load` 仅保留用于复现实验；在当前 LX9 上启用
 `VGA_TEXT_ENABLE=1` 会 overmap，不能作为正常上板步骤。
 
-## 后续方向
+## 当前正式方向
 
-后续改造不在本轮清理中实施，目标已经固定为：
+上述改造已经由 BAM2 / FreeRTOS 路径实现：
 
 - `64x48` 1bpp framebuffer，默认每个逻辑像素放大为 `8x8`
 - 默认显示区域 `512x384`，左右黑边 64、上下黑边 48
 - 黑边、缩放和逻辑尺寸使用 RTL 综合期参数，不在首版增加运行时几何 MMIO
 - 帧率由 asset 的 `video_period_ticks` 配置；默认 6 个 VGA tick，约 9.92 FPS
 - MIDI 音符按 VGA tick 调度，不降到 10 FPS 视频精度
-- player 使用非阻塞 tick/step 边界；首版裸机轮询，未来可由 FreeRTOS task 调用
+- player 使用 FreeRTOS playback task + static audio queue/task
 - 继续使用 BRAM 取指、SDRAM data-only asset、`LOAD_IMAGE` 和现有 buzzer/LED/UART
 
-详细契约和以后执行的实施顺序见 `docs/BAD_APPLE_FUTURE.md`。
+运行 `make bad-apple-full-build` 构建完整 219 秒 asset 与 firmware；详细契约、自动
+验证和上板步骤见 `docs/BAD_APPLE_FUTURE.md`。完整版正式使用新增的两轨钢琴 MIDI
+及 `compact-piano` reducer；原 13-track MIDI 与 BAM1 仍只用于历史原型回归。

@@ -40,7 +40,8 @@ software timer。当前 50 MHz 构建尺寸：
 上板输出 `freertos smoke pass`，当时 50 MHz timing slack 为 `+0.620 ns`。补齐 SDRAM
 subword 对齐后，acceptance 也已完成 ISE Map/PAR/timing 和真实上板：UART 全阶段输出
 `freertos acceptance pass`、LED=`5`，重复运行通过，50 MHz timing slack 为
-`+0.590 ns`。Bad Apple 迁移尚未开始，仍是后续独立设计/计划。
+`+0.590 ns`。完整 Bad Apple 已迁移为 FreeRTOS playback/audio 双 task，并通过
+synthetic SDRAM/VGA/buzzer 端到端仿真；其 ISE timing 与真实上板仍是独立 Gate。
 
 ## 核心选择
 
@@ -206,7 +207,7 @@ trace facility 或 runtime stats。构建使用 function/data sections 与 linke
 make freertos-smoke
 make freertos-queue
 make freertos-acceptance
-# 后续计划：make freertos-bad-apple
+make bad-apple-full-build
 ```
 
 输出隔离到：

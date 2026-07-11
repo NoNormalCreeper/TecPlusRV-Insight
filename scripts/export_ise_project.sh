@@ -384,6 +384,11 @@ case "$ISE_TARGET" in
     minisoc_vga_bitmap_dark|vga_bitmap_dark)
         package_minisoc "$REPO_ROOT/firmware/tests/vga_bitmap_smoke.c" "这是 64x48 1bpp VGA MMIO 的 DarkRISCV 上板验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_BITMAP_ENABLE=1、VGA_TEXT_ENABLE=0。烧录后用 firmware/build/firmware.bin 通过共用 bootloader 装载；屏幕应显示白色边框和中心十字，UART 应输出 vga bitmap smoke pass。动态写入可另行运行 make bootload PORT=COM8 FIRMWARE_MAIN=firmware/tests/vga_bitmap_animation.c。2026-07-11 已通过 ISE 综合与 PAR：4216/5720 LUT（73%）、1585/11440 registers（13%），framebuffer 已推断为 LUT Memory，50 MHz slack 为 +0.620 ns；固件真实上板显示仍待验证。"
         ;;
+    bad_apple_full_dark|bad_apple_full)
+        FREERTOS_CPU_CLOCK_HZ=50000000 \
+            package_minisoc "$REPO_ROOT/firmware/tests/bad_apple_full.c" "这是全时长 Bad Apple BAM2 上板目标。请在 ISE Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_BITMAP_ENABLE=1、VGA_TEXT_ENABLE=0；UART_BAUD 必须与 make bad-apple-full-load 使用的 BOOTLOAD_BAUD 一致，默认均为 9600。先烧录 bitstream，再运行 make bad-apple-full-load PORT=COM8。约 219 秒后 UART 输出 bad apple full pass、LED=5 并循环。" "freertos"
+        package_freertos_sources
+        ;;
     minisoc_bootloader|bootloader)
         package_minisoc "$REPO_ROOT/firmware/tests/boot_payload.c" "这是 UART bootloader 目标。请在 ISE 的 Generics, Parameters 中设置 BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0，并让 UART_BAUD 与 host --baud 一致；程序复位后等待 READY。LOAD_IMAGE 全量读回与吞吐测试见 docs/BOOTLOADER_BOARD_TEST.md。"
         ;;
@@ -395,7 +400,7 @@ case "$ISE_TARGET" in
         ;;
     *)
         echo "未知 ISE 导出目标：$ISE_TARGET" >&2
-        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_minisoc_sdram, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark, minisoc_freertos_dark, minisoc_freertos_acceptance_dark, minisoc_vga_bitmap_dark, bad_apple_minimal" >&2
+        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_minisoc_sdram, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark, minisoc_freertos_dark, minisoc_freertos_acceptance_dark, minisoc_vga_bitmap_dark, bad_apple_minimal, bad_apple_full_dark" >&2
         exit 1
         ;;
 esac
