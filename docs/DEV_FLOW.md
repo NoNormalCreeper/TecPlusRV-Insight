@@ -459,10 +459,15 @@ python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
 
 - `baremetal`：默认 profile，沿用现有 startup/runtime，不链接 trap runtime，也不会主动开启 IRQ。
 - `dark_irq`：当前已实现的 DarkRISCV-only 基础 profile，链接统一 trap frame 与 machine timer driver；应用仍须显式调用 `trap_init()` 和 enable helper。
-- `freertos`：后续 DarkRISCV-only profile，复用同一个 trap frame；kernel 与应用静态链接成单一 payload。
+- `freertos`：后续 DarkRISCV-only profile，复用同一个 trap frame；官方 kernel 与 TecPlusRV 专用薄 port、应用静态链接成单一 payload。它是多个 demo 共用的运行 profile，不属于 Bad Apple 私有实现。
 - `gdb-stub`：后续 DarkRISCV-only profile，复用同一个 trap frame；`ebreak/fault` 进入 remote loop。
 
 后两类目前只是稳定的接入契约，不是可选的现成构建值。bootloader 与 bitstream 继续共用，每次只装载一个 BRAM firmware image；FreeRTOS 是 bootloader 可装载的 payload，不是另一套 bootloader。
+
+FreeRTOS 不直接链接官方 RISC-V `portASM.S`，避免引入第二套 trap entry 和 context
+layout；项目只复用官方 kernel 的调度、delay 与 queue，实现映射到现有 canonical
+`trap_frame` 的薄 port。完整设计、阶段门和人工验证边界见
+[`FREERTOS_PORT_DESIGN.md`](FREERTOS_PORT_DESIGN.md)。
 
 常用构建入口：
 

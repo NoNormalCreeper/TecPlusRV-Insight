@@ -266,10 +266,15 @@ sim/run_sim.sh minisoc_counter_source_dark
 DarkRISCV wrapper 现在额外接受 `irq_external` / `irq_timer`，MiniSoC 第一版把 external IRQ 固定为 0，把 CLINT-like machine timer 的 level IRQ 接到 MTIP。软件侧固定三类长期 profile：
 
 - `baremetal`：默认不开 IRQ，保持现有程序与 PicoRV32 路径不变。
-- `freertos`：后续 DarkRISCV-only 静态镜像，scheduler 通过 `trap_dispatch()` 返回新的 frame。
+- `freertos`：后续 DarkRISCV-only 静态镜像；复用官方 kernel，但使用 TecPlusRV 专用薄 port，scheduler 通过 `trap_dispatch()` 返回新的 canonical frame。
 - `gdb-stub`：后续 DarkRISCV-only 静态镜像，复用同一 frame 进入 remote loop。
 
 当前已实现的 `dark_irq` 是后两者共用的基础验收 profile，不是第四种长期产品形态。FreeRTOS 和 GDB stub 都不得重新定义 frame，也不得另建第二个 `mtvec` 入口。
+
+FreeRTOS TCB 的 `pxTopOfStack` 固定指向该 task 最近保存的 canonical frame。首个 task
+由 `pxPortInitialiseStack()` 在静态 stack 顶部构造同样的 frame；critical nesting 使用
+FreeRTOS-Kernel V11.3.0 的 TCB 字段，不占用公共 frame 的 `reserved`。详细设计见
+[`FREERTOS_PORT_DESIGN.md`](FREERTOS_PORT_DESIGN.md)。
 
 ## ISE 使用方式
 

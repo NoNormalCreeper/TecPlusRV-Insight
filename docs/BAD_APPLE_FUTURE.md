@@ -166,12 +166,17 @@ opcode、压缩字典或 custom glyph。
 - `player_init()`：验证 BAM2 header、offset 和 record 边界
 - `player_step(current_vga_tick)`：处理已经到期的视频和音符事件
 
-首版 `main()` 轮询 frame counter 调用 `player_step()`。driver 不包含 busy-wait
-scheduler。
+首版 bare-metal `main()` 轮询 frame counter 调用 `player_step()`。driver 不包含
+busy-wait scheduler。
 
-FreeRTOS 需要独立完成 DarkRISCV trap、timer interrupt、context switch 和 task
-stack 约定。完成后，FreeRTOS task 可用 `vTaskDelayUntil()` 或 notification 调用同一
-`player_step()`；FreeRTOS kernel、port 和 task-aware GDB 不属于本改造计划。
+FreeRTOS 是独立的通用 firmware profile，不是 Bad Apple 私有依赖，也不能用 Bad
+Apple 代替 port bring-up。必须先由 `freertos-smoke` 验证 tick/yield/delay/抢占，再由
+`freertos-queue` 验证静态 queue；两道 gate 通过后，Bad Apple 才作为综合 demo 接入。
+
+FreeRTOS 版本拆成两个 owner task：video/playback task 调用播放器边界并唯一写 VGA，
+发现音符后把 `audio_event` 写入静态 queue；audio task 阻塞等待 queue 并唯一写
+buzzer。首轮不增加 mutex，status/log task 也不作为播放成立的前提。FreeRTOS port
+设计见 [`FREERTOS_PORT_DESIGN.md`](FREERTOS_PORT_DESIGN.md)。
 
 ## 实施任务
 
@@ -250,4 +255,4 @@ profile。
 - VGA DMA、SDRAM 直接 scanout、双 buffer、RGB 或 terminal
 - PCM/AAC 解码、多声部或音量控制
 - SDRAM 取指
-- 在 Bad Apple 改造中顺带实现 FreeRTOS port
+- 在 Bad Apple 改造中顺带实现或首次调试 FreeRTOS port
