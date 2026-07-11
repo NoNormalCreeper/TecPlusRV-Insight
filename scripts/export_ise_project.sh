@@ -144,6 +144,9 @@ package_freertos_sources() {
     need_file "third_party/FreeRTOS-Kernel/tasks.c"
     need_file "third_party/FreeRTOS-Kernel/queue.c"
     need_file "third_party/FreeRTOS-Kernel/list.c"
+    need_file "third_party/FreeRTOS-Kernel/timers.c"
+    need_file "third_party/FreeRTOS-Kernel/event_groups.c"
+    need_file "third_party/FreeRTOS-Kernel/portable/MemMang/heap_5.c"
     actual_commit=$(git -C "$FREERTOS_KERNEL" rev-parse HEAD 2>/dev/null || true)
     if [ "$actual_commit" != "$FREERTOS_EXPECTED_COMMIT" ]; then
         echo "FreeRTOS-Kernel revision 不匹配：expected=$FREERTOS_EXPECTED_COMMIT actual=${actual_commit:-missing}" >&2
@@ -155,6 +158,9 @@ package_freertos_sources() {
     copy_rel "third_party/FreeRTOS-Kernel/tasks.c"
     copy_rel "third_party/FreeRTOS-Kernel/queue.c"
     copy_rel "third_party/FreeRTOS-Kernel/list.c"
+    copy_rel "third_party/FreeRTOS-Kernel/timers.c"
+    copy_rel "third_party/FreeRTOS-Kernel/event_groups.c"
+    copy_rel "third_party/FreeRTOS-Kernel/portable/MemMang/heap_5.c"
 
     while IFS= read -r rel; do
         copy_rel "$rel"
@@ -370,6 +376,11 @@ case "$ISE_TARGET" in
             package_minisoc "$REPO_ROOT/firmware/tests/freertos_smoke.c" "这是 DarkRISCV FreeRTOS timer/preemption/delay/critical smoke 上板目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包的 firmware/build/firmware.bin 可通过共用 bootloader 装载；仓库中也可运行 make freertos-load PORT=COM8。LED=5 且 test_exit=1 表示 smoke 完成。导出包内的 third_party/ 与 firmware/freertos/ 是 payload 可复现源码，不要作为 RTL source 加入 ISE。真实 Map/PAR/timing 与上板 UART 仍属于人工 Gate。" "freertos"
         package_freertos_sources
         ;;
+    minisoc_freertos_acceptance_dark|freertos_acceptance_dark)
+        FREERTOS_CPU_CLOCK_HZ=50000000 \
+            package_minisoc "$REPO_ROOT/firmware/tests/freertos_acceptance.c" "这是 DarkRISCV FreeRTOS SDRAM 综合验收上板目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。验收依次覆盖 heap_5、scheduler、queue/notification、semaphore/mutex、event group、software timer 和 dynamic object；UART 输出 freertos acceptance pass、LED=5 表示通过。仓库中可运行 make freertos-acceptance-load PORT=COM8。当前只完成自动仿真，Map/PAR/timing 与真实上板属于人工 Gate。" "freertos"
+        package_freertos_sources
+        ;;
     minisoc_vga_bitmap_dark|vga_bitmap_dark)
         package_minisoc "$REPO_ROOT/firmware/tests/vga_bitmap_smoke.c" "这是 64x48 1bpp VGA MMIO 的 DarkRISCV 上板验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_BITMAP_ENABLE=1、VGA_TEXT_ENABLE=0。烧录后用 firmware/build/firmware.bin 通过共用 bootloader 装载；屏幕应显示白色边框和中心十字，UART 应输出 vga bitmap smoke pass。动态写入可另行运行 make bootload PORT=COM8 FIRMWARE_MAIN=firmware/tests/vga_bitmap_animation.c。2026-07-11 已通过 ISE 综合与 PAR：4216/5720 LUT（73%）、1585/11440 registers（13%），framebuffer 已推断为 LUT Memory，50 MHz slack 为 +0.620 ns；固件真实上板显示仍待验证。"
         ;;
@@ -384,7 +395,7 @@ case "$ISE_TARGET" in
         ;;
     *)
         echo "未知 ISE 导出目标：$ISE_TARGET" >&2
-        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_minisoc_sdram, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark, minisoc_freertos_dark, minisoc_vga_bitmap_dark, bad_apple_minimal" >&2
+        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_minisoc_sdram, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark, minisoc_freertos_dark, minisoc_freertos_acceptance_dark, minisoc_vga_bitmap_dark, bad_apple_minimal" >&2
         exit 1
         ;;
 esac

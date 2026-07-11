@@ -26,10 +26,11 @@ BOOT_IMAGE_TEST_ASSET := $(REPO_ROOT)/build/bootloader-test/pattern.bin
 TIMER_IRQ_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/timer_irq_smoke
 FREERTOS_SMOKE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/freertos/smoke/firmware
 FREERTOS_QUEUE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/freertos/queue/firmware
+FREERTOS_ACCEPTANCE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/freertos/acceptance/firmware
 DATA_BYTES ?= 65536
 SEED ?= 0x12345678
 
-.PHONY: help check-env firmware timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-load bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci perf benchmark ise-export
+.PHONY: help check-env firmware timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci perf benchmark ise-export
 
 help:
 	@echo "常用目标："
@@ -40,7 +41,9 @@ help:
 	@echo "  make timer-irq-load PORT=COM8  构建、上传并监视 timer IRQ 验收镜像"
 	@echo "  make freertos-smoke           构建 50 MHz FreeRTOS timer smoke 镜像"
 	@echo "  make freertos-queue           构建 50 MHz FreeRTOS 静态 queue 镜像"
+	@echo "  make freertos-acceptance      构建 50 MHz FreeRTOS SDRAM 综合验收镜像"
 	@echo "  make freertos-load PORT=COM8  构建、上传并监视 FreeRTOS smoke 镜像"
+	@echo "  make freertos-acceptance-load PORT=COM8  上传并监视综合验收镜像"
 	@echo "  make bootload PORT=COM8        构建、上传并进入 serial monitor"
 	@echo "  make boot-image-test-build     构建 LOAD_IMAGE 全量读回 firmware/asset"
 	@echo "  make boot-image-test-load PORT=COM8  上传并显示正确性/吞吐结果"
@@ -88,6 +91,13 @@ freertos-queue:
 		FIRMWARE_OUT="$(FREERTOS_QUEUE_FIRMWARE_OUT)" \
 		"$(BUILD_FIRMWARE)"
 
+freertos-acceptance:
+	FIRMWARE_PROFILE=freertos \
+		FREERTOS_CPU_CLOCK_HZ=50000000 \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_acceptance.c" \
+		FIRMWARE_OUT="$(FREERTOS_ACCEPTANCE_FIRMWARE_OUT)" \
+		"$(BUILD_FIRMWARE)"
+
 bootload:
 	@if [ -z "$(PORT)" ]; then echo "用法：make bootload PORT=COM8" >&2; exit 1; fi
 	@if ! command -v wslpath >/dev/null 2>&1; then echo "bootload 需要在 WSL 中运行" >&2; exit 1; fi
@@ -111,6 +121,11 @@ freertos-load:
 	@$(MAKE) bootload PORT="$(PORT)" \
 		FIRMWARE_PROFILE=freertos \
 		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_smoke.c"
+
+freertos-acceptance-load:
+	@$(MAKE) bootload PORT="$(PORT)" \
+		FIRMWARE_PROFILE=freertos \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_acceptance.c"
 
 boot-image-test-build:
 	python3 "$(REPO_ROOT)/scripts/make_boot_image_test_asset.py" \

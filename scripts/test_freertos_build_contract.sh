@@ -60,6 +60,20 @@ if ! grep -q '^BRAM sections:' "$BUILD_LOG"; then
     exit 1
 fi
 
+grep -q '^freertos-acceptance:' "$REPO_ROOT/Makefile" || {
+    echo "FAIL: Makefile 缺少 freertos-acceptance target" >&2
+    exit 1
+}
+grep -q '^freertos-acceptance-load:' "$REPO_ROOT/Makefile" || {
+    echo "FAIL: Makefile 缺少 freertos-acceptance-load target" >&2
+    exit 1
+}
+grep -q 'minisoc_freertos_acceptance_dark' \
+    "$REPO_ROOT/scripts/export_ise_project.sh" || {
+    echo "FAIL: ISE export 缺少 FreeRTOS acceptance target" >&2
+    exit 1
+}
+
 bin_bytes=$(wc -c < "$OUT.bin")
 if [ "$bin_bytes" -ge 65536 ]; then
     echo "FAIL: FreeRTOS BRAM image 超过 64 KiB：${bin_bytes} bytes" >&2

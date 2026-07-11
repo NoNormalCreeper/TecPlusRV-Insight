@@ -25,17 +25,22 @@ make test-freertos
 # 等价于 python3 scripts/test_runner.py run-suite freertos
 ```
 
-包含 build contract、canonical frame、首任务、ecall yield、timer 抢占/delay/critical
-和静态 queue 六项，并已接入 `local/all`。当前 50 MHz 构建尺寸：
+包含 build contract、canonical frame、首任务、ecall yield、timer 抢占/delay/critical、
+静态 queue 和 SDRAM 综合 acceptance 七项，并已接入 `local/all`。acceptance 进一步
+覆盖官方 `heap_5`、dynamic task/queue、notification、semaphore/mutex、event group 和
+software timer。当前 50 MHz 构建尺寸：
 
-| payload | `.text` | `.data` | BRAM `.bss` | `.bin` |
-| --- | ---: | ---: | ---: | ---: |
-| smoke | 5355 B | 4 B | 6096 B | 11460 B |
-| queue | 8189 B | 4 B | 6208 B | 14420 B |
+| payload | `.text` | `.data` | BRAM `.bss` | BRAM sections | `.bin` |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| smoke | 10887 B | 4 B | 7520 B | 18415 B | 18420 B |
+| queue | 12405 B | 4 B | 7616 B | 20029 B | 20036 B |
+| acceptance | 22701 B | 4 B | 16840 B | 39549 B | 39564 B |
 
-`.heap` 是 SDRAM NOLOAD reservation，不计入 BRAM image。自动 Gate 已完成；FreeRTOS
-独立 ISE Map/PAR/timing 与真实上板仍待人工验证。Bad Apple 迁移尚未开始，仍是后续
-独立设计/计划，不属于本轮 port 完成声明。
+`.heap` 是 64 KiB SDRAM NOLOAD reservation，不计入 BRAM image。smoke 已由用户真实
+上板输出 `freertos smoke pass`，当时 50 MHz timing slack 为 `+0.620 ns`；此后
+MiniSoC 补齐了 SDRAM subword 对齐，因此 acceptance target 仍必须重新执行 ISE
+Map/PAR/timing 和真实上板，旧 slack 不能替代本轮 Gate。Bad Apple 迁移尚未开始，仍是
+后续独立设计/计划。
 
 ## 核心选择
 
@@ -181,7 +186,7 @@ sim/tb_freertos_smoke.v                 通用 FreeRTOS MiniSoC 验收 bench
 首轮不新增 `port_context.S`；只有实际证明 C 无法可靠构造初始 frame 时才允许增加最小
 汇编 helper。`trap_entry.S` 只暴露公共 restore label。
 
-首轮 kernel source 只包含：
+最初 smoke/queue 阶段的 kernel source 只包含：
 
 ```text
 tasks.c
@@ -189,9 +194,10 @@ queue.c
 list.c
 ```
 
-不包含 `timers.c`、`event_groups.c`、`stream_buffer.c` 或 `heap_4.c`。构建使用
-function/data sections 与 linker GC，避免未使用的 kernel 和通用 driver 占用 64 KiB
-BRAM image。
+综合 acceptance 阶段已经增加 `timers.c`、`event_groups.c` 和官方
+`portable/MemMang/heap_5.c`；仍不包含 stream buffer、queue set、recursive mutex、
+trace facility 或 runtime stats。构建使用 function/data sections 与 linker GC，并对
+48 KiB soft budget / 64 KiB hard limit 输出明确报告。
 
 不同 demo 通过 `FIRMWARE_MAIN` 选择应用，共用同一个 profile、kernel、port、bitstream
 和 bootloader：
@@ -199,6 +205,7 @@ BRAM image。
 ```text
 make freertos-smoke
 make freertos-queue
+make freertos-acceptance
 # 后续计划：make freertos-bad-apple
 ```
 
@@ -210,7 +217,7 @@ firmware/build/freertos/<demo>/firmware.{elf,bin,mem,lst}
 
 ## 内存策略
 
-第一阶段全部使用静态分配：
+第一阶段 smoke/queue 使用静态分配：
 
 - kernel text/rodata 放 BRAM；
 - TCB 与两个小 task stack 放 BRAM `.bss`；
@@ -223,6 +230,17 @@ firmware/build/freertos/<demo>/firmware.{elf,bin,mem,lst}
 BRAM smoke 通过后，再增加独立 `freertos_sdram_stack_smoke`，把相同 task stack
 迁到 `.sdram_bss`，测量 context switch cycle。这个实验不是 FreeRTOS 首次接入门槛，
 也不得与第一个 context switch 同时调试。
+
+第二阶段同时支持 static 与 dynamic allocation。FreeRTOS payload 在创建任何 dynamic
+object 前调用 `freertos_heap_init()`，把 linker 的 `_heap_start.._heap_end` 作为唯一
+`heap_5` region；bare-metal payload 仍使用原有 bump allocator，二者不同时管理同一
+段地址。长期运行应用的核心 task/queue 仍优先 static，dynamic allocation 用于教学、
+短生命周期对象和确实需要可变大小的工作区。
+
+DarkRISCV subword 地址在进入 `sdram_data_ctrl` 前按 32-bit 对齐，原始 `wstrb` 继续由
+DQM 执行 byte/halfword mask。独立 `sdram_subword` 双核回归覆盖四个 byte lane 和两个
+halfword lane；这是 dynamic TCB、task name 和 queue 数据落在 SDRAM 的必要前置
+contract。
 
 ## Demo 边界
 
@@ -302,11 +320,28 @@ python3 scripts/test_runner.py run-suite soc --keep-going
 任何自动化无法覆盖的 ISE、串口或真实板级步骤，都必须记录明确操作、预期输出和失败
 诊断；由开发者完成并回传结果后，才允许进入依赖该 gate 的下一阶段。
 
+### Gate 6：SDRAM heap 与综合 acceptance
+
+自动化：
+
+```bash
+python3 scripts/test_runner.py run-case minisoc_sdram_subword_pico
+python3 scripts/test_runner.py run-case minisoc_sdram_subword_dark
+python3 scripts/test_runner.py run-case freertos_acceptance
+make test-freertos
+```
+
+acceptance 必须输出 `freertos acceptance pass`、LED=`5`、`test_exit=1`，且 testbench
+观察到真实 SDRAM read/write。当前自动结果为 FreeRTOS `7/7`；ISE export 已验证可生成，
+Map/PAR/timing 与物理板 acceptance 仍待人工 Gate。
+
 当前人工命令与成功判据：
 
 ```bash
 make ise-export ISE_TARGET=minisoc_freertos_dark
+make ise-export ISE_TARGET=minisoc_freertos_acceptance_dark
 make freertos-load PORT=COM8
+make freertos-acceptance-load PORT=COM8
 ```
 
 ISE 必须确认 Map 无 overmap、50 MHz post-route slack 为正、DarkRISCV/timer hierarchy
@@ -317,9 +352,9 @@ ISE 必须确认 Map 无 overmap、50 MHz post-route slack 为正、DarkRISCV/ti
 
 - PicoRV32 FreeRTOS port；
 - SMP、用户态或权限隔离；
-- dynamic task creation 与 `heap_4.c`；
-- tickless idle、software timer、event group、stream buffer；
+- `heap_4.c`、多 region heap 或通用 libc allocator；
+- tickless idle、stream buffer、queue set、recursive mutex；
 - nested interrupt priority；
 - FreeRTOS-aware GDB；
-- 首轮就把 task stack 放进 SDRAM；
+- 把所有长期运行 task stack 默认迁入 SDRAM；
 - 在 FreeRTOS bring-up 阶段同时重写 Bad Apple player。

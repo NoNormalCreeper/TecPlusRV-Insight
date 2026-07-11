@@ -341,7 +341,7 @@ int main(void)
 Run:
 
 ```bash
-FIRMWARE_PROFILE=freertos FREERTOS_CPU_CLOCK_HZ=1000000 \
+FIRMWARE_PROFILE=freertos FREERTOS_CPU_CLOCK_HZ=4000000 \
 FIRMWARE_MAIN=firmware/tests/freertos_acceptance.c \
 FIRMWARE_OUT=firmware/build/freertos/acceptance/firmware \
 scripts/build_firmware.sh
@@ -438,8 +438,9 @@ Expected: FAIL，`sim/run_sim.sh` 报告未知目标。
 
 - [ ] **Step 2: 确认现有 SDRAM-aware testbench contract 足够**
 
-不新建 testbench。复用 `tb_minisoc_sdram.v`，由 runner 固定 `CPU_IMPL=1`、仿真
-`CLK_FREQ=1 MHz`。现有成功条件已经包括：
+不新建 testbench。复用 `tb_minisoc_sdram.v`，由 runner 固定 `CPU_IMPL=1`、SoC 仿真
+`CLK_FREQ=1 MHz`，并沿用现有 FreeRTOS 仿真的逻辑 `FREERTOS_CPU_CLOCK_HZ=4 MHz`
+避免 1 MHz 模型下 kernel 路径跨 tick 造成低优先级 task 饥饿。现有成功条件包括：
 
 ```verilog
 test_exit_code == 1
@@ -458,7 +459,7 @@ model command count 与 32-bit/x16 请求数一致
 
 ```sh
 FIRMWARE_PROFILE=freertos
-FREERTOS_CPU_CLOCK_HZ=1000000
+FREERTOS_CPU_CLOCK_HZ=4000000
 FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/freertos_acceptance.c"
 FIRMWARE_OUT="$REPO_ROOT/firmware/build/freertos/acceptance/firmware"
 ```
