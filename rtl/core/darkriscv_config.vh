@@ -6,6 +6,8 @@
 `define __3STAGE__
 `define __CSR__
 `define __CSR_ESSENTIAL__
+// TecPlusRV 只实现 M-mode-only 的 machine trap 子集。
+`define __INTERRUPT__
 `define __RESETPC__ 32'd0
 `define RLEN 32
 

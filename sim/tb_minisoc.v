@@ -62,6 +62,23 @@ tecplus_minisoc_top #(
 
 always #5 clk = ~clk;
 
+generate
+    if (CPU_IMPL == 1) begin : g_dark_failure_diagnostic
+        always @(posedge clk) begin
+            if (dut.test_exit_write && dut.req_wdata != EXPECT_EXIT_CODE) begin
+                $display("DarkRISCV FAIL 现场：pc=%08x mepc=%08x mcause=%08x iaddr=%08x testnum=%08x t0=%08x t1=%08x",
+                    dut.u_cpu.g_darkriscv.u_cpu.u_cpu.PC,
+                    dut.u_cpu.g_darkriscv.u_cpu.u_cpu.MEPC,
+                    dut.u_cpu.g_darkriscv.u_cpu.u_cpu.MCAUSE,
+                    dut.u_cpu.g_darkriscv.u_cpu.u_cpu.IADDR,
+                    dut.u_cpu.g_darkriscv.u_cpu.u_cpu.REGS[3],
+                    dut.u_cpu.g_darkriscv.u_cpu.u_cpu.REGS[5],
+                    dut.u_cpu.g_darkriscv.u_cpu.u_cpu.REGS[6]);
+            end
+        end
+    end
+endgenerate
+
 initial begin
     clk = 1'b0;
     reset = 1'b0;

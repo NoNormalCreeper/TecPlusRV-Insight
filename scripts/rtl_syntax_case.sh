@@ -84,6 +84,10 @@ case "$CASE_ID" in
         run_iverilog buzzer_pwm \
             "$REPO_ROOT/rtl/periph/buzzer_pwm.v"
         ;;
+    machine_timer)
+        run_iverilog machine_timer \
+            "$REPO_ROOT/rtl/periph/machine_timer.v"
+        ;;
     sdram_smoke_ctrl)
         run_iverilog sdram_smoke_ctrl \
             "$REPO_ROOT/rtl/probe/sdram_smoke_ctrl.v"
@@ -246,6 +250,7 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/periph/uart_tx.v" \
             "$REPO_ROOT/rtl/periph/uart_rx.v" \
             "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
+            "$REPO_ROOT/rtl/periph/machine_timer.v" \
             "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
             "$REPO_ROOT/rtl/periph/buzzer_pwm.v" \
             "$REPO_ROOT/rtl/periph/vga_text_mode.v" \

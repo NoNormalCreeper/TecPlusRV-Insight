@@ -175,6 +175,7 @@ compile_minisoc_tb() {
         "$REPO_ROOT/rtl/periph/uart_tx.v" \
         "$REPO_ROOT/rtl/periph/uart_rx.v" \
         "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
+        "$REPO_ROOT/rtl/periph/machine_timer.v" \
         "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
         "$REPO_ROOT/sim/sdram_x16_model.v" \
         "$REPO_ROOT/rtl/periph/buzzer_pwm.v" \
@@ -231,6 +232,7 @@ compile_minisoc_perf_tb() {
         "$REPO_ROOT/rtl/periph/uart_tx.v" \
         "$REPO_ROOT/rtl/periph/uart_rx.v" \
         "$REPO_ROOT/rtl/periph/traffic_light_gpio.v" \
+        "$REPO_ROOT/rtl/periph/machine_timer.v" \
         "$REPO_ROOT/rtl/soc/sdram_data_ctrl.v" \
         "$REPO_ROOT/rtl/periph/buzzer_pwm.v" \
         "$REPO_ROOT/rtl/periph/vga_text_mode.v" \
@@ -358,6 +360,14 @@ case "$SIM_KIND" in
     minisoc_smoke_dark)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_smoke_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
         run_and_check "$BUILD_DIR/tb_minisoc_smoke_dark.log" vvp "$BUILD_DIR/tb_minisoc_smoke_dark.out"
+        ;;
+    minisoc_timer_irq_dark)
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/timer_irq_smoke.c" \
+        FIRMWARE_PROFILE=dark_irq \
+            compile_minisoc_tb "$BUILD_DIR/tb_minisoc_timer_irq_dark.out" 1 \
+                tb_minisoc_timer_irq "$REPO_ROOT/sim/tb_minisoc_timer_irq.v"
+        run_and_check "$BUILD_DIR/tb_minisoc_timer_irq_dark.log" \
+            vvp "$BUILD_DIR/tb_minisoc_timer_irq_dark.out"
         ;;
     minisoc_sdram_pico)
         FIRMWARE_MAIN="$SDRAM_FIRMWARE_MAIN"
@@ -529,9 +539,45 @@ case "$SIM_KIND" in
             "$REPO_ROOT/rtl/periph/vga_timing_640x480.v"
         run_and_check "$BUILD_DIR/tb_vga_text_mode.log" vvp "$BUILD_DIR/tb_vga_text_mode.out"
         ;;
+    darkriscv_machine_trap)
+        need_tool riscv64-unknown-elf-gcc
+        need_tool riscv64-unknown-elf-objcopy
+        # 新版工具链要求显式声明 Zicsr；旧 GCC 10 只接受 rv32i，
+        # 但其 assembler 仍会正确接受 CSR 指令。
+        trap_march=rv32i
+        if riscv64-unknown-elf-gcc -march=rv32i_zicsr -mabi=ilp32 \
+            -E -x c /dev/null -o /dev/null >/dev/null 2>&1; then
+            trap_march=rv32i_zicsr
+        fi
+        riscv64-unknown-elf-gcc -march="$trap_march" -mabi=ilp32 \
+            -nostdlib -nostartfiles \
+            -T "$REPO_ROOT/tests/riscv_tests/tecplus_p/link.ld" \
+            -o "$BUILD_DIR/darkriscv_machine_trap.elf" \
+            "$REPO_ROOT/firmware/tests/darkriscv_machine_trap.S"
+        riscv64-unknown-elf-objcopy -O binary \
+            "$BUILD_DIR/darkriscv_machine_trap.elf" \
+            "$BUILD_DIR/darkriscv_machine_trap.bin"
+        python3 "$REPO_ROOT/scripts/bin2mem.py" \
+            "$BUILD_DIR/darkriscv_machine_trap.bin" \
+            "$BUILD_DIR/darkriscv_machine_trap.mem" 16384
+        iverilog -g2001 -D__INTERRUPT__ -DSIMULATION -I "$REPO_ROOT/rtl/core" \
+            -s tb_darkriscv_machine_trap \
+            -P "tb_darkriscv_machine_trap.FIRMWARE_MEM_FILE=\"$BUILD_DIR/darkriscv_machine_trap.mem\"" \
+            -o "$BUILD_DIR/tb_darkriscv_machine_trap.out" \
+            "$REPO_ROOT/sim/tb_darkriscv_machine_trap.v" \
+            "$REPO_ROOT/rtl/core/darkriscv.v"
+        run_and_check "$BUILD_DIR/tb_darkriscv_machine_trap.log" vvp "$BUILD_DIR/tb_darkriscv_machine_trap.out"
+        ;;
+    machine_timer)
+        iverilog -g2001 -s tb_machine_timer \
+            -o "$BUILD_DIR/tb_machine_timer.out" \
+            "$REPO_ROOT/sim/tb_machine_timer.v" \
+            "$REPO_ROOT/rtl/periph/machine_timer.v"
+        run_and_check "$BUILD_DIR/tb_machine_timer.log" vvp "$BUILD_DIR/tb_machine_timer.out"
+        ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、boot_image_verify_pico、boot_image_verify_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode" >&2
+        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、boot_image_verify_pico、boot_image_verify_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_timer_irq_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode、darkriscv_machine_trap、machine_timer" >&2
         exit 1
         ;;
 esac

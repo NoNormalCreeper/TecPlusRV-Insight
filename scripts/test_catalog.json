@@ -53,6 +53,12 @@
       "args": ["buzzer_pwm"]
     },
     {
+      "id": "rtl_syntax__machine_timer",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["machine_timer"]
+    },
+    {
       "id": "rtl_syntax__sdram_smoke_ctrl",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -480,6 +486,92 @@
       "script": "scripts/test_riscv_test_case.sh",
       "args": ["trapish"],
       "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__csr",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "csr"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__mcsr",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "mcsr"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__scall",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "scall"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__breakpoint",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "breakpoint"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__illegal",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "illegal"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__ma_fetch",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "ma_fetch"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__lh_misaligned",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "lh-misaligned"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__lw_misaligned",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "lw-misaligned"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__sh_misaligned",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "sh-misaligned"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__sw_misaligned",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "sw-misaligned"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "darkriscv_machine_trap",
+      "kind": "sim",
+      "sim_target": "darkriscv_machine_trap"
+    },
+    {
+      "id": "machine_timer",
+      "kind": "sim",
+      "sim_target": "machine_timer"
+    },
+    {
+      "id": "minisoc_timer_irq_dark",
+      "kind": "sim",
+      "sim_target": "minisoc_timer_irq_dark",
+      "requires": ["rtl_syntax"]
     }
   ],
   "suites": {
@@ -490,6 +582,7 @@
       "rtl_syntax__bootloader_ctrl",
       "rtl_syntax__traffic_light_gpio",
       "rtl_syntax__buzzer_pwm",
+      "rtl_syntax__machine_timer",
       "rtl_syntax__sdram_smoke_ctrl",
       "rtl_syntax__sdram_data_ctrl",
       "rtl_syntax__probe_sdram_smoke_top",
@@ -539,6 +632,9 @@
       "bram_dualport",
       "tinybus_decode",
       "mmio_test_exit",
+      "darkriscv_machine_trap",
+      "machine_timer",
+      "minisoc_timer_irq_dark",
       "uart_rx",
       "bootloader_ctrl",
       "traffic_light_gpio",
@@ -599,6 +695,18 @@
     "rv32i_optional": [
       "rv32ui_extra",
       "rv32ui_trapish"
+    ],
+    "rv32mi_dark": [
+      "rv32mi_dark__csr",
+      "rv32mi_dark__mcsr",
+      "rv32mi_dark__scall",
+      "rv32mi_dark__breakpoint",
+      "rv32mi_dark__illegal",
+      "rv32mi_dark__ma_fetch",
+      "rv32mi_dark__lh_misaligned",
+      "rv32mi_dark__lw_misaligned",
+      "rv32mi_dark__sh_misaligned",
+      "rv32mi_dark__sw_misaligned"
     ],
     "local": [
       "@probe",

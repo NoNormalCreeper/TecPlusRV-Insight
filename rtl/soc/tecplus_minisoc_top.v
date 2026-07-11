@@ -106,6 +106,11 @@ wire [31:0] traffic_rdata;
 wire [31:0] buzzer_ctrl_rdata;
 wire [31:0] buzzer_period_rdata;
 wire [31:0] vga_status_rdata;
+wire [31:0] mtime_lo_rdata;
+wire [31:0] mtime_hi_rdata;
+wire [31:0] mtimecmp_lo_rdata;
+wire [31:0] mtimecmp_hi_rdata;
+wire        machine_timer_irq;
 wire [31:0] cpu_cycle_count;
 wire [31:0] cpu_instret_count;
 reg  [31:0] mem_wait_count;
@@ -120,6 +125,10 @@ wire        buzzer_ctrl_sel;
 wire        buzzer_period_sel;
 wire        vga_status_sel;
 wire        vga_tile_sel;
+wire        mtime_lo_sel;
+wire        mtime_hi_sel;
+wire        mtimecmp_lo_sel;
+wire        mtimecmp_hi_sel;
 wire        uart_tx_ready;
 wire        uart_fire;
 wire [7:0]  uart_rx_data;
@@ -155,6 +164,10 @@ wire        traffic_write;
 wire        buzzer_ctrl_write;
 wire        buzzer_period_write;
 wire        vga_tile_write;
+wire        mtime_lo_write;
+wire        mtime_hi_write;
+wire        mtimecmp_lo_write;
+wire        mtimecmp_hi_write;
 wire        vga_ready;
 wire        vga_vblank;
 wire [15:0] vga_frame_count;
@@ -278,6 +291,14 @@ assign buzzer_period_write = respond && !req_is_bram && !req_is_replay && buzzer
 assign vga_tile_write =
     (VGA_TEXT_ENABLE != 0) && respond && req_is_mmio && !req_is_replay &&
     vga_tile_sel && mmio_write_en;
+assign mtime_lo_write =
+    respond && req_is_mmio && !req_is_replay && mtime_lo_sel && mmio_write_en;
+assign mtime_hi_write =
+    respond && req_is_mmio && !req_is_replay && mtime_hi_sel && mmio_write_en;
+assign mtimecmp_lo_write =
+    respond && req_is_mmio && !req_is_replay && mtimecmp_lo_sel && mmio_write_en;
+assign mtimecmp_hi_write =
+    respond && req_is_mmio && !req_is_replay && mtimecmp_hi_sel && mmio_write_en;
 
 tecplus_cpu_wrapper #(
     .CPU_IMPL(CPU_IMPL),
@@ -285,6 +306,8 @@ tecplus_cpu_wrapper #(
 ) u_cpu (
     .clk(clk),
     .resetn(resetn),
+    .irq_external(1'b0),
+    .irq_timer(machine_timer_irq),
     .ifetch_valid(ifetch_valid),
     .ifetch_addr(ifetch_addr),
     .ifetch_ready(ifetch_ready),
@@ -370,6 +393,10 @@ tinybus_decode u_decode (
     .buzzer_ctrl_rdata(buzzer_ctrl_rdata),
     .buzzer_period_rdata(buzzer_period_rdata),
     .vga_status_rdata(vga_status_rdata),
+    .mtime_lo_rdata(mtime_lo_rdata),
+    .mtime_hi_rdata(mtime_hi_rdata),
+    .mtimecmp_lo_rdata(mtimecmp_lo_rdata),
+    .mtimecmp_hi_rdata(mtimecmp_hi_rdata),
     .accel_rdata(32'h0000_0000),
     .rdata(mmio_rdata),
     .ready(),
@@ -387,8 +414,27 @@ tinybus_decode u_decode (
     .buzzer_period_sel(buzzer_period_sel),
     .vga_status_sel(vga_status_sel),
     .vga_tile_sel(vga_tile_sel),
+    .mtime_lo_sel(mtime_lo_sel),
+    .mtime_hi_sel(mtime_hi_sel),
+    .mtimecmp_lo_sel(mtimecmp_lo_sel),
+    .mtimecmp_hi_sel(mtimecmp_hi_sel),
     .accel_sel(),
     .write_data()
+);
+
+machine_timer u_machine_timer (
+    .clk(clk),
+    .reset(rst),
+    .mtime_lo_we(mtime_lo_write),
+    .mtime_hi_we(mtime_hi_write),
+    .mtimecmp_lo_we(mtimecmp_lo_write),
+    .mtimecmp_hi_we(mtimecmp_hi_write),
+    .wdata(req_wdata),
+    .mtime_lo_rdata(mtime_lo_rdata),
+    .mtime_hi_rdata(mtime_hi_rdata),
+    .mtimecmp_lo_rdata(mtimecmp_lo_rdata),
+    .mtimecmp_hi_rdata(mtimecmp_hi_rdata),
+    .irq(machine_timer_irq)
 );
 
 uart_tx #(

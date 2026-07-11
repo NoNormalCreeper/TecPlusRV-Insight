@@ -194,13 +194,14 @@
 
 - `riscv-tests/`：官方上游 submodule
 - `riscv-tests/env/`：上游环境子模块
-- `tecplus_p/`：本仓库自己的最小 `MiniSoC` 适配环境
+- `tecplus_p/`：基础 `rv32ui` 的双核 `MiniSoC` 适配环境
+- `tecplus_m/`：DarkRISCV M-mode-only trap/CSR 适配环境
 
 设计原则：
 
 - 官方 case 尽量保持原样，不直接改测试本体
-- 本地差异优先收敛在 `tecplus_p` 这种 target environment 里
-- 第一阶段先只覆盖基础 `rv32ui`，不把 trap / `tohost` / `signature` 判定混进主回归
+- 本地差异优先收敛在 `tecplus_p` / `tecplus_m` 这种 target environment 里
+- `rv32ui` 保持 PicoRV32 / DarkRISCV 双核基线；`rv32mi` 只在 DarkRISCV 上运行，官方 case 的 `mcause/mepc` 断言不得在环境层跳过
 
 ## 整个项目怎么从“零散文件”集合起来
 
@@ -448,6 +449,28 @@ make test-soc
 python3 scripts/test_runner.py run-suite rv32i_safe
 ```
 
+如果改动涉及 DarkRISCV machine CSR、trap 入口或 misaligned 行为，再补跑：
+
+```bash
+python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
+```
+
+### Firmware profile 边界
+
+- `baremetal`：默认 profile，沿用现有 startup/runtime，不链接 trap runtime，也不会主动开启 IRQ。
+- `dark_irq`：当前已实现的 DarkRISCV-only 基础 profile，链接统一 trap frame 与 machine timer driver；应用仍须显式调用 `trap_init()` 和 enable helper。
+- `freertos`：后续 DarkRISCV-only profile，复用同一个 trap frame；kernel 与应用静态链接成单一 payload。
+- `gdb-stub`：后续 DarkRISCV-only profile，复用同一个 trap frame；`ebreak/fault` 进入 remote loop。
+
+后两类目前只是稳定的接入契约，不是可选的现成构建值。bootloader 与 bitstream 继续共用，每次只装载一个 BRAM firmware image；FreeRTOS 是 bootloader 可装载的 payload，不是另一套 bootloader。
+
+常用构建入口：
+
+```bash
+make firmware          # 强制 baremetal
+make timer-irq-smoke   # 构建 dark_irq timer 验收镜像
+```
+
 ### 场景 3：改 board probe
 
 适用例子：
@@ -505,6 +528,7 @@ python3 scripts/test_runner.py run-suite all
 
 - `rv32i_safe` 是当前第一阶段必须稳定通过的官方 `RV32I` 子集。
 - `rv32i_optional` 暂时只放边界 case，例如 `fence_i` 和 `ma_data`。
+- `rv32mi_dark` 是 DarkRISCV-only machine-mode completion gate，不在 PicoRV32 上运行。
 - `fence_i` 当前不纳入基线，因为这份 `PicoRV32` RTL 不支持 `fence.i`。
 - `ma_data` 当前不纳入基线，因为它会开始要求明确的 misaligned / trap 语义。
 

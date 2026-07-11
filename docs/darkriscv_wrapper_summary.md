@@ -202,6 +202,8 @@ TinyBus 本身没改成另一套协议，但它的**地位**变了。
 
 - 基本不需要改 MMIO 用法
 - 新增了 `FIRMWARE_MAIN=/abs/path/to/test.c scripts/build_firmware.sh` 这种入口切换方式，便于写裸机自检和 benchmark
+- 默认 `baremetal` profile 不链接 trap runtime；DarkRISCV timer IRQ 使用显式 `dark_irq` profile
+- 后续 FreeRTOS 与 GDB stub 必须复用现有 canonical trap frame 和唯一 `mtvec` 汇编入口
 
 **MMIO / 外设开发者**
 
@@ -258,6 +260,16 @@ sim/run_sim.sh minisoc_counter_source_dark
 - DarkRISCV 的 `CSRCLK` / `CSRINS`
 
 这样后续如果有人又把顶层改回 SoC 代理计数，这里会先红。
+
+## Machine trap 与 firmware profile
+
+DarkRISCV wrapper 现在额外接受 `irq_external` / `irq_timer`，MiniSoC 第一版把 external IRQ 固定为 0，把 CLINT-like machine timer 的 level IRQ 接到 MTIP。软件侧固定三类长期 profile：
+
+- `baremetal`：默认不开 IRQ，保持现有程序与 PicoRV32 路径不变。
+- `freertos`：后续 DarkRISCV-only 静态镜像，scheduler 通过 `trap_dispatch()` 返回新的 frame。
+- `gdb-stub`：后续 DarkRISCV-only 静态镜像，复用同一 frame 进入 remote loop。
+
+当前已实现的 `dark_irq` 是后两者共用的基础验收 profile，不是第四种长期产品形态。FreeRTOS 和 GDB stub 都不得重新定义 frame，也不得另建第二个 `mtvec` 入口。
 
 ## ISE 使用方式
 
@@ -337,6 +349,21 @@ CPU_IMPL=1
    - LUT / FF / Slice
    - `RAMB16BWER`
    - 后续 Place & Route / Timing Report 里的频率或 slack
+
+### DarkRISCV timer IRQ 的硬件验收门
+
+```bash
+bash scripts/export_ise_project.sh minisoc_dark
+```
+
+导出包使用 `dark_irq` timer smoke，并包含可由 bootloader 装载的 `firmware/build/firmware.bin`。ISE 14.7 中设置 `CPU_IMPL=1`、`BOOTLOADER_ENABLE=1`、`VGA_TEXT_ENABLE=0` 后，必须同时满足：
+
+1. Map 无 `OVERMAPPED`，Slice LUT / Register / RAMB16 均不超过容量；
+2. PAR 后 50 MHz post-route timing slack 为正；
+3. hierarchy/report 能确认 `machine_timer` 与 DarkRISCV interrupt CSR 未被 trim；
+4. 上板 UART 输出 `timer irq pass`。
+
+本地 RTL/firmware 仿真和导出成功不能替代这四项硬件证据。
 
 当前阶段真正值得做的是把 PicoRV32 和 DarkRISCV 的 ISE 结果并排记成一张表，而不是只看一份报告是否“能过”。
 

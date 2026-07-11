@@ -18,6 +18,10 @@ module tinybus_decode (
     input  [31:0] buzzer_ctrl_rdata,
     input  [31:0] buzzer_period_rdata,
     input  [31:0] vga_status_rdata,
+    input  [31:0] mtime_lo_rdata,
+    input  [31:0] mtime_hi_rdata,
+    input  [31:0] mtimecmp_lo_rdata,
+    input  [31:0] mtimecmp_hi_rdata,
     input  [31:0] accel_rdata,
     output reg [31:0] rdata,
     output            ready,
@@ -35,6 +39,10 @@ module tinybus_decode (
     output            buzzer_period_sel,
     output            vga_status_sel,
     output            vga_tile_sel,
+    output            mtime_lo_sel,
+    output            mtime_hi_sel,
+    output            mtimecmp_lo_sel,
+    output            mtimecmp_hi_sel,
     output            accel_sel,
     output [31:0]     write_data
 );
@@ -53,6 +61,10 @@ assign traffic_sel = valid && (addr == `TINYBUS_ADDR_TRAFFIC_DATA);
 assign buzzer_ctrl_sel = valid && (addr == `TINYBUS_ADDR_BUZZER_CTRL);
 assign buzzer_period_sel = valid && (addr == `TINYBUS_ADDR_BUZZER_PERIOD);
 assign vga_status_sel = valid && (addr == `TINYBUS_ADDR_VGA_STATUS);
+assign mtime_lo_sel = valid && (addr == `TINYBUS_ADDR_MTIME_LO);
+assign mtime_hi_sel = valid && (addr == `TINYBUS_ADDR_MTIME_HI);
+assign mtimecmp_lo_sel = valid && (addr == `TINYBUS_ADDR_MTIMECMP_LO);
+assign mtimecmp_hi_sel = valid && (addr == `TINYBUS_ADDR_MTIMECMP_HI);
 assign vga_tile_sel = write_en &&
     (addr >= `TINYBUS_ADDR_VGA_TILE_BASE) &&
     (addr < `TINYBUS_ADDR_VGA_TILE_BASE + `TINYBUS_VGA_TILE_BYTES);
@@ -86,6 +98,14 @@ always @(*) begin
         rdata = buzzer_period_rdata;
     end else if (vga_status_sel) begin
         rdata = vga_status_rdata;
+    end else if (mtime_lo_sel) begin
+        rdata = mtime_lo_rdata;
+    end else if (mtime_hi_sel) begin
+        rdata = mtime_hi_rdata;
+    end else if (mtimecmp_lo_sel) begin
+        rdata = mtimecmp_lo_rdata;
+    end else if (mtimecmp_hi_sel) begin
+        rdata = mtimecmp_hi_rdata;
     end else if (accel_sel) begin
         rdata = accel_rdata;
     end
