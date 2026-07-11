@@ -3,6 +3,7 @@
 #include "task.h"
 
 #include "drivers/mmio.h"
+#include "drivers/uart.h"
 #include "freertos_heap.h"
 #include "runtime/trap_frame.h"
 
@@ -20,6 +21,12 @@ static void freertos_stop(unsigned int code)
 void freertos_assert_fail(const char *file, unsigned int line)
 {
     (void)file;
+    uart_puts("freertos assert: task=");
+    uart_puts(pcTaskGetName(0));
+    uart_puts(" line=");
+    uart_put_dec(line);
+    uart_puts("\n");
+    uart_flush();
     freertos_stop(0xf1010000u | (line & 0xffffu));
 }
 
