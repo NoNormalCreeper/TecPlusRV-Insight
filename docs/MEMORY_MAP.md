@@ -89,4 +89,4 @@
 - RV32 读取当前时间应使用 high-low-high retry，避免 low word rollover 造成撕裂。
 - 更新 compare 时应依次写 `MTIMECMP_LO=0xffff_ffff`、目标 high、目标 low，避免 64-bit 更新中间态误触发。
 - `mtimecmp` 更新后软件仍应容忍一次有限延迟撤销造成的 spurious timer IRQ。
-- 当前地址与 IRQ 路径已通过仿真，尚需 ISE Map/PAR 和真实上板确认。
+- 当前地址与 IRQ 路径已通过仿真和真实上板；2026-07-11 的 50 MHz PAR post-route timing slack 为 `0.462 ns`。

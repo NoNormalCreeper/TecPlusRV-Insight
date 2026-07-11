@@ -361,9 +361,16 @@ bash scripts/export_ise_project.sh minisoc_dark
 1. Map 无 `OVERMAPPED`，Slice LUT / Register / RAMB16 均不超过容量；
 2. PAR 后 50 MHz post-route timing slack 为正；
 3. hierarchy/report 能确认 `machine_timer` 与 DarkRISCV interrupt CSR 未被 trim；
-4. 上板 UART 输出 `timer irq pass`。
+4. 上板 UART 输出 `timer irq pass: ticks=<次数> loops=<前台循环次数>`。
 
-本地 RTL/firmware 仿真和导出成功不能替代这四项硬件证据。
+2026-07-11 已完成上述验收：Map 无 `OVERMAPPED` 且资源未超容量，PAR 后 50 MHz post-route timing slack 为 `0.462 ns`，`machine_timer` 与 DarkRISCV interrupt CSR 未被 trim；真实上板 UART 输出为：
+
+```text
+timer irq test start
+timer irq pass: ticks=3 loops=46
+```
+
+该结果证明当前 revision 通过，后续 RTL 或约束变化仍必须重新检查 Map/PAR 和上板行为，不能沿用本次硬件证据。
 
 当前阶段真正值得做的是把 PicoRV32 和 DarkRISCV 的 ISE 结果并排记成一张表，而不是只看一份报告是否“能过”。
 

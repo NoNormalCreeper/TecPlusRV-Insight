@@ -27,7 +27,7 @@ CRC32 只用于检测传输出错，不提供恶意 payload 的身份认证。
 - 默认 `9600 baud`
 - `uart_rx` 与 `uart_tx` 共用顶层 `UART_BAUD` 参数
 
-现有 UART probe 的 9600 baud 路径已经上板通过，因此 bootloader 首轮也沿用这个保守值；bootloader RX/READY/ACK 整条链路仍需单独上板确认。更高波特率可以通过参数尝试，但必须重新做 ISE timing 与真实串口测试。
+UART probe 与 bootloader 的 9600 baud 路径均已上板通过；bootloader 已确认稳定收到 READY/ACK、正确启动 payload，并覆盖错误 CRC 与 RESET 后重复下载。更高波特率可以通过参数尝试，但必须重新做 ISE timing 与真实串口测试。
 
 ## 请求帧
 
@@ -210,15 +210,17 @@ python3 scripts/test_uart_loader.py
 
 SoC 测试会覆盖坏 CRC 后不释放 CPU、无需 RESET 直接重传、合法 payload 启动，以及按 RESET 后下载第二份程序。
 
-## 板级未确认点
+## 板级验证状态
 
-RTL 仿真只能证明协议和所有权切换逻辑。首次上板仍必须记录：
+2026-07-11 已完成 bootloader 板级验证：
 
-- RESET 后是否稳定收到 `READY`
-- 正确 payload 是否收到 `ACK` 并打印测试 firmware 的启动日志
-- 错 CRC 是否返回 `NACK 04`
-- 再次 RESET 后是否能下载第二份 payload
-- ISE 资源占用、timing 与 BRAM inference 是否正常
+- RESET 后稳定收到 `READY`；
+- 正确 payload 收到 `ACK`，并打印测试 firmware 启动日志；
+- 错 CRC 返回 `NACK 04`；
+- 再次 RESET 后可下载并运行第二份 payload；
+- ISE Map 无 overmap，BRAM inference 正常，50 MHz PAR post-route timing slack 为 `0.462 ns`。
+
+以上结论只对应当前 revision、约束和 ISE 工程；RTL、约束或时钟设置变化后必须重新验证。
 
 `LOAD_IMAGE` 的确定性 pattern、CPU 全量读回、RESET 恢复和吞吐测试步骤见
 `docs/BOOTLOADER_BOARD_TEST.md`。
