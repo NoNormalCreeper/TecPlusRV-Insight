@@ -182,6 +182,7 @@ python3 scripts/uart_loader.py \
 
 Windows 串口名可写成 `COM3`。脚本打开串口后会提示按 RESET，并等待 READY；`--monitor` 会在下载成功后持续显示 payload 输出，按 `Enter` 或 `Ctrl+C` 退出。
 传输期间再次按 RESET 时，host 会检测新的 READY 并自动从 magic 整包重传。可用 `--max-retries N` 覆盖默认的 5 次重传上限。
+上传期间，交互终端会按 64-byte chunk 在同一行实时刷新完整 wire packet 的进度，例如 `300/65550 Byte, chunk 5/1025, 0.5%`；这里的总字节数包含 header、payload 和 CRC。RESET/NACK 触发整包重传后，byte 与 chunk 计数会从新 attempt 重新开始；重定向到文件等非交互输出只记录每次 attempt 的最终进度，避免逐 chunk 刷屏。
 提供 `--sdram-input` 后，host 自动改用 `LOAD_IMAGE`；不足 4-byte 的文件会在末尾补零：
 
 ```bash

@@ -14,8 +14,80 @@ import uart_loader
 
 
 class UartLoaderTest(unittest.TestCase):
+    def test_tty_progress_refreshes_after_each_chunk(self) -> None:
+        class TtyStream(io.StringIO):
+            def isatty(self) -> bool:
+                return True
+
+        class AckSerial:
+            def __init__(self) -> None:
+                self.written = bytearray()
+                self.rx = bytearray()
+
+            @property
+            def in_waiting(self) -> int:
+                return len(self.rx)
+
+            def write(self, data: bytes) -> int:
+                self.written.extend(data)
+                return len(data)
+
+            def flush(self) -> None:
+                if len(self.written) == 65:
+                    self.rx.extend((uart_loader.RESPONSE_ACK, 0))
+
+            def read(self, size: int) -> bytes:
+                data = bytes(self.rx[:size])
+                del self.rx[:size]
+                return data
+
+        output = TtyStream()
+        uart_loader.transmit_attempt(
+            AckSerial(), bytes(65), 0.1, progress_stream=output
+        )
+
+        self.assertEqual(
+            output.getvalue(),
+            "\r64/65 Byte, chunk 1/2, 98.5%"
+            "\r65/65 Byte, chunk 2/2, 100.0%\n",
+        )
+
+    def test_non_tty_progress_only_reports_attempt_end(self) -> None:
+        class AckSerial:
+            def __init__(self) -> None:
+                self.written = bytearray()
+                self.rx = bytearray()
+
+            @property
+            def in_waiting(self) -> int:
+                return len(self.rx)
+
+            def write(self, data: bytes) -> int:
+                self.written.extend(data)
+                return len(data)
+
+            def flush(self) -> None:
+                if len(self.written) == 65:
+                    self.rx.extend((uart_loader.RESPONSE_ACK, 0))
+
+            def read(self, size: int) -> bytes:
+                data = bytes(self.rx[:size])
+                del self.rx[:size]
+                return data
+
+        output = io.StringIO()
+        uart_loader.transmit_attempt(
+            AckSerial(), bytes(65), 0.1, progress_stream=output
+        )
+
+        self.assertEqual(output.getvalue(), "65/65 Byte, chunk 2/2, 100.0%\n")
+
     def test_ready_during_transfer_restarts_from_magic(self) -> None:
         packet, _ = uart_loader.build_packet(bytes(range(136)))
+
+        class TtyStream(io.StringIO):
+            def isatty(self) -> bool:
+                return True
 
         class FakeSerial:
             def __init__(self) -> None:
@@ -47,7 +119,8 @@ class UartLoaderTest(unittest.TestCase):
                 self.attempts.append(bytearray())
 
         serial_port = FakeSerial()
-        with contextlib.redirect_stdout(io.StringIO()):
+        output = TtyStream()
+        with contextlib.redirect_stdout(output):
             retries = uart_loader.transfer_packet(
                 serial_port, packet, 0.1, max_retries=3
             )
@@ -56,12 +129,24 @@ class UartLoaderTest(unittest.TestCase):
         self.assertEqual(bytes(serial_port.attempts[1]), packet)
         self.assertEqual(serial_port.output_resets, 1)
         self.assertEqual(retries, 1)
+        first_chunk = f"64/{len(packet)} Byte, chunk 1/3"
+        self.assertEqual(output.getvalue().count(first_chunk), 2)
 
     def test_transfer_stats_report_8n1_utilization(self) -> None:
         self.assertEqual(
             uart_loader.format_transfer_stats(9600, 10.0, 9600, 2),
             "传输统计：9600 bytes / 10.000 s = 960.0 B/s，"
             "理论利用率 100.0%，重传 2 次",
+        )
+
+    def test_transfer_progress_reports_wire_bytes_and_chunk(self) -> None:
+        self.assertEqual(
+            uart_loader.format_transfer_progress(64, 65, 1, 2),
+            "64/65 Byte, chunk 1/2, 98.5%",
+        )
+        self.assertEqual(
+            uart_loader.format_transfer_progress(65, 65, 2, 2),
+            "65/65 Byte, chunk 2/2, 100.0%",
         )
 
     def test_transfer_stats_reject_invalid_values(self) -> None:

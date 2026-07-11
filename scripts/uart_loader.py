@@ -66,6 +66,17 @@ def format_transfer_stats(
     )
 
 
+def format_transfer_progress(
+    sent_bytes: int, total_bytes: int, chunk_index: int, chunk_count: int
+) -> str:
+    """格式化当前 attempt 的 wire packet 上传进度。"""
+    percentage = sent_bytes / total_bytes * 100.0
+    return (
+        f"{sent_bytes}/{total_bytes} Byte, "
+        f"chunk {chunk_index}/{chunk_count}, {percentage:.1f}%"
+    )
+
+
 def build_packet(payload: bytes) -> tuple[bytes, int]:
     """构造 wire packet；CRC32 不包含 magic。"""
     if not payload:
@@ -141,24 +152,47 @@ def poll_response(serial_port) -> tuple[int, int] | None:
         return None
 
 
-def transmit_attempt(serial_port, packet: bytes, ready_timeout: float) -> tuple[int, int]:
+def transmit_attempt(
+    serial_port,
+    packet: bytes,
+    ready_timeout: float,
+    progress_stream=None,
+) -> tuple[int, int]:
     """分块发送一次完整 packet，并在块间检查 RESET/NACK。"""
-    for offset in range(0, len(packet), TX_CHUNK_BYTES):
-        chunk = packet[offset : offset + TX_CHUNK_BYTES]
-        written = serial_port.write(chunk)
-        if written != len(chunk):
-            raise RuntimeError(f"串口只写入 {written}/{len(chunk)} bytes")
-        serial_port.flush()
+    progress_stream = sys.stdout if progress_stream is None else progress_stream
+    interactive = progress_stream.isatty()
+    chunk_count = (len(packet) + TX_CHUNK_BYTES - 1) // TX_CHUNK_BYTES
+    last_progress = None
+    try:
+        for offset in range(0, len(packet), TX_CHUNK_BYTES):
+            chunk = packet[offset : offset + TX_CHUNK_BYTES]
+            written = serial_port.write(chunk)
+            if written != len(chunk):
+                raise RuntimeError(f"串口只写入 {written}/{len(chunk)} bytes")
+            serial_port.flush()
 
-        response = poll_response(serial_port)
-        if response is not None:
-            return response
+            chunk_index = offset // TX_CHUNK_BYTES + 1
+            last_progress = format_transfer_progress(
+                offset + written, len(packet), chunk_index, chunk_count
+            )
+            if interactive:
+                print(f"\r{last_progress}", end="", file=progress_stream, flush=True)
 
-    return wait_response(
-        serial_port,
-        {RESPONSE_READY, RESPONSE_ACK, RESPONSE_NACK},
-        ready_timeout,
-    )
+            response = poll_response(serial_port)
+            if response is not None:
+                return response
+
+        return wait_response(
+            serial_port,
+            {RESPONSE_READY, RESPONSE_ACK, RESPONSE_NACK},
+            ready_timeout,
+        )
+    finally:
+        if last_progress is not None:
+            if interactive:
+                print(file=progress_stream, flush=True)
+            else:
+                print(last_progress, file=progress_stream, flush=True)
 
 
 def transfer_packet(
