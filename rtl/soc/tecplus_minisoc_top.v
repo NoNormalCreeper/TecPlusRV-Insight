@@ -185,6 +185,7 @@ wire        mmio_stall;
 wire        sdram_req_valid;
 wire        cpu_sdram_req_valid;
 wire        sdram_req_fire;
+wire [31:0] sdram_request_addr;
 wire        sdram_req_ready;
 wire        sdram_resp_valid;
 wire [31:0] sdram_resp_rdata;
@@ -368,7 +369,9 @@ sdram_data_ctrl #(
     .req_valid(sdram_req_valid),
     .req_ready(sdram_req_ready),
     .req_we(boot_active ? 1'b1 : req_we_reg),
-    .req_addr(boot_active ? boot_sdram_req_addr : req_addr),
+    // CPU 保留原始 byte address 做 load lane 选择；controller 只接收
+    // 32-bit 对齐地址，并用 req_wstrb/DQM 选择实际写入的 byte lane。
+    .req_addr({sdram_request_addr[31:2], 2'b00}),
     .req_wdata(boot_active ? boot_sdram_req_wdata : req_wdata),
     .req_wstrb(boot_active ? boot_sdram_req_wstrb : req_wstrb),
     .resp_valid(sdram_resp_valid),
@@ -388,6 +391,8 @@ sdram_data_ctrl #(
     .dbg_state(),
     .dbg_refresh_pending()
 );
+
+assign sdram_request_addr = boot_active ? boot_sdram_req_addr : req_addr;
 
 tinybus_decode u_decode (
     .valid(pending && req_is_mmio),

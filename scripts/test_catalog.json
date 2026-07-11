@@ -47,6 +47,18 @@
       "requires": ["rtl_syntax"]
     },
     {
+      "id": "minisoc_sdram_subword_pico",
+      "kind": "sim",
+      "sim_target": "minisoc_sdram_subword_pico",
+      "requires": ["rtl_syntax"]
+    },
+    {
+      "id": "minisoc_sdram_subword_dark",
+      "kind": "sim",
+      "sim_target": "minisoc_sdram_subword_dark",
+      "requires": ["rtl_syntax"]
+    },
+    {
       "id": "rtl_syntax__buzzer_pwm",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -710,6 +722,8 @@
       "firmware_output_isolation",
       "minisoc_sdram_pico",
       "minisoc_sdram_dark",
+      "minisoc_sdram_subword_pico",
+      "minisoc_sdram_subword_dark",
       "minisoc_counter_source_pico",
       "minisoc_counter_source_dark",
       "minisoc_counter_reset_pico",

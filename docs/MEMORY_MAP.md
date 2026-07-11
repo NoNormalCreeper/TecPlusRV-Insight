@@ -34,6 +34,9 @@
 - 近期真正会用到的主要是 LED、KEY、UART、交通灯和 `test_exit`。
 - 计数器和 accelerator 项先写入地址图，方便后续 firmware 与总线接口提前稳定。
 - SDRAM 已通过 `sdram_data_ctrl` 接入 MiniSoC 数据总线；`ifetch_*` 仍只从 BRAM 取指。
+- SDRAM data path 支持 RV32I byte、halfword 和 word load/store。CPU 保留原始地址低位
+  完成 load lane 选择，MiniSoC 在 controller 边界把请求地址按 32-bit 对齐，并通过
+  `wstrb`/DQM 保持未选 byte 不变；真正的 misaligned halfword/word 仍由 CPU trap。
 - machine timer 每个系统时钟递增一次；`mtime >= mtimecmp` 时向 DarkRISCV 提供 level-sensitive MTIP，PicoRV32 profile 忽略该 IRQ。
 - writable text/tile VGA 只作为 BAM1 仿真和资源实验原型保留。它在 LX9 MiniSoC
   中会 overmap，因此顶层参数 `VGA_TEXT_ENABLE` 默认是 0；后续轻量 1bpp 方案会

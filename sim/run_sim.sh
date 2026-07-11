@@ -513,6 +513,16 @@ case "$SIM_KIND" in
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_dark.out" 1 tb_minisoc_sdram "$REPO_ROOT/sim/tb_minisoc_sdram.v"
         run_and_check "$BUILD_DIR/tb_minisoc_sdram_dark.log" vvp "$BUILD_DIR/tb_minisoc_sdram_dark.out"
         ;;
+    minisoc_sdram_subword_pico)
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/sdram_subword.c" \
+            compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_subword_pico.out" 0 tb_minisoc_sdram "$REPO_ROOT/sim/tb_minisoc_sdram.v"
+        run_and_check "$BUILD_DIR/tb_minisoc_sdram_subword_pico.log" vvp "$BUILD_DIR/tb_minisoc_sdram_subword_pico.out"
+        ;;
+    minisoc_sdram_subword_dark)
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/sdram_subword.c" \
+            compile_minisoc_tb "$BUILD_DIR/tb_minisoc_sdram_subword_dark.out" 1 tb_minisoc_sdram "$REPO_ROOT/sim/tb_minisoc_sdram.v"
+        run_and_check "$BUILD_DIR/tb_minisoc_sdram_subword_dark.log" vvp "$BUILD_DIR/tb_minisoc_sdram_subword_dark.out"
+        ;;
     minisoc_uart_once_pico)
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_uart_once_pico.out" 0 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 0 1 1
         run_and_check "$BUILD_DIR/tb_minisoc_uart_once_pico.log" vvp "$BUILD_DIR/tb_minisoc_uart_once_pico.out"
