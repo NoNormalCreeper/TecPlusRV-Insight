@@ -62,6 +62,20 @@ static unsigned int elapsed_vga_ticks(unsigned int start)
     return (vga_frame_count() - start) & 0xffffu;
 }
 
+static unsigned int seconds_to_vga_ticks(unsigned int seconds)
+{
+    // round(seconds * 1250 / 21)，与 640x480 hardware frame rate 一致。
+    return (seconds * 1250u + 10u) / 21u;
+}
+
+static void print_progress(unsigned int seconds)
+{
+    // 默认 9600 baud 下保持短行，避免阻塞超过一个约 16.8 ms 的 VGA tick。
+    uart_puts("t=");
+    uart_put_dec(seconds);
+    uart_puts("s\n");
+}
+
 static struct bam2_info validate_asset(void)
 {
     struct bam2_info info;
@@ -160,6 +174,7 @@ static void playback_task(void *argument)
         unsigned int audio_index = 0u;
         unsigned int frame = 0u;
         unsigned int start = vga_frame_count();
+        unsigned int next_progress_second = 1u;
 
         while (elapsed_vga_ticks(start) < info.duration_ticks) {
             unsigned int elapsed = elapsed_vga_ticks(start);
@@ -173,9 +188,6 @@ static void playback_task(void *argument)
                     vga_bitmap_write_word(index, value);
                 }
                 frame++;
-                if (frame % 100u == 0u) {
-                    uart_putc('.');
-                }
             }
             while (audio_index < info.audio_count &&
                    asset[info.audio_word + audio_index * 2u] <= elapsed) {
@@ -184,6 +196,10 @@ static void playback_task(void *argument)
                     fail(0xba0au, "audio queue full");
                 }
                 audio_index++;
+            }
+            if (elapsed >= seconds_to_vga_ticks(next_progress_second)) {
+                print_progress(next_progress_second);
+                next_progress_second++;
             }
             taskYIELD();
         }

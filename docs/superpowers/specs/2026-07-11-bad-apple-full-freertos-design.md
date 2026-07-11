@@ -63,8 +63,9 @@ MP4 video stream `219.099 s` 预计生成约 2174 帧，播放约 219.14 秒。M
 每个 VGA tick 约 16.8 ms 的时间轴；video 和 audio task 都以同一个 hardware VGA
 frame counter 为基准，不以 UART、FreeRTOS tick 或主循环速度累计时间。
 
-播放器完成一轮后输出 PASS 并重新从第一帧循环。完整一轮的 UART 进度最多每 100 帧
-一个字符，避免 9600/115200 串口阻塞影响同步。
+播放器按 hardware VGA frame counter 每秒输出紧凑进度 `t=Ns`，完整一轮为
+`t=1s..t=219s`；默认 9600 baud 下短行阻塞小于一个 VGA tick。完成一轮后输出 PASS
+并重新从第一帧循环。
 
 ## BAM2 格式
 

@@ -538,8 +538,9 @@ def build_synthetic_asset() -> bytes:
     third = second.copy()
     third[0] = 0
     third[95] = 0xFFFFFFFF
+    # 72 ticks 超过 1 秒，端到端仿真可同时验证每秒 UART 进度。
     return encode_asset([first, second, third], [(0, 440), (7, 494), (14, 0)],
-                        duration_ticks=18)
+                        duration_ticks=72)
 
 
 def main() -> None:

@@ -252,7 +252,7 @@ class Bam2Test(unittest.TestCase):
             self.assertEqual(wav.getnchannels(), 1)
             self.assertEqual(wav.getsampwidth(), 2)
             self.assertEqual(wav.getframerate(), 8000)
-            self.assertEqual(wav.getnframes(), round(18 * 21 / 1250 * 8000))
+            self.assertEqual(wav.getnframes(), round(72 * 21 / 1250 * 8000))
 
     def test_preview_wav_accepts_path(self):
         with tempfile.TemporaryDirectory() as directory:

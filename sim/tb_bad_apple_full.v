@@ -30,6 +30,8 @@ integer buzzer_write_count;
 integer uart_write_count;
 reg spk_toggled;
 reg previous_spk;
+integer progress_state;
+reg progress_seen;
 
 tecplus_minisoc_top #(
     .CLK_FREQ(4000000),
@@ -87,6 +89,29 @@ always @(posedge clk) begin
             buzzer_write_count = buzzer_write_count + 1;
         if (dut.uart_fire)
             uart_write_count = uart_write_count + 1;
+        if (dut.uart_fire) begin
+            #1;
+            case (progress_state)
+                0: progress_state = (dut.req_wdata[7:0] == "t") ? 1 : 0;
+                1: progress_state = (dut.req_wdata[7:0] == "=") ? 2 : 0;
+                2: progress_state = (dut.req_wdata[7:0] == "1") ? 3 : 0;
+                3: progress_state = (dut.req_wdata[7:0] == "s") ? 4 : 0;
+                4: begin
+                    if (dut.req_wdata[7:0] == 8'h0d)
+                        progress_state = 5;
+                    else begin
+                        if (dut.req_wdata[7:0] == 8'h0a)
+                            progress_seen = 1'b1;
+                        progress_state = 0;
+                    end
+                end
+                5: begin
+                    if (dut.req_wdata[7:0] == 8'h0a)
+                        progress_seen = 1'b1;
+                    progress_state = 0;
+                end
+            endcase
+        end
         if (spk != previous_spk)
             spk_toggled = 1'b1;
         previous_spk = spk;
@@ -102,6 +127,8 @@ initial begin
     uart_write_count = 0;
     spk_toggled = 1'b0;
     previous_spk = 1'b0;
+    progress_state = 0;
+    progress_seen = 1'b0;
 
     $readmemh(ASSET_MEM_FILE, asset_words);
     #2;
@@ -135,9 +162,10 @@ initial begin
         $display("FAIL: BAM2 最终 framebuffer 内容不匹配");
         $finish;
     end
-    if (buzzer_write_count < 5 || !spk_toggled || uart_write_count < 10) begin
-        $display("FAIL: 外设证据不足 buzzer=%0d spk=%b uart=%0d",
-                 buzzer_write_count, spk_toggled, uart_write_count);
+    if (buzzer_write_count < 5 || !spk_toggled || uart_write_count < 10 ||
+        !progress_seen) begin
+        $display("FAIL: 外设证据不足 buzzer=%0d spk=%b uart=%0d progress=%b",
+                 buzzer_write_count, spk_toggled, uart_write_count, progress_seen);
         $finish;
     end
     if (model_read_command_count == 0 || model_write_command_count != 0) begin
