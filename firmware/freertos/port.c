@@ -12,6 +12,10 @@ struct tcb_prefix {
 
 extern struct tcb_prefix * volatile pxCurrentTCB;
 void freertos_task_returned(void) __attribute__((noreturn));
+void freertos_fatal_trap(const struct trap_frame *frame)
+    __attribute__((noreturn));
+
+static volatile unsigned int freertos_trap_depth;
 
 StackType_t *pxPortInitialiseStack(StackType_t *pxTopOfStack,
     TaskFunction_t pxCode, void *pvParameters)
@@ -41,8 +45,24 @@ StackType_t *pxPortInitialiseStack(StackType_t *pxTopOfStack,
 
 int freertos_port_in_trap(void)
 {
-    // Task 4 接入 trap dispatcher 时改为真实 nesting depth。
-    return 0;
+    return freertos_trap_depth != 0u;
+}
+
+struct trap_frame *trap_dispatch(struct trap_frame *frame)
+{
+    pxCurrentTCB->pxTopOfStack = (StackType_t *)(void *)frame;
+    freertos_trap_depth++;
+
+    if (frame->mcause == 0x0000000bu) {
+        // DarkRISCV 当前仅实现 32-bit 指令；这里只跳过 machine ecall。
+        frame->mepc += 4u;
+        vTaskSwitchContext();
+    } else {
+        freertos_fatal_trap(frame);
+    }
+
+    freertos_trap_depth--;
+    return (struct trap_frame *)(void *)pxCurrentTCB->pxTopOfStack;
 }
 
 BaseType_t xPortStartScheduler(void)

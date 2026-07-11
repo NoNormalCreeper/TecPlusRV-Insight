@@ -576,7 +576,7 @@ git commit -m "feat: 启动首个 FreeRTOS 静态任务"
 - Consumes: `portYIELD() -> ecall`、`mcause=0x0000000b`、TCB prefix。
 - Produces: 当前 frame 写回旧 TCB、`vTaskSwitchContext()` 后返回新 TCB frame。
 
-- [ ] **Step 1: 写双任务 yield 失败测试**
+- [x] **Step 1: 写双任务 yield 失败测试**
 
 两个相同优先级 task 各自把固定 seed 保存在 `s1`，执行 1000 次：
 
@@ -592,7 +592,7 @@ taskYIELD();
 bench 统计 `mcause==0x0000000b` 的 trap 次数至少 2000，且每次 `mepc` 返回后不再是
 产生该次 trap 的 ecall PC。
 
-- [ ] **Step 2: 运行确认 RED**
+- [x] **Step 2: 运行确认 RED**
 
 Run:
 
@@ -602,7 +602,7 @@ Run:
 
 Expected: TIMEOUT 或 fatal hook，因为默认 weak dispatcher 只返回原 frame。
 
-- [ ] **Step 3: 实现 FreeRTOS trap dispatch**
+- [x] **Step 3: 实现 FreeRTOS trap dispatch**
 
 `port.c` 提供强定义：
 
@@ -627,7 +627,7 @@ struct trap_frame *trap_dispatch(struct trap_frame *frame)
 `freertos_port_in_trap()` 返回 `freertos_trap_depth != 0`。`mepc += 4` 只适用于
 machine `ecall`，不得对 fault 或 `ebreak` 无条件推进。
 
-- [ ] **Step 4: 运行 GREEN 与 RV32MI 回归**
+- [x] **Step 4: 运行 GREEN 与 RV32MI 回归**
 
 Run:
 
@@ -638,7 +638,10 @@ python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
 
 Expected: yield smoke PASS；RV32MI 10/10 PASS。
 
-- [ ] **Step 5: Commit**
+实际仿真中 2000 次完整 context switch 约需 205 万 cycles，因此该 case 独立使用
+250 万 cycles timeout；2,000,000-cycle 默认值会稳定停在约 1949 次，不代表死锁。
+
+- [x] **Step 5: Commit**
 
 ```bash
 git add firmware/tests/freertos_yield_smoke.c firmware/freertos/port.c \
