@@ -363,6 +363,15 @@ case "$SIM_KIND" in
         compile_minisoc_tb "$BUILD_DIR/tb_minisoc_smoke_dark.out" 1 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 1 1 1
         run_and_check "$BUILD_DIR/tb_minisoc_smoke_dark.log" vvp "$BUILD_DIR/tb_minisoc_smoke_dark.out"
         ;;
+    freertos_frame_contract)
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/freertos_frame_contract.c" \
+        FIRMWARE_PROFILE=freertos \
+        FREERTOS_CPU_CLOCK_HZ=1000000 \
+            compile_minisoc_tb "$BUILD_DIR/tb_freertos_frame_contract.out" 1 \
+                tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 0 1 1 -1 1 5
+        run_and_check "$BUILD_DIR/tb_freertos_frame_contract.log" \
+            vvp "$BUILD_DIR/tb_freertos_frame_contract.out"
+        ;;
     minisoc_timer_irq_dark)
         FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/timer_irq_smoke.c" \
         FIRMWARE_PROFILE=dark_irq \
@@ -593,7 +602,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、boot_image_verify_pico、boot_image_verify_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、minisoc_timer_irq_dark、minisoc_vga_bitmap_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode、vga_bitmap_1bpp、darkriscv_machine_trap、machine_timer" >&2
+        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、boot_image_verify_pico、boot_image_verify_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、freertos_frame_contract、minisoc_timer_irq_dark、minisoc_vga_bitmap_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode、vga_bitmap_1bpp、darkriscv_machine_trap、machine_timer" >&2
         exit 1
         ;;
 esac

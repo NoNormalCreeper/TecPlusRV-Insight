@@ -56,7 +56,14 @@ trap_entry:
     la   sp, __trap_isr_stack_top
     call trap_dispatch
     mv   sp, a0
+    j    .Lrestore_frame
+    .size trap_entry, .-trap_entry
 
+    .globl trap_restore_frame
+    .type trap_restore_frame, @function
+trap_restore_frame:
+    mv   sp, a0
+.Lrestore_frame:
     lw   t0, TRAP_MEPC_OFFSET(sp)
     csrw mepc, t0
     lw   t0, TRAP_MSTATUS_OFFSET(sp)
@@ -94,7 +101,7 @@ trap_entry:
     lw   t0, TRAP_X_OFFSET(5)(sp)
     lw   sp, TRAP_X_OFFSET(2)(sp)
     mret
-    .size trap_entry, .-trap_entry
+    .size trap_restore_frame, .-trap_restore_frame
 
     .section .bss.trap_stack,"aw",@nobits
     .balign 16

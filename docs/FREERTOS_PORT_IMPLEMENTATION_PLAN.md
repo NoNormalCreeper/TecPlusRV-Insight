@@ -379,7 +379,7 @@ git commit -m "build: 接入固定版本 FreeRTOS kernel"
 - Consumes: `StackType_t *pxPortInitialiseStack(StackType_t *, TaskFunction_t, void *)`、canonical frame offsets。
 - Produces: `void trap_restore_frame(struct trap_frame *frame) __attribute__((noreturn))`；TCB `pxTopOfStack` 可直接保存返回的 frame pointer。
 
-- [ ] **Step 1: 写 frame contract 失败 firmware**
+- [x] **Step 1: 写 frame contract 失败 firmware**
 
 `freertos_frame_contract.c` 使用 512-word、16-byte aligned 静态 stack，调用
 `pxPortInitialiseStack()` 后逐项检查：frame 16-byte aligned、x1/x2/x3/x4/x10、
@@ -399,7 +399,7 @@ CHECK((frame->mstatus & 0x1880u) == 0x1880u, 5u);
 CHECK(frame->mcause == 0u && frame->reserved == 0u, 6u);
 ```
 
-- [ ] **Step 2: 加入仿真入口并确认 RED**
+- [x] **Step 2: 加入仿真入口并确认 RED**
 
 `freertos_frame_contract` 使用 `tb_minisoc`、DarkRISCV、`EXPECT_EXIT_CODE=1`：
 
@@ -407,7 +407,7 @@ CHECK(frame->mcause == 0u && frame->reserved == 0u, 6u);
 FIRMWARE_PROFILE=freertos
 FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/freertos_frame_contract.c"
 FREERTOS_CPU_CLOCK_HZ=1000000
-compile_minisoc_tb ... 1 tb_minisoc ... 0 0 1 0 1
+compile_minisoc_tb ... 1 tb_minisoc ... 0 1 1 -1 1 5
 ```
 
 Run:
@@ -418,7 +418,7 @@ Run:
 
 Expected: link FAIL，缺少 `pxPortInitialiseStack`。
 
-- [ ] **Step 3: 实现 frame constructor**
+- [x] **Step 3: 实现 frame constructor**
 
 `port.c` 定义 TCB prefix：
 
@@ -445,7 +445,7 @@ frame->mstatus = 0x1880u;
 return (StackType_t *)frame;
 ```
 
-- [ ] **Step 4: 暴露唯一 restore 入口**
+- [x] **Step 4: 暴露唯一 restore 入口**
 
 `trap_entry.S` 保留现有 handler，在 `call trap_dispatch` 后跳入 `.Lrestore_frame`；新增：
 
@@ -466,7 +466,7 @@ trap_restore_frame:
 void trap_restore_frame(struct trap_frame *frame) __attribute__((noreturn));
 ```
 
-- [ ] **Step 5: 运行 GREEN 与 trap 回归**
+- [x] **Step 5: 运行 GREEN 与 trap 回归**
 
 Run:
 
@@ -478,7 +478,7 @@ Run:
 
 Expected: 三项 PASS，证明公共 restore 没破坏 bare-metal trap。
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add firmware/freertos/port.c firmware/tests/freertos_frame_contract.c \
