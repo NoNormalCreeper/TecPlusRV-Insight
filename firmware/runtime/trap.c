@@ -12,8 +12,13 @@ void trap_init(void)
     __asm__ volatile ("csrw mtvec, %0" :: "r"(trap_entry));
 }
 
-void trap_enable_machine_timer(void)
+void trap_enable_machine_timer_source(void)
 {
     __asm__ volatile ("csrs mie, %0" :: "r"(1u << 7));
+}
+
+void trap_enable_machine_timer(void)
+{
+    trap_enable_machine_timer_source();
     __asm__ volatile ("csrsi mstatus, 8");
 }

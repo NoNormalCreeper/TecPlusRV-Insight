@@ -97,6 +97,7 @@ $FREERTOS_KERNEL/queue.c
 $FREERTOS_KERNEL/list.c
 $REPO_ROOT/firmware/runtime/trap_entry.S
 $REPO_ROOT/firmware/runtime/trap.c
+$REPO_ROOT/firmware/drivers/machine_timer.c
 $REPO_ROOT/firmware/freertos/port.c
 $REPO_ROOT/firmware/freertos/freertos_hooks.c
 "

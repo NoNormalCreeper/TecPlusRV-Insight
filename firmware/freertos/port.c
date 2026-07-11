@@ -2,6 +2,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include "drivers/machine_timer.h"
 #include "runtime/rt_string.h"
 #include "runtime/trap.h"
 #include "runtime/trap_frame.h"
@@ -16,6 +17,12 @@ void freertos_fatal_trap(const struct trap_frame *frame)
     __attribute__((noreturn));
 
 static volatile unsigned int freertos_trap_depth;
+static unsigned int counts_per_tick;
+static unsigned long long next_compare;
+
+#if portCRITICAL_NESTING_IN_TCB != 1
+#error "FreeRTOS critical nesting 必须保存在每个 task 的 TCB 中"
+#endif
 
 StackType_t *pxPortInitialiseStack(StackType_t *pxTopOfStack,
     TaskFunction_t pxCode, void *pvParameters)
@@ -57,6 +64,12 @@ struct trap_frame *trap_dispatch(struct trap_frame *frame)
         // DarkRISCV 当前仅实现 32-bit 指令；这里只跳过 machine ecall。
         frame->mepc += 4u;
         vTaskSwitchContext();
+    } else if (frame->mcause == MACHINE_TIMER_INTERRUPT_CAUSE) {
+        next_compare += counts_per_tick;
+        machine_timer_set_compare(next_compare);
+        if (xTaskIncrementTick() != pdFALSE) {
+            vTaskSwitchContext();
+        }
     } else {
         freertos_fatal_trap(frame);
     }
@@ -72,6 +85,14 @@ BaseType_t xPortStartScheduler(void)
         freertos_assert_fail(__FILE__, __LINE__);
         return pdFAIL;
     }
+
+    counts_per_tick = configCPU_CLOCK_HZ / configTICK_RATE_HZ;
+    configASSERT(counts_per_tick != 0u);
+    next_compare = machine_timer_now() + counts_per_tick;
+    machine_timer_set_compare(next_compare);
+    // 此处只开 MTIE；首次 mret 根据 task frame 的 MPIE 再打开全局 MIE，
+    // 避免 scheduler 启动栈被 timer trap 误存进当前 TCB。
+    trap_enable_machine_timer_source();
 
     trap_restore_frame((struct trap_frame *)(void *)
         pxCurrentTCB->pxTopOfStack);

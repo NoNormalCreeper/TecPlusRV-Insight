@@ -657,6 +657,9 @@ git commit -m "feat: 支持 FreeRTOS ecall 主动切换"
 - Create: `firmware/tests/freertos_smoke.c`
 - Modify: `firmware/freertos/port.c`
 - Modify: `firmware/drivers/machine_timer.h`
+- Modify: `firmware/runtime/trap.c`
+- Modify: `firmware/runtime/trap.h`
+- Modify: `scripts/build_firmware.sh`
 - Modify: `sim/tb_freertos_smoke.v`
 - Modify: `sim/run_sim.sh`
 
@@ -664,7 +667,7 @@ git commit -m "feat: 支持 FreeRTOS ecall 主动切换"
 - Consumes: `machine_timer_now()`、`machine_timer_set_compare()`、`xTaskIncrementTick()`。
 - Produces: 1000 Hz tick；同优先级 time slicing；`vTaskDelay()`；每 task TCB critical nesting。
 
-- [ ] **Step 1: 写 timer/delay/critical 失败测试**
+- [x] **Step 1: 写 timer/delay/critical 失败测试**
 
 smoke 分三 phase：
 
@@ -678,7 +681,7 @@ smoke 分三 phase：
 bench 在一次 BRAM/SDRAM data transaction 中 force `respond=0`，直到 MTIP pending，确认
 stall 期间未进入 trap，release 后才进入；沿用 `tb_minisoc_timer_irq.v` 的注入方式。
 
-- [ ] **Step 2: 运行确认 RED**
+- [x] **Step 2: 运行确认 RED**
 
 Run:
 
@@ -688,7 +691,7 @@ Run:
 
 Expected: TIMEOUT，因为 scheduler 尚未设置 timer compare/MTIE/MIE。
 
-- [ ] **Step 3: 实现累计 tick deadline**
+- [x] **Step 3: 实现累计 tick deadline**
 
 `xPortStartScheduler()` 在恢复首任务前：
 
@@ -697,7 +700,7 @@ counts_per_tick = configCPU_CLOCK_HZ / configTICK_RATE_HZ;
 configASSERT(counts_per_tick != 0u);
 next_compare = machine_timer_now() + counts_per_tick;
 machine_timer_set_compare(next_compare);
-trap_enable_machine_timer();
+trap_enable_machine_timer_source();
 ```
 
 timer trap：
@@ -714,13 +717,18 @@ if (frame->mcause == 0x80000007u) {
 
 timer 写 compare 继续复用现有 RV32 安全 high/low 顺序。
 
-- [ ] **Step 4: 完成 critical macro contract**
+`trap_enable_machine_timer_source()` 只打开 MTIE，不提前打开全局 MIE；首次
+`trap_restore_frame()` 的 `mret` 根据 task frame 的 MPIE 打开 MIE。若在 scheduler
+启动栈上提前打开 MIE，首个 timer trap 会把启动栈 frame 误写进当前 TCB，覆盖 task
+初始 frame。原 `trap_enable_machine_timer()` 仍保持 MTIE+MIE 的 bare-metal 语义。
+
+- [x] **Step 4: 完成 critical macro contract**
 
 确认 `portCRITICAL_NESTING_IN_TCB=1`，`portENTER_CRITICAL()`/`EXIT` 调 kernel 的
 `vTaskEnterCritical()`/`vTaskExitCritical()`；增加编译期断言与 runtime smoke，不在
 frame `reserved` 中镜像 nesting。
 
-- [ ] **Step 5: 运行 GREEN 与基础回归**
+- [x] **Step 5: 运行 GREEN 与基础回归**
 
 Run:
 
@@ -732,11 +740,17 @@ python3 scripts/test_runner.py run-suite platform --keep-going
 
 Expected: FreeRTOS smoke PASS，stall/pending 证据齐全；原 timer IRQ 与 platform 仍 PASS。
 
-- [ ] **Step 6: Commit**
+仿真统一使用 4 MHz 逻辑 CPU clock（每 tick 4000 cycles），避免 1 MHz 下通用 C kernel
+的完整 tick/time-slice handler 超过 1000-cycle tick interval，形成不代表 50 MHz 板级
+目标的持续 MTIP backlog。实际结果为 timer smoke 1013 traps、yield 回归 2115 ecall
+traps、platform 14/14 PASS。
+
+- [x] **Step 6: Commit**
 
 ```bash
 git add firmware/tests/freertos_smoke.c firmware/freertos/port.c \
-  firmware/drivers/machine_timer.h sim/tb_freertos_smoke.v sim/run_sim.sh
+  firmware/drivers/machine_timer.h firmware/runtime/trap.c firmware/runtime/trap.h \
+  scripts/build_firmware.sh sim/tb_freertos_smoke.v sim/run_sim.sh
 git commit -m "feat: 接入 FreeRTOS timer tick 与抢占"
 ```
 
