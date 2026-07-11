@@ -37,3 +37,8 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char *name)
     (void)name;
     freertos_stop(0xf1040001u);
 }
+
+void vApplicationMallocFailedHook(void)
+{
+    // malloc failure 由调用方检查返回值；hook 允许 acceptance 覆盖恢复路径。
+}

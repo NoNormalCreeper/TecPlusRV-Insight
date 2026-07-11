@@ -10,6 +10,7 @@ REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 CC=${CC:-riscv64-unknown-elf-gcc}
 OBJCOPY=${OBJCOPY:-riscv64-unknown-elf-objcopy}
 OBJDUMP=${OBJDUMP:-riscv64-unknown-elf-objdump}
+SIZE=${SIZE:-riscv64-unknown-elf-size}
 PYTHON=${PYTHON:-python3}
 FIRMWARE_MAIN=${FIRMWARE_MAIN:-$REPO_ROOT/firmware/main.c}
 FIRMWARE_OUT=${FIRMWARE_OUT:-$REPO_ROOT/firmware/build/firmware}
@@ -32,6 +33,7 @@ need_tool() {
 
 need_tool "$CC"
 need_tool "$OBJCOPY"
+need_tool "$SIZE"
 need_tool "$PYTHON"
 
 if [ ! -f "$FIRMWARE_MAIN" ]; then
@@ -95,6 +97,9 @@ $REPO_ROOT/firmware/drivers/machine_timer.c
 $FREERTOS_KERNEL/tasks.c
 $FREERTOS_KERNEL/queue.c
 $FREERTOS_KERNEL/list.c
+$FREERTOS_KERNEL/timers.c
+$FREERTOS_KERNEL/event_groups.c
+$FREERTOS_KERNEL/portable/MemMang/heap_5.c
 $REPO_ROOT/firmware/runtime/trap_entry.S
 $REPO_ROOT/firmware/runtime/trap.c
 $REPO_ROOT/firmware/drivers/machine_timer.c
@@ -132,7 +137,25 @@ $REPO_ROOT/firmware/tests/selftest.c
 # firmware 里的十进制打印和 CPI 计算用到了除法/取模，必须链接它。
 # 放在源文件之后，保证链接器能解析到这些符号。
 "$CC" $CFLAGS $INCLUDES $LDFLAGS -o "$TMP_OUT.elf" $SOURCES -lgcc
+"$SIZE" -A "$TMP_OUT.elf" > "$TMP_DIR/size.txt"
+bram_used=$(awk '$1 ~ /^\.(text|data|bss|data_load)$/ {sum += $2} END {print sum + 0}' \
+    "$TMP_DIR/size.txt")
+echo "BRAM sections: ${bram_used} bytes"
+awk '$1 ~ /^\.(text|data|bss|data_load|sdram_data|sdram_bss|heap)$/ {printf "  %-12s %8s bytes @ %s\n", $1, $2, $3}' \
+    "$TMP_DIR/size.txt"
+if [ "$bram_used" -ge 65536 ]; then
+    echo "firmware BRAM section 超过 64 KiB hard limit：${bram_used} bytes" >&2
+    exit 1
+fi
+if [ "$bram_used" -ge 49152 ]; then
+    echo "WARNING: firmware BRAM section 超过 48 KiB soft budget：${bram_used} bytes" >&2
+fi
 "$OBJCOPY" -O binary "$TMP_OUT.elf" "$TMP_OUT.bin"
+bin_bytes=$(wc -c < "$TMP_OUT.bin")
+if [ "$bin_bytes" -ge 65536 ]; then
+    echo "firmware BRAM image 超过 64 KiB hard limit：${bin_bytes} bytes" >&2
+    exit 1
+fi
 "$PYTHON" "$REPO_ROOT/scripts/bin2mem.py" "$TMP_OUT.bin" "$TMP_OUT.mem" 16384
 
 if command -v "$OBJDUMP" >/dev/null 2>&1; then
@@ -153,3 +176,4 @@ echo "  output: $FIRMWARE_OUT"
 echo "  $FIRMWARE_OUT.elf"
 echo "  $FIRMWARE_OUT.bin"
 echo "  $FIRMWARE_OUT.mem"
+echo "  BRAM image: ${bin_bytes} bytes"
