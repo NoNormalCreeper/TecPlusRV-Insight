@@ -21,16 +21,18 @@ BAD_APPLE_VIDEO := $(REPO_ROOT)/firmware/assets/bad-apple.mp4
 BAD_APPLE_MIDI := $(REPO_ROOT)/firmware/assets/badapple-midifull.mid
 BOOT_IMAGE_TEST_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/boot_image_verify
 BOOT_IMAGE_TEST_ASSET := $(REPO_ROOT)/build/bootloader-test/pattern.bin
+TIMER_IRQ_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/timer_irq_smoke
 DATA_BYTES ?= 65536
 SEED ?= 0x12345678
 
-.PHONY: help check-env firmware bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf benchmark ise-export
+.PHONY: help check-env firmware timer-irq-smoke bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf benchmark ise-export
 
 help:
 	@echo "常用目标："
 	@echo "  make check-env                 检查本地工具链"
 	@echo "  make firmware                  构建手动默认 firmware 镜像"
 	@echo "  make firmware FIRMWARE_OUT=... 构建到指定输出前缀"
+	@echo "  make timer-irq-smoke           构建 DarkRISCV timer IRQ 专用镜像"
 	@echo "  make bootload PORT=COM8        构建、上传并进入 serial monitor"
 	@echo "  make boot-image-test-build     构建 LOAD_IMAGE 全量读回 firmware/asset"
 	@echo "  make boot-image-test-load PORT=COM8  上传并显示正确性/吞吐结果"
@@ -53,7 +55,13 @@ check-env:
 	"$(CHECK_ENV)"
 
 firmware:
-	"$(BUILD_FIRMWARE)"
+	FIRMWARE_PROFILE=baremetal "$(BUILD_FIRMWARE)"
+
+timer-irq-smoke:
+	FIRMWARE_PROFILE=dark_irq \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/timer_irq_smoke.c" \
+		FIRMWARE_OUT="$(TIMER_IRQ_FIRMWARE_OUT)" \
+		"$(BUILD_FIRMWARE)"
 
 bootload:
 	@if [ -z "$(PORT)" ]; then echo "用法：make bootload PORT=COM8" >&2; exit 1; fi

@@ -17,6 +17,10 @@
 | `0x1000_0050` | 32 位 | 蜂鸣器控制寄存器 |
 | `0x1000_0054` | 32 位 | 蜂鸣器方波半周期 |
 | `0x1000_0060` | 32 位 | 实验性 VGA status；`VGA_TEXT_ENABLE=0` 时返回未就绪 |
+| `0x1000_0070` | 32 位 | `mtime[31:0]` |
+| `0x1000_0074` | 32 位 | `mtime[63:32]` |
+| `0x1000_0078` | 32 位 | `mtimecmp[31:0]` |
+| `0x1000_007C` | 32 位 | `mtimecmp[63:32]` |
 | `0x1001_0000 - 0x1001_04AF` | 1200 B | 实验性 write-only `40x30` packed tile window |
 | `0x2000_0000` | 区域基址 | accelerator base |
 | `0x8000_0000 - 0x81FF_FFFF` | 32 MiB | U2 SDRAM data-only 区域 |
@@ -29,6 +33,7 @@
 - 近期真正会用到的主要是 LED、KEY、UART、交通灯和 `test_exit`。
 - 计数器和 accelerator 项先写入地址图，方便后续 firmware 与总线接口提前稳定。
 - SDRAM 已通过 `sdram_data_ctrl` 接入 MiniSoC 数据总线；`ifetch_*` 仍只从 BRAM 取指。
+- machine timer 每个系统时钟递增一次；`mtime >= mtimecmp` 时向 DarkRISCV 提供 level-sensitive MTIP，PicoRV32 profile 忽略该 IRQ。
 - writable text/tile VGA 只作为 BAM1 仿真和资源实验原型保留。它在 LX9 MiniSoC
   中会 overmap，因此顶层参数 `VGA_TEXT_ENABLE` 默认是 0；后续轻量 1bpp 方案会
   复用地址但收紧 framebuffer 窗口。
@@ -77,3 +82,11 @@
 - 50 MHz 时钟下写入 `25000`，输出频率约为 1 kHz。
 
 当前只提供单音方波。旋律和音符持续时间由 firmware 通过修改周期和延时实现。
+
+## Machine timer 寄存器
+
+- reset 后 `mtime=0`、`mtimecmp=0xffff_ffff_ffff_ffff`，不会立即产生 IRQ。
+- RV32 读取当前时间应使用 high-low-high retry，避免 low word rollover 造成撕裂。
+- 更新 compare 时应依次写 `MTIMECMP_LO=0xffff_ffff`、目标 high、目标 low，避免 64-bit 更新中间态误触发。
+- `mtimecmp` 更新后软件仍应容忍一次有限延迟撤销造成的 spurious timer IRQ。
+- 当前地址与 IRQ 路径已通过仿真，尚需 ISE Map/PAR 和真实上板确认。

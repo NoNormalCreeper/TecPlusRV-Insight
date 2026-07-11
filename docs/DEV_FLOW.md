@@ -455,6 +455,22 @@ python3 scripts/test_runner.py run-suite rv32i_safe
 python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
 ```
 
+### Firmware profile 边界
+
+- `baremetal`：默认 profile，沿用现有 startup/runtime，不链接 trap runtime，也不会主动开启 IRQ。
+- `dark_irq`：当前已实现的 DarkRISCV-only 基础 profile，链接统一 trap frame 与 machine timer driver；应用仍须显式调用 `trap_init()` 和 enable helper。
+- `freertos`：后续 DarkRISCV-only profile，复用同一个 trap frame；kernel 与应用静态链接成单一 payload。
+- `gdb-stub`：后续 DarkRISCV-only profile，复用同一个 trap frame；`ebreak/fault` 进入 remote loop。
+
+后两类目前只是稳定的接入契约，不是可选的现成构建值。bootloader 与 bitstream 继续共用，每次只装载一个 BRAM firmware image；FreeRTOS 是 bootloader 可装载的 payload，不是另一套 bootloader。
+
+常用构建入口：
+
+```bash
+make firmware          # 强制 baremetal
+make timer-irq-smoke   # 构建 dark_irq timer 验收镜像
+```
+
 ### 场景 3：改 board probe
 
 适用例子：
