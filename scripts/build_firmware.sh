@@ -13,6 +13,7 @@ OBJDUMP=${OBJDUMP:-riscv64-unknown-elf-objdump}
 PYTHON=${PYTHON:-python3}
 FIRMWARE_MAIN=${FIRMWARE_MAIN:-$REPO_ROOT/firmware/main.c}
 FIRMWARE_OUT=${FIRMWARE_OUT:-$REPO_ROOT/firmware/build/firmware}
+FIRMWARE_PROFILE=${FIRMWARE_PROFILE:-baremetal}
 
 case "$FIRMWARE_OUT" in
     */) echo "FIRMWARE_OUT 必须是文件前缀，不能以 / 结尾：$FIRMWARE_OUT" >&2; exit 1 ;;
@@ -53,7 +54,31 @@ trap cleanup EXIT
 # -fno-tree-loop-distribute-patterns：禁止编译器把 rt_memcpy/rt_memset 里的
 # 逐字节循环“优化”成对 memcpy/memset 的库调用——我们 -nostdlib，没有这些符号，
 # 否则会在链接期报 undefined reference to `memcpy`/`memset`。
-CFLAGS="-march=rv32i -mabi=ilp32 -ffreestanding -nostdlib -nostartfiles -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror -Os"
+MARCH=rv32i
+PROFILE_SOURCES=""
+
+case "$FIRMWARE_PROFILE" in
+    baremetal)
+        ;;
+    dark_irq)
+        # 新工具链按当前 ISA spelling 使用 Zicsr；旧 GCC 10 只接受 rv32i，
+        # 但仍能正确汇编 CSR 指令，因此先探测再回退。
+        if "$CC" -march=rv32i_zicsr -mabi=ilp32 -E -x c /dev/null -o /dev/null >/dev/null 2>&1; then
+            MARCH=rv32i_zicsr
+        fi
+        PROFILE_SOURCES="
+$REPO_ROOT/firmware/runtime/trap_entry.S
+$REPO_ROOT/firmware/runtime/trap.c
+$REPO_ROOT/firmware/drivers/machine_timer.c
+"
+        ;;
+    *)
+        echo "未知 FIRMWARE_PROFILE：$FIRMWARE_PROFILE" >&2
+        exit 1
+        ;;
+esac
+
+CFLAGS="-march=$MARCH -mabi=ilp32 -ffreestanding -nostdlib -nostartfiles -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror -Os"
 INCLUDES="-I$REPO_ROOT/firmware"
 LDFLAGS="-T $REPO_ROOT/firmware/linker.ld"
 SOURCES="
@@ -66,6 +91,7 @@ $REPO_ROOT/firmware/drivers/vga.c
 $REPO_ROOT/firmware/runtime/rt_string.c
 $REPO_ROOT/firmware/runtime/rt_print.c
 $REPO_ROOT/firmware/runtime/rt_alloc.c
+$PROFILE_SOURCES
 $FIRMWARE_MAIN
 $REPO_ROOT/firmware/drivers/perf.c
 $REPO_ROOT/firmware/tests/selftest.c

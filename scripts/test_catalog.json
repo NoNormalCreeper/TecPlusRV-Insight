@@ -496,6 +496,12 @@
       "id": "machine_timer",
       "kind": "sim",
       "sim_target": "machine_timer"
+    },
+    {
+      "id": "minisoc_timer_irq_dark",
+      "kind": "sim",
+      "sim_target": "minisoc_timer_irq_dark",
+      "requires": ["rtl_syntax"]
     }
   ],
   "suites": {
@@ -558,6 +564,7 @@
       "mmio_test_exit",
       "darkriscv_machine_trap",
       "machine_timer",
+      "minisoc_timer_irq_dark",
       "uart_rx",
       "bootloader_ctrl",
       "traffic_light_gpio",

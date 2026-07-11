@@ -10,6 +10,8 @@ reg clk;
 reg reset;
 reg irq;
 reg timer_irq;
+reg [31:0] idata;
+reg ifetch_pending;
 reg [31:0] imem [0:16383];
 reg [31:0] store_value [0:11];
 reg [31:0] last_store_addr;
@@ -32,8 +34,6 @@ wire [31:0] perf_instret;
 wire [3:0] debug;
 wire esimack;
 
-wire [31:0] idata = imem[iaddr[15:2]];
-
 darkriscv dut (
     .CLK(clk),
     .RES(reset),
@@ -42,7 +42,7 @@ darkriscv dut (
     .IDREQ(idreq),
     .IADDR(iaddr),
     .IDATA(idata),
-    .IDACK(1'b1),
+    .IDACK(ifetch_pending),
     .IBERR(1'b0),
     .DDREQ(ddreq),
     .DADDR(daddr),
@@ -64,8 +64,21 @@ darkriscv dut (
 
 always #5 clk = ~clk;
 
+// 与 MiniSoC 的 bram_dualport 取指口保持一致：请求后一拍返回 ready/data。
 always @(posedge clk) begin
-    if (!reset && iaddr == 32'h0000_0200) begin
+    if (reset) begin
+        idata <= 32'h0000_0000;
+        ifetch_pending <= 1'b0;
+    end else if (ifetch_pending) begin
+        ifetch_pending <= 1'b0;
+    end else if (idreq) begin
+        idata <= imem[iaddr[15:2]];
+        ifetch_pending <= 1'b1;
+    end
+end
+
+always @(posedge clk) begin
+    if (!reset && dut.PC == 32'h0000_0200 && !dut.HLT && !(|dut.FLUSH)) begin
         trap_entries <= trap_entries + 1;
     end
 
@@ -83,6 +96,8 @@ initial begin
     reset = 1'b1;
     irq = 1'b0;
     timer_irq = 1'b0;
+    idata = 32'h0000_0000;
+    ifetch_pending = 1'b0;
     store_count = 0;
     trap_entries = 0;
     last_store_addr = 32'hffff_ffff;
@@ -141,6 +156,11 @@ initial begin
             store_value[3], store_value[6]);
         $finish;
     end
+    if (store_value[4] !== 32'h0000_00d0 || store_value[7] !== 32'h0000_00d4) begin
+        $display("FAIL: 同步 trap mepc 错误 ecall=%08x ebreak=%08x",
+            store_value[4], store_value[7]);
+        $finish;
+    end
     if (store_value[7] !== store_value[4] + 32'd4) begin
         $display("FAIL: ecall 返回后未执行紧随其后的 ebreak");
         $finish;
@@ -180,7 +200,10 @@ end
 
 initial begin
     repeat (2000) @(posedge clk);
-    $display("TIMEOUT: DarkRISCV machine trap 测试未完成");
+    $display("TIMEOUT: DarkRISCV machine trap 测试未完成 pc=%08x idpc=%08x ifpc=%08x xidata=%08x mepc=%08x mcause=%08x mstatus=%08x mie=%08x mip=%08x traps=%0d stores=%0d s1=%0d s2=%0d",
+        dut.PC, dut.IDPC, dut.IFPC, dut.XIDATA, dut.MEPC, dut.MCAUSE,
+        dut.MSTATUS, dut.MIE, dut.MIP, trap_entries, store_count,
+        dut.REGS[9], dut.REGS[18]);
     $finish;
 end
 

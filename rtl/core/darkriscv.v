@@ -632,6 +632,7 @@ module darkriscv
     wire [31:0] PCSIMM = PC+SIMM;
     wire        JREQ = JAL||JALR||(BCC && BMUX);
     wire [31:0] JVAL = JALR ? DADDR : PCSIMM; // SIMM + (JALR ? U1REG : PC);
+    wire [31:0] NEXTPC = JREQ ? JVAL : PC + 32'd4;
 
 `ifdef __INTERRUPT__
     wire take_mei = MIP[11] && MIE[11] && MSTATUS[3];
@@ -698,16 +699,16 @@ module darkriscv
                 end
                 else if(synchronous_trap)
                 begin
-                    // XIDATA 与 IDPC 属于同一条 execute-stage 指令。
-                    MEPC <= {IDPC[31:2], 2'b00};
+                    // PC 与 XIDATA 属于同一条 execute-stage 指令。
+                    MEPC <= {PC[31:2], 2'b00};
                     MCAUSE <= synchronous_cause;
                     MSTATUS[7] <= MSTATUS[3];
                     MSTATUS[3] <= 1'b0;
                 end
                 else if(IREQ)
                 begin
-                    // 当前 XIDATA 仍会提交，IFPC 是被 flush、需要恢复的下一条指令。
-                    MEPC <= {IFPC[31:2], 2'b00};
+                    // 当前指令会提交；taken branch/jump 必须从 JVAL 恢复。
+                    MEPC <= {NEXTPC[31:2], 2'b00};
                     MCAUSE <= interrupt_cause;
                     MSTATUS[7] <= MSTATUS[3];
                     MSTATUS[3] <= 1'b0;
@@ -835,10 +836,9 @@ module darkriscv
         `endif
 
         `ifdef __INTERRUPT__
-                     // 3-stage flush 会丢弃重定向后的首个 fetch，因此先取前一 word。
-                     MRET ? MEPC - 32'd4 :
-         synchronous_trap ? MTVEC_ALIGNED - 32'd4 :
-                     IREQ ? MTVEC_ALIGNED - 32'd4 :
+                     MRET ? MEPC :
+         synchronous_trap ? MTVEC_ALIGNED :
+                     IREQ ? MTVEC_ALIGNED :
         `endif
                      JREQ ? JVAL :                    // jmp/bra
         `ifdef __DBNZ__
