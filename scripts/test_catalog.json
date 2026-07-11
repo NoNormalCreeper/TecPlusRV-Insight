@@ -281,6 +281,11 @@
       "sim_target": "uart_rx"
     },
     {
+      "id": "gdb_packet",
+      "kind": "sim",
+      "sim_target": "gdb_packet"
+    },
+    {
       "id": "bootloader_ctrl",
       "kind": "sim",
       "sim_target": "bootloader_ctrl"
@@ -720,6 +725,7 @@
       "minisoc_timer_irq_dark",
       "vga_bitmap_1bpp",
       "uart_rx",
+      "gdb_packet",
       "bootloader_ctrl",
       "traffic_light_gpio",
       "buzzer_pwm",

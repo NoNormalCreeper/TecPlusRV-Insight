@@ -276,6 +276,14 @@ case "$SIM_KIND" in
             "$REPO_ROOT/rtl/periph/uart_rx.v"
         run_and_check "$BUILD_DIR/tb_uart_rx.log" vvp "$BUILD_DIR/tb_uart_rx.out"
         ;;
+    gdb_packet)
+        "${HOST_CC:-cc}" -std=c11 -Wall -Wextra -Werror \
+            -I"$REPO_ROOT/firmware" \
+            -o "$BUILD_DIR/test_gdb_packet" \
+            "$REPO_ROOT/tests/test_gdb_packet.c" \
+            "$REPO_ROOT/firmware/gdb/gdb_packet.c"
+        run_and_check "$BUILD_DIR/test_gdb_packet.log" "$BUILD_DIR/test_gdb_packet"
+        ;;
     bootloader_ctrl)
         iverilog -g2001 -s tb_bootloader_ctrl \
             -o "$BUILD_DIR/tb_bootloader_ctrl.out" \
