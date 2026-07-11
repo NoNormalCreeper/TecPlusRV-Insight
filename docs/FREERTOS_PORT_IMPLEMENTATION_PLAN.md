@@ -501,7 +501,7 @@ git commit -m "feat: 构造 FreeRTOS canonical task frame"
 - Consumes: `pxCurrentTCB->pxTopOfStack`、`trap_init()`、`trap_restore_frame()`。
 - Produces: `BaseType_t xPortStartScheduler(void)`；首个 task 从 canonical frame 开始执行。
 
-- [ ] **Step 1: 写首任务失败测试**
+- [x] **Step 1: 写首任务失败测试**
 
 firmware 静态创建一个 task，参数固定 `0x2468ace0`。task 检查参数、SP 16-byte
 alignment，并写：
@@ -515,7 +515,7 @@ mmio_write(TINYBUS_TEST_EXIT,
 `tb_freertos_smoke.v` 还必须统计 `dut.test_exited` 前至少一次 PC 进入 task symbol 所在
 BRAM 区间；firmware 的 `test_exit` 是主判据。
 
-- [ ] **Step 2: 运行确认 RED**
+- [x] **Step 2: 运行确认 RED**
 
 Run:
 
@@ -525,7 +525,7 @@ Run:
 
 Expected: link FAIL，缺少 `xPortStartScheduler`，或 TIMEOUT 未进入 task。
 
-- [ ] **Step 3: 实现 scheduler start**
+- [x] **Step 3: 实现 scheduler start**
 
 `xPortStartScheduler()`：
 
@@ -543,7 +543,7 @@ BaseType_t xPortStartScheduler(void)
 `vPortEndScheduler()` 与 `freertos_task_returned()` 都调用 fatal hook 后永久停机。
 Gate 3 前不在 scheduler start 内启用 timer；Task 4 的 yield 不依赖 tick。
 
-- [ ] **Step 4: 运行 GREEN 与 frame contract**
+- [x] **Step 4: 运行 GREEN 与 frame contract**
 
 Run:
 
@@ -554,7 +554,7 @@ Run:
 
 Expected: 两项 PASS。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add firmware/tests/freertos_first_task.c firmware/freertos/port.c \

@@ -155,6 +155,17 @@ compile_minisoc_tb() {
         )
     fi
 
+    if [ "$tb_module" = "tb_freertos_smoke" ]; then
+        if [ -z "${TASK_PC_START:-}" ] || [ -z "${TASK_PC_END:-}" ]; then
+            echo "缺少 TASK_PC_START / TASK_PC_END，无法验证 CPU 是否进入 FreeRTOS task" >&2
+            exit 1
+        fi
+        extra_params+=(
+            -P "$tb_module.TASK_PC_START=32'h$TASK_PC_START"
+            -P "$tb_module.TASK_PC_END=32'h$TASK_PC_END"
+        )
+    fi
+
     iverilog -g2001 -I "$REPO_ROOT/rtl/soc" -I "$REPO_ROOT/rtl/core" \
         -s "$tb_module" \
         -P "$tb_module.CPU_IMPL=$cpu_impl" \
@@ -371,6 +382,25 @@ case "$SIM_KIND" in
                 tb_minisoc "$REPO_ROOT/sim/tb_minisoc.v" 0 1 1 -1 1 5
         run_and_check "$BUILD_DIR/tb_freertos_frame_contract.log" \
             vvp "$BUILD_DIR/tb_freertos_frame_contract.out"
+        ;;
+    freertos_first_task)
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/freertos_first_task.c" \
+        FIRMWARE_PROFILE=freertos \
+        FREERTOS_CPU_CLOCK_HZ=1000000 \
+            prepare_firmware
+        TASK_SYMBOL=$(riscv64-unknown-elf-nm -S --defined-only \
+            "${FIRMWARE_MEM%.mem}.elf" | awk '$4 == "first_task" { print $1, $2 }')
+        if [ -z "$TASK_SYMBOL" ]; then
+            echo "找不到 first_task symbol，无法建立 PC 观测区间" >&2
+            exit 1
+        fi
+        set -- $TASK_SYMBOL
+        TASK_PC_START=$1
+        TASK_PC_END=$(printf '%08x' $((0x$1 + 0x$2)))
+        compile_minisoc_tb "$BUILD_DIR/tb_freertos_first_task.out" 1 \
+            tb_freertos_smoke "$REPO_ROOT/sim/tb_freertos_smoke.v"
+        run_and_check "$BUILD_DIR/tb_freertos_first_task.log" \
+            vvp "$BUILD_DIR/tb_freertos_first_task.out"
         ;;
     minisoc_timer_irq_dark)
         FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/timer_irq_smoke.c" \
@@ -602,7 +632,7 @@ case "$SIM_KIND" in
         ;;
     *)
         echo "未知仿真目标：$SIM_KIND" >&2
-        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、boot_image_verify_pico、boot_image_verify_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、freertos_frame_contract、minisoc_timer_irq_dark、minisoc_vga_bitmap_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode、vga_bitmap_1bpp、darkriscv_machine_trap、machine_timer" >&2
+        echo "支持的目标：uart_tx、uart_rx、bootloader_ctrl、bootloader_pico、bootloader_dark、bad_apple_minimal_pico、boot_image_verify_pico、boot_image_verify_dark、traffic_light_gpio、buzzer_pwm、probe_led_key、probe_uart_top、bram、bram_dualport、tinybus_decode、mmio_test_exit、minisoc、minisoc_pico、minisoc_dark、minisoc_smoke_pico、minisoc_smoke_dark、freertos_frame_contract、freertos_first_task、minisoc_timer_irq_dark、minisoc_vga_bitmap_dark、minisoc_sdram_pico、minisoc_sdram_dark、minisoc_uart_once_pico、minisoc_uart_once_dark、minisoc_uart_echo_pico、minisoc_uart_echo_dark、minisoc_traffic_pico、minisoc_traffic_dark、minisoc_buzzer_pico、minisoc_buzzer_dark、minisoc_perf_pico、minisoc_perf_dark、minisoc_counter_source_pico、minisoc_counter_source_dark、minisoc_counter_reset_pico、minisoc_counter_reset_dark、board_demo_pico、board_demo_dark、sdram_smoke、sdram_data_ctrl、sdram_tester、sdram_tester_fail、sdram_tester_reset、sdram_tester_uart_reporter、sdram_data_ctrl_probe_reporter、probe_sdram_data_ctrl、bigboard_tl、probe_buzzer_uart、probe_vga、font_rom_8x8、vga_text_mode、vga_bitmap_1bpp、darkriscv_machine_trap、machine_timer" >&2
         exit 1
         ;;
 esac

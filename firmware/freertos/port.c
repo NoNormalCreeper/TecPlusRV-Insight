@@ -3,6 +3,7 @@
 #include "task.h"
 
 #include "runtime/rt_string.h"
+#include "runtime/trap.h"
 #include "runtime/trap_frame.h"
 
 struct tcb_prefix {
@@ -42,4 +43,24 @@ int freertos_port_in_trap(void)
 {
     // Task 4 接入 trap dispatcher 时改为真实 nesting depth。
     return 0;
+}
+
+BaseType_t xPortStartScheduler(void)
+{
+    trap_init();
+    if (pxCurrentTCB == 0 || pxCurrentTCB->pxTopOfStack == 0) {
+        freertos_assert_fail(__FILE__, __LINE__);
+        return pdFAIL;
+    }
+
+    trap_restore_frame((struct trap_frame *)(void *)
+        pxCurrentTCB->pxTopOfStack);
+}
+
+void vPortEndScheduler(void)
+{
+    // 裸机 target 没有可返回的 host scheduler；走 fatal hook 后永久停机。
+    freertos_assert_fail(__FILE__, __LINE__);
+    for (;;) {
+    }
 }
