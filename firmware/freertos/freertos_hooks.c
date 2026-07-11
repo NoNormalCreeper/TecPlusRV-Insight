@@ -3,9 +3,11 @@
 #include "task.h"
 
 #include "drivers/mmio.h"
+#include "freertos_heap.h"
 #include "runtime/trap_frame.h"
 
 static void freertos_stop(unsigned int code) __attribute__((noreturn));
+static volatile unsigned int malloc_failed_count;
 
 static void freertos_stop(unsigned int code)
 {
@@ -41,4 +43,10 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char *name)
 void vApplicationMallocFailedHook(void)
 {
     // malloc failure 由调用方检查返回值；hook 允许 acceptance 覆盖恢复路径。
+    malloc_failed_count++;
+}
+
+unsigned int freertos_malloc_failed_count(void)
+{
+    return malloc_failed_count;
 }

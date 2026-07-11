@@ -5,6 +5,7 @@
 #include "timers.h"
 
 #include "drivers/mmio.h"
+#include "freertos/freertos_heap.h"
 
 _Static_assert(configSUPPORT_STATIC_ALLOCATION == 1,
     "FreeRTOS profile 必须支持静态分配");
@@ -22,6 +23,11 @@ static void contract_timer_callback(TimerHandle_t timer)
 
 int main(void)
 {
+    freertos_heap_init();
+    if (xPortGetFreeHeapSize() == 0u) {
+        return 1;
+    }
+
     // 只保留链接引用；build contract 不会实际进入这个分支。
     if (keep_dynamic_modules != 0u) {
         HeapRegion_t regions[1] = {{0, 0u}};

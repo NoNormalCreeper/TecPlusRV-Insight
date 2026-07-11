@@ -41,6 +41,7 @@ need_symbol() {
 need_symbol vPortDefineHeapRegions
 need_symbol xTimerCreate
 need_symbol xEventGroupCreate
+need_symbol freertos_heap_init
 
 heap_start=$("$NM" -n "$OUT.elf" | awk '$3 == "_heap_start" {print $1}')
 heap_end=$("$NM" -n "$OUT.elf" | awk '$3 == "_heap_end" {print $1}')
