@@ -467,9 +467,12 @@ python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
 常用构建入口：
 
 ```bash
-make firmware          # 强制 baremetal
+make firmware          # 默认 baremetal，可显式覆盖 profile/main
 make timer-irq-smoke   # 构建 dark_irq timer 验收镜像
+make timer-irq-load PORT=COM8  # 构建、上传并监视 timer IRQ 验收镜像
 ```
+
+DarkRISCV core 默认具备 IRQ 能力，但普通 baremetal payload 不会主动安装 trap handler 或开启 IRQ。`make bootload` 默认仍加载 `baremetal + firmware/main.c`；需要其他 payload 时可通过 `FIRMWARE_PROFILE` 和 `FIRMWARE_MAIN` 覆盖同一个上传入口。
 
 ### 场景 3：改 board probe
 

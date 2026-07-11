@@ -327,7 +327,7 @@ case "$ISE_TARGET" in
         package_minisoc
         ;;
     minisoc_dark)
-        package_minisoc "$REPO_ROOT/firmware/tests/timer_irq_smoke.c" "这是 DarkRISCV machine timer IRQ 验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包同时包含 firmware/build/firmware.bin，可通过共用 bootloader 装载；UART 输出 timer irq pass 表示 firmware 验收通过。Map/PAR 与真实上板结果仍需在 ISE 14.7 和教学板上单独归档。" "dark_irq"
+        package_minisoc "$REPO_ROOT/firmware/tests/timer_irq_smoke.c" "这是 DarkRISCV machine timer IRQ 验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包同时包含 firmware/build/firmware.bin，可通过共用 bootloader 装载；仓库中也可运行 make timer-irq-load PORT=COM8。UART 输出 timer irq pass: ticks=<次数> loops=<前台循环次数> 表示 firmware 验收通过。Map/PAR 与真实上板结果仍需在 ISE 14.7 和教学板上单独归档。" "dark_irq"
         ;;
     minisoc_bootloader|bootloader)
         package_minisoc "$REPO_ROOT/firmware/tests/boot_payload.c" "这是 UART bootloader 目标。请在 ISE 的 Generics, Parameters 中设置 BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0，并让 UART_BAUD 与 host --baud 一致；程序复位后等待 READY。LOAD_IMAGE 全量读回与吞吐测试见 docs/BOOTLOADER_BOARD_TEST.md。"

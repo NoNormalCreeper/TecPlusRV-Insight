@@ -145,6 +145,14 @@ make bootload PORT=COM8
 
 该目标会构建到专属的 `firmware/build/bootload/firmware.*`，不会改写手动构建的默认 `firmware/build/firmware.*`；随后通过 Windows Python 打开 `COM8` 完成下载，并在收到 ACK 后使用同一个串口连接进入 serial monitor。完整环境配置见 `docs/WINDOWS_WSL_UART.md`。
 
+DarkRISCV timer IRQ 上板验收可复用同一条 bootloader 路径：
+
+```bash
+make timer-irq-load PORT=COM8
+```
+
+`make bootload` 默认仍构建普通 baremetal payload；也可用 `FIRMWARE_PROFILE` 和 `FIRMWARE_MAIN` 显式选择其他 profile 与入口文件。
+
 构建测试 payload：
 
 ```bash

@@ -12,6 +12,8 @@ UART_LOADER := $(REPO_ROOT)/scripts/uart_loader.py
 TEST_RUNNER := python3 $(REPO_ROOT)/scripts/test_runner.py
 WINDOWS_PYTHON ?= py.exe
 BOOTLOAD_BAUD ?= 9600
+FIRMWARE_PROFILE ?= baremetal
+FIRMWARE_MAIN ?= $(REPO_ROOT)/firmware/main.c
 BOOTLOAD_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bootload/firmware
 BAD_APPLE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bad_apple_minimal
 BAD_APPLE_ASSET := $(REPO_ROOT)/build/badapple/bad_apple_20s.bin
@@ -25,7 +27,7 @@ TIMER_IRQ_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/timer_irq_smoke
 DATA_BYTES ?= 65536
 SEED ?= 0x12345678
 
-.PHONY: help check-env firmware timer-irq-smoke bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf benchmark ise-export
+.PHONY: help check-env firmware timer-irq-smoke timer-irq-load bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf benchmark ise-export
 
 help:
 	@echo "常用目标："
@@ -33,6 +35,7 @@ help:
 	@echo "  make firmware                  构建手动默认 firmware 镜像"
 	@echo "  make firmware FIRMWARE_OUT=... 构建到指定输出前缀"
 	@echo "  make timer-irq-smoke           构建 DarkRISCV timer IRQ 专用镜像"
+	@echo "  make timer-irq-load PORT=COM8  构建、上传并监视 timer IRQ 验收镜像"
 	@echo "  make bootload PORT=COM8        构建、上传并进入 serial monitor"
 	@echo "  make boot-image-test-build     构建 LOAD_IMAGE 全量读回 firmware/asset"
 	@echo "  make boot-image-test-load PORT=COM8  上传并显示正确性/吞吐结果"
@@ -55,7 +58,9 @@ check-env:
 	"$(CHECK_ENV)"
 
 firmware:
-	FIRMWARE_PROFILE=baremetal "$(BUILD_FIRMWARE)"
+	FIRMWARE_PROFILE="$(FIRMWARE_PROFILE)" \
+		FIRMWARE_MAIN="$(FIRMWARE_MAIN)" \
+		"$(BUILD_FIRMWARE)"
 
 timer-irq-smoke:
 	FIRMWARE_PROFILE=dark_irq \
@@ -67,12 +72,20 @@ bootload:
 	@if [ -z "$(PORT)" ]; then echo "用法：make bootload PORT=COM8" >&2; exit 1; fi
 	@if ! command -v wslpath >/dev/null 2>&1; then echo "bootload 需要在 WSL 中运行" >&2; exit 1; fi
 	@if ! command -v "$(WINDOWS_PYTHON)" >/dev/null 2>&1; then echo "找不到 Windows Python：$(WINDOWS_PYTHON)" >&2; exit 1; fi
-	@FIRMWARE_OUT="$(BOOTLOAD_FIRMWARE_OUT)" "$(BUILD_FIRMWARE)"
+	@FIRMWARE_PROFILE="$(FIRMWARE_PROFILE)" \
+		FIRMWARE_MAIN="$(FIRMWARE_MAIN)" \
+		FIRMWARE_OUT="$(BOOTLOAD_FIRMWARE_OUT)" \
+		"$(BUILD_FIRMWARE)"
 	"$(WINDOWS_PYTHON)" "$$(wslpath -w "$(UART_LOADER)")" \
 		--port "$(PORT)" \
 		--baud "$(BOOTLOAD_BAUD)" \
 		--input "$$(wslpath -w "$(BOOTLOAD_FIRMWARE_OUT).bin")" \
 		--monitor
+
+timer-irq-load:
+	@$(MAKE) bootload PORT="$(PORT)" \
+		FIRMWARE_PROFILE=dark_irq \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/timer_irq_smoke.c"
 
 boot-image-test-build:
 	python3 "$(REPO_ROOT)/scripts/make_boot_image_test_asset.py" \
