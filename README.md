@@ -33,7 +33,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - `firmware/`：裸机启动代码、链接脚本、驱动和测试
 - `sim/`：本地 testbench
 - `scripts/`：本地构建和检查脚本
-- `tests/riscv_tests/`：官方 `riscv-tests` submodule 和本地 `tecplus_p` 适配层
+- `tests/riscv_tests/`：官方 `riscv-tests` submodule，以及本地 `tecplus_p` / `tecplus_m` 适配层
 
 ## 推荐先读
 
@@ -131,27 +131,31 @@ make test-all
 
 - `tests/riscv_tests/riscv-tests/`：官方上游 `riscv-tests` submodule
 - `tests/riscv_tests/riscv-tests/env/`：上游自带环境子模块
-- `tests/riscv_tests/tecplus_p/`：本仓库自己的最小适配层，负责把 `RVTEST_PASS/FAIL` 映射到 `TINYBUS_TEST_EXIT`
+- `tests/riscv_tests/tecplus_p/`：基础 `rv32ui` 双核适配层
+- `tests/riscv_tests/tecplus_m/`：DarkRISCV M-mode-only trap/CSR 适配层
 
 推荐入口：
 
 ```bash
 python3 scripts/test_runner.py run-suite rv32i_safe
+python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
 ```
 
-这条 suite 当前代表第一阶段必达的基础 `RV32I` 子集，会同时在 `PicoRV32` 和 `DarkRISCV` MiniSoC 上跑通。
+`rv32i_safe` 代表基础 `RV32I` 双核基线；`rv32mi_dark` 运行官方 machine CSR、`ecall`、illegal 与 misaligned trap case，只覆盖 DarkRISCV。
 
 如果只想单独跑一个 case 或直接用批处理脚本，也可以用：
 
 ```bash
 bash scripts/test_riscv_test_case.sh add
 bash scripts/test_riscv_test_case.sh safe
+bash scripts/test_riscv_test_case.sh rv32mi csr
 ```
 
 边界说明：
 
 - `rv32i_safe`：当前第一阶段主回归，默认纳入 `local` suite
 - `rv32i_optional`：当前单独保留的边界 case，不纳入第一阶段必达
+- `rv32mi_dark`：DarkRISCV machine-mode completion gate，不在 PicoRV32 上运行
 - `fence_i`：当前 `PicoRV32` 这份 RTL 不支持 `fence.i`，因此不并入基线
 - `ma_data`：会开始触碰 misaligned / trap 语义，因此单独保留到后续阶段
 

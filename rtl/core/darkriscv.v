@@ -444,6 +444,7 @@ module darkriscv
 
     // exceptions
 
+    wire JTARGET_MISALIGNED;
     // 当前单 hart、无 cache，标准 FENCE 作为合法 NOP；FENCE.I 仍留给后续实现。
     wire FENCE = !FLUSH && XIDATA[6:0]==7'b0001111 && XIDATA[14:12]==3'b000;
     wire IERR = FLUSH ? 0 : !(XLUI||XAUIPC||XJAL||XJALR||XBCC||XLCC||XSCC||XMCC||XRCC||XCUS||XSYS||FENCE);
@@ -470,7 +471,7 @@ module darkriscv
         wire ECALL = SYS && FCT3==0 && XIDATA[31:20]==12'h000;
         wire EBREAK = EBRK;
 
-        wire instruction_address_misaligned = IAER;
+        wire instruction_address_misaligned = JTARGET_MISALIGNED || IAER;
         wire instruction_access_fault = IBER;
         wire illegal_instruction = IERR;
         wire load_address_misaligned = DAER && DRD;
@@ -542,6 +543,7 @@ module darkriscv
                         XIDATA[31:20]==12'hf14 ? CPTR  : // core number
     `endif    
     `ifdef __INTERRUPT__
+                        XIDATA[31:20]==12'h301 ? 32'h4000_0100 : // misa: RV32 + I
                         XIDATA[31:20]==12'h344 ? MIP      : // machine interrupt pending
                         XIDATA[31:20]==12'h304 ? MIE      : // machine interrupt enable
                         XIDATA[31:20]==12'h341 ? MEPC     : // machine exception PC
@@ -631,7 +633,9 @@ module darkriscv
 
     wire [31:0] PCSIMM = PC+SIMM;
     wire        JREQ = JAL||JALR||(BCC && BMUX);
-    wire [31:0] JVAL = JALR ? DADDR : PCSIMM; // SIMM + (JALR ? U1REG : PC);
+    // JALR 按 ISA 忽略目标 bit 0；IALIGN=32 时 bit 1 仍必须触发 misaligned trap。
+    wire [31:0] JVAL = JALR ? {DADDR[31:1], 1'b0} : PCSIMM;
+    assign JTARGET_MISALIGNED = JREQ && JVAL[1];
     wire [31:0] NEXTPC = JREQ ? JVAL : PC + 32'd4;
 
 `ifdef __INTERRUPT__
@@ -782,6 +786,9 @@ module darkriscv
         REGS[DPTR] <=   XRES||DPTR[4:0]==0 ? 0  :        // reset x0
 `endif
                        HLT ? DREG :        // halt
+`ifdef __INTERRUPT__
+          synchronous_trap ? DREG :        // faulting instruction 不得写回
+`endif
                        LCC ? LDATA :
                      AUIPC ? PCSIMM :
 `ifdef __DBNZ__
@@ -884,7 +891,12 @@ module darkriscv
 
     assign DWR     = SCC;
     assign DRD     = LCC;
+`ifdef __INTERRUPT__
+    // misaligned load/store 必须先 trap，不能把带副作用的请求送到总线。
+    assign DDREQ   = (SCC||LCC) && !DAER;
+`else
     assign DDREQ   = SCC||LCC;
+`endif
 
     
 `ifdef __INTERRUPT__

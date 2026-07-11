@@ -488,6 +488,76 @@
       "requires": ["check_env", "rtl_syntax"]
     },
     {
+      "id": "rv32mi_dark__csr",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "csr"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__mcsr",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "mcsr"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__scall",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "scall"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__breakpoint",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "breakpoint"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__illegal",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "illegal"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__ma_fetch",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "ma_fetch"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__lh_misaligned",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "lh-misaligned"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__lw_misaligned",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "lw-misaligned"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__sh_misaligned",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "sh-misaligned"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
+      "id": "rv32mi_dark__sw_misaligned",
+      "kind": "script",
+      "script": "scripts/test_riscv_test_case.sh",
+      "args": ["rv32mi", "sw-misaligned"],
+      "requires": ["check_env", "rtl_syntax"]
+    },
+    {
       "id": "darkriscv_machine_trap",
       "kind": "sim",
       "sim_target": "darkriscv_machine_trap"
@@ -625,6 +695,18 @@
     "rv32i_optional": [
       "rv32ui_extra",
       "rv32ui_trapish"
+    ],
+    "rv32mi_dark": [
+      "rv32mi_dark__csr",
+      "rv32mi_dark__mcsr",
+      "rv32mi_dark__scall",
+      "rv32mi_dark__breakpoint",
+      "rv32mi_dark__illegal",
+      "rv32mi_dark__ma_fetch",
+      "rv32mi_dark__lh_misaligned",
+      "rv32mi_dark__lw_misaligned",
+      "rv32mi_dark__sh_misaligned",
+      "rv32mi_dark__sw_misaligned"
     ],
     "local": [
       "@probe",

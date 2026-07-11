@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # 构建单个官方 riscv-tests case，并产出供 MiniSoC BRAM 使用的 .mem。
-# 这里先只支持 rv32ui；trap/特权相关环境以后单独扩展。
 set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
@@ -12,8 +11,6 @@ OBJDUMP=${OBJDUMP:-riscv64-unknown-elf-objdump}
 PYTHON=${PYTHON:-python3}
 
 RVTEST_ROOT="$REPO_ROOT/tests/riscv_tests"
-CASE_ROOT="$RVTEST_ROOT/riscv-tests/isa/rv32ui"
-ENV_ROOT="$RVTEST_ROOT/tecplus_p"
 
 need_tool() {
     if ! command -v "$1" >/dev/null 2>&1; then
@@ -25,31 +22,53 @@ need_tool() {
 usage() {
     cat <<'EOF'
 用法：
-  scripts/build_riscv_test.sh <case>
+  scripts/build_riscv_test.sh <profile> <case>
+  scripts/build_riscv_test.sh <rv32ui-case>  # 兼容旧接口
 
 示例：
+  scripts/build_riscv_test.sh rv32ui add
+  scripts/build_riscv_test.sh rv32mi csr
   scripts/build_riscv_test.sh add
-  scripts/build_riscv_test.sh sw
 EOF
 }
 
-if [ $# -ne 1 ]; then
+if [ $# -eq 1 ]; then
+    profile=rv32ui
+    case_name="$1"
+elif [ $# -eq 2 ]; then
+    profile="$1"
+    case_name="$2"
+else
     usage >&2
     exit 1
 fi
+
+case "$profile" in
+    rv32ui)
+        CASE_ROOT="$RVTEST_ROOT/riscv-tests/isa/rv32ui"
+        ENV_ROOT="$RVTEST_ROOT/tecplus_p"
+        ;;
+    rv32mi)
+        CASE_ROOT="$RVTEST_ROOT/riscv-tests/isa/rv32mi"
+        ENV_ROOT="$RVTEST_ROOT/tecplus_m"
+        ;;
+    *)
+        echo "未知 riscv-test profile：$profile" >&2
+        exit 1
+        ;;
+esac
 
 need_tool "$CC"
 need_tool "$OBJCOPY"
 need_tool "$PYTHON"
 
-case_name="$1"
 case_path="$CASE_ROOT/$case_name.S"
 if [ ! -f "$case_path" ]; then
-    echo "找不到 rv32ui 测试：$case_path" >&2
+    echo "找不到 $profile 测试：$case_path" >&2
     exit 1
 fi
 
-out_dir="$REPO_ROOT/build/riscv_tests/$case_name"
+out_dir="$REPO_ROOT/build/riscv_tests/$profile/$case_name"
 mkdir -p "$out_dir"
 
 CFLAGS=(
@@ -77,6 +96,7 @@ if command -v "$OBJDUMP" >/dev/null 2>&1; then
 fi
 
 echo "riscv-test 构建完成："
+echo "  profile: $profile"
 echo "  case: $case_name"
 echo "  elf : $out_dir/$case_name.elf"
 echo "  bin : $out_dir/$case_name.bin"

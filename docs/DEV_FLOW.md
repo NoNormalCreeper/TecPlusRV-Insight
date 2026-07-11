@@ -194,13 +194,14 @@
 
 - `riscv-tests/`：官方上游 submodule
 - `riscv-tests/env/`：上游环境子模块
-- `tecplus_p/`：本仓库自己的最小 `MiniSoC` 适配环境
+- `tecplus_p/`：基础 `rv32ui` 的双核 `MiniSoC` 适配环境
+- `tecplus_m/`：DarkRISCV M-mode-only trap/CSR 适配环境
 
 设计原则：
 
 - 官方 case 尽量保持原样，不直接改测试本体
-- 本地差异优先收敛在 `tecplus_p` 这种 target environment 里
-- 第一阶段先只覆盖基础 `rv32ui`，不把 trap / `tohost` / `signature` 判定混进主回归
+- 本地差异优先收敛在 `tecplus_p` / `tecplus_m` 这种 target environment 里
+- `rv32ui` 保持 PicoRV32 / DarkRISCV 双核基线；`rv32mi` 只在 DarkRISCV 上运行，官方 case 的 `mcause/mepc` 断言不得在环境层跳过
 
 ## 整个项目怎么从“零散文件”集合起来
 
@@ -448,6 +449,12 @@ make test-soc
 python3 scripts/test_runner.py run-suite rv32i_safe
 ```
 
+如果改动涉及 DarkRISCV machine CSR、trap 入口或 misaligned 行为，再补跑：
+
+```bash
+python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
+```
+
 ### 场景 3：改 board probe
 
 适用例子：
@@ -505,6 +512,7 @@ python3 scripts/test_runner.py run-suite all
 
 - `rv32i_safe` 是当前第一阶段必须稳定通过的官方 `RV32I` 子集。
 - `rv32i_optional` 暂时只放边界 case，例如 `fence_i` 和 `ma_data`。
+- `rv32mi_dark` 是 DarkRISCV-only machine-mode completion gate，不在 PicoRV32 上运行。
 - `fence_i` 当前不纳入基线，因为这份 `PicoRV32` RTL 不支持 `fence.i`。
 - `ma_data` 当前不纳入基线，因为它会开始要求明确的 misaligned / trap 语义。
 
