@@ -34,6 +34,71 @@
 - Modify `Makefile`：增加 build/load/test 的稳定入口。
 - Modify `scripts/export_ise_project.sh`：导出 acceptance firmware 所需 FreeRTOS sources 与独立目标。
 - Modify `docs/FREERTOS_PORT_DESIGN.md`：记录 dynamic modules、heap 边界、验证入口和实测尺寸。
+- Create `firmware/tests/sdram_subword.c`：永久覆盖 SDRAM byte/halfword lane。
+- Modify `rtl/soc/tecplus_minisoc_top.v`：仅在 SDRAM controller 边界对齐 data request 地址。
+
+---
+
+### Task 0A: 补齐 FreeRTOS dynamic allocation 依赖的 SDRAM subword contract
+
+**Files:**
+- Create: `firmware/tests/sdram_subword.c`
+- Modify: `sim/run_sim.sh`
+- Modify: `scripts/test_catalog.json`
+- Modify: `rtl/soc/tecplus_minisoc_top.v`
+- Modify: `docs/MEMORY_MAP.md`
+
+**Interfaces:**
+- Consumes: CPU 原始 byte address、`req_wstrb`、现有 `sdram_data_ctrl` DQM mask。
+- Produces: controller-aligned SDRAM address；`minisoc_sdram_subword_pico/dark` 回归。
+
+- [ ] **Step 1: 将最小复现扩展成永久 firmware regression**
+
+在同一个 32-bit word 上依次覆盖四个 byte lane，要求未选 byte 不变；再覆盖低/高两个
+halfword lane。每次写入后用完整 32-bit word 读回，失败码区分 lane。
+
+- [ ] **Step 2: 接入双核 sim target 并确认旧 RTL 红灯**
+
+Run:
+
+```bash
+bash sim/run_sim.sh minisoc_sdram_subword_pico
+bash sim/run_sim.sh minisoc_sdram_subword_dark
+```
+
+Expected: 至少 DarkRISCV 稳定以第一个非零 lane 错误码失败；失败来自 subword 行为，
+不是 timeout 或 firmware build。
+
+- [ ] **Step 3: 在 SDRAM controller 边界做最小地址归一化**
+
+`tecplus_minisoc_top.v` 保留 CPU/replay 使用的原始 `req_addr`，只把 controller port 改为：
+
+```verilog
+.req_addr({sdram_request_addr[31:2], 2'b00})
+```
+
+其中 `sdram_request_addr` 仍在 boot/CPU request 之间选择。不得修改 `req_wstrb`、
+`req_wdata`、BRAM/MMIO decode 或 CPU core。
+
+- [ ] **Step 4: 验证双核 subword 与现有 SDRAM 回归**
+
+Run:
+
+```bash
+bash sim/run_sim.sh minisoc_sdram_subword_pico
+bash sim/run_sim.sh minisoc_sdram_subword_dark
+python3 scripts/test_runner.py run-suite platform
+python3 scripts/test_runner.py run-suite soc
+```
+
+Expected: subword 双核 PASS；既有 word、route、refresh、runtime heap 回归不退化。
+
+- [ ] **Step 5: 更新 memory-map contract 并提交**
+
+```bash
+git add firmware/tests/sdram_subword.c rtl/soc/tecplus_minisoc_top.v sim/run_sim.sh scripts/test_catalog.json docs/MEMORY_MAP.md
+git commit -m "fix: 支持 SDRAM subword 访问"
+```
 
 ---
 

@@ -12,6 +12,12 @@
 3. 保留现有 smoke、queue demo 和 bare-metal bump allocator，不在本轮实现长时间
    stress、traffic/audio demo 或 Bad Apple media pipeline。
 
+实施中确认了一个必须同轮补齐的前置 contract：DarkRISCV 的 byte/halfword load/store
+保留原始地址低位，而 `sdram_data_ctrl` 只接受 32-bit 对齐请求。FreeRTOS dynamic
+object 会在 SDRAM 中执行 task-name copy 等 subword 访问，因此本轮同时补齐 SDRAM
+subword 路径；否则只能证明 allocator metadata 的 word 访问，不能证明 dynamic
+FreeRTOS 可用。
+
 本轮是后续独立教学 demo 和压力测试的基础。只有本轮自动化及必要的上板验证通过，
 才进入下一阶段。
 
@@ -81,6 +87,17 @@ FreeRTOS profile 在现有 `tasks.c`、`queue.c`、`list.c` 基础上增加：
 
 首轮不加入 stream buffer、queue set、recursive mutex、trace facility 或 runtime stats。
 这些能力没有当前验收需求，避免扩大代码体积和故障面。
+
+## SDRAM subword contract
+
+CPU 保留原始 byte address，用地址低位生成 load 选择与 write strobe。MiniSoC 在把 data
+request 送进 `sdram_data_ctrl` 前，仅将 controller 看到的地址低两位清零；原始
+`req_wstrb` 和 write data 保持不变，由控制器已经存在的 DQM 逻辑选择实际写入的 byte。
+
+CPU core 继续负责真正的 misaligned word/halfword trap。这里的地址对齐只发生在 SDRAM
+controller 边界，不改变 BRAM、MMIO、replay key 或 CPU exception 语义。新增独立
+firmware 回归，至少覆盖每个 byte lane、两个 halfword lane、未选 byte 保持不变，并在
+PicoRV32 与 DarkRISCV MiniSoC 上运行。
 
 ## `freertos-acceptance` 结构
 
@@ -188,6 +205,7 @@ heap 是当前 linker policy，不是物理硬件上限。
 ### Gate B：自动仿真
 
 - 已有 FreeRTOS 细粒度测试全部通过；
+- SDRAM subword 回归在 PicoRV32、DarkRISCV 上通过；
 - `freertos-acceptance` 通过并真实产生 SDRAM read/write；
 - `make test-platform`、`make test-soc`、RV32I/RV32MI 回归通过；
 - `make test-all` 最终通过。
