@@ -11,6 +11,7 @@ module tb_freertos_smoke #(
     parameter integer MIN_ECALL_TRAPS = 0,
     parameter integer MIN_TIMER_TRAPS = 0,
     parameter integer REQUIRE_TIMER_STALL = 0,
+    parameter integer EXPECT_QUEUE_DEMO = 0,
     parameter [31:0] EXPECT_EXIT_CODE = 32'h0000_0001,
     parameter integer TIMEOUT_CYCLES = 2000000
 );
@@ -129,7 +130,9 @@ always @(posedge clk) begin
             $display("FAIL: timer stall/pending 注入未完整发生");
             $finish;
         end
-        if (MIN_TIMER_TRAPS != 0) begin
+        if (EXPECT_QUEUE_DEMO != 0) begin
+            $display("PASS: FreeRTOS 静态 queue 完成 empty/non-empty/full 覆盖");
+        end else if (MIN_TIMER_TRAPS != 0) begin
             $display("PASS: FreeRTOS timer 抢占完成，timer traps=%0d",
                 timer_trap_count);
         end else if (MIN_ECALL_TRAPS != 0) begin

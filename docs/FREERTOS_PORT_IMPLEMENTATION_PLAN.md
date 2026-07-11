@@ -767,7 +767,7 @@ git commit -m "feat: 接入 FreeRTOS timer tick 与抢占"
 - Consumes: `xQueueCreateStatic()`、`xQueueSend()`、`xQueueReceive()`、tick/delay。
 - Produces: 后续 Bad Apple audio queue 可复用的静态 queue 使用范式。
 
-- [ ] **Step 1: 写 queue 失败测试**
+- [x] **Step 1: 写 queue 失败测试**
 
 定义：
 
@@ -779,10 +779,11 @@ struct demo_message {
 ```
 
 queue 长度固定 4。producer 发送 sequence 0..63，`value=sequence ^ 0xa5a55a5a`；
-consumer 阻塞接收并验证顺序和值。producer 每 3 条 `vTaskDelay(1)`，迫使 queue 经历
-空、非空和满。consumer 收完 64 条后写 `test_exit=1`。
+consumer 阻塞接收并验证顺序和值。producer 开头连续发送 5 条，使第 5 条确定因 queue
+满而阻塞；后续每 3 条 `vTaskDelay(1)`。demo 显式记录 empty、non-empty、full 三种状态，
+consumer 收完 64 条且三种状态齐全后写 `test_exit=1`。
 
-- [ ] **Step 2: 运行确认 RED**
+- [x] **Step 2: 运行确认 RED**
 
 Run:
 
@@ -792,12 +793,13 @@ Run:
 
 Expected: 未知仿真目标或 build 失败。
 
-- [ ] **Step 3: 接入 queue 仿真入口**
+- [x] **Step 3: 接入 queue 仿真入口**
 
 使用相同 `tb_freertos_smoke.v`，firmware main 改为 `freertos_queue.c`，保持
-`FIRMWARE_PROFILE=freertos`、1 MHz 仿真时钟与 `EXPECT_EXIT_CODE=1`。
+`FIRMWARE_PROFILE=freertos`、Task 5 已验证的 4 MHz 逻辑时钟与
+`EXPECT_EXIT_CODE=1`。
 
-- [ ] **Step 4: 运行 GREEN 并重复三次**
+- [x] **Step 4: 运行 GREEN 并重复三次**
 
 Run:
 
@@ -809,7 +811,7 @@ Run:
 
 Expected: 三次都 PASS，避免一次性时序巧合。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add firmware/tests/freertos_queue.c sim/run_sim.sh
