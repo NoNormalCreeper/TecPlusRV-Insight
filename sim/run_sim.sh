@@ -169,6 +169,7 @@ compile_minisoc_tb() {
             -P "$tb_module.MIN_TIMER_TRAPS=${MIN_TIMER_TRAPS:-0}"
             -P "$tb_module.REQUIRE_TIMER_STALL=${REQUIRE_TIMER_STALL:-0}"
             -P "$tb_module.EXPECT_QUEUE_DEMO=${EXPECT_QUEUE_DEMO:-0}"
+            -P "$tb_module.REQUIRE_UART_WRITE=${REQUIRE_FREERTOS_UART:-0}"
             -P "$tb_module.SOC_CLK_FREQ=${FREERTOS_SOC_CLK_FREQ:-1000000}"
             -P "$tb_module.TIMEOUT_CYCLES=${FREERTOS_TIMEOUT_CYCLES:-2000000}"
         )
@@ -455,6 +456,7 @@ case "$SIM_KIND" in
             "${FIRMWARE_MEM%.mem}.elf" | awk '$3 == "trap_entry" { print $1 }')
         MIN_TIMER_TRAPS=1000
         REQUIRE_TIMER_STALL=1
+        REQUIRE_FREERTOS_UART=1
         FREERTOS_SOC_CLK_FREQ=4000000
         FREERTOS_TIMEOUT_CYCLES=${FREERTOS_TIMEOUT_CYCLES:-4500000}
         compile_minisoc_tb "$BUILD_DIR/tb_freertos_smoke.out" 1 \

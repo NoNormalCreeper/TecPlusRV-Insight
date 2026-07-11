@@ -12,6 +12,7 @@ module tb_freertos_smoke #(
     parameter integer MIN_TIMER_TRAPS = 0,
     parameter integer REQUIRE_TIMER_STALL = 0,
     parameter integer EXPECT_QUEUE_DEMO = 0,
+    parameter integer REQUIRE_UART_WRITE = 0,
     parameter [31:0] EXPECT_EXIT_CODE = 32'h0000_0001,
     parameter integer TIMEOUT_CYCLES = 2000000
 );
@@ -27,6 +28,7 @@ reg [31:0] ecall_pc;
 reg stall_injected;
 reg stall_active;
 reg irq_pending_during_stall;
+reg uart_written;
 integer cycle_count;
 integer ecall_trap_count;
 integer timer_trap_count;
@@ -67,6 +69,7 @@ initial begin
     stall_injected = 1'b0;
     stall_active = 1'b0;
     irq_pending_during_stall = 1'b0;
+    uart_written = 1'b0;
     cycle_count = 0;
     ecall_trap_count = 0;
     timer_trap_count = 0;
@@ -76,6 +79,10 @@ end
 
 always @(posedge clk) begin
     cycle_count = cycle_count + 1;
+
+    if (dut.uart_fire) begin
+        uart_written = 1'b1;
+    end
 
     if (dut.u_cpu.g_darkriscv.u_cpu.u_cpu.PC >= TASK_PC_START &&
             dut.u_cpu.g_darkriscv.u_cpu.u_cpu.PC < TASK_PC_END) begin
@@ -128,6 +135,10 @@ always @(posedge clk) begin
         if (REQUIRE_TIMER_STALL != 0 &&
                 (!stall_injected || !irq_pending_during_stall)) begin
             $display("FAIL: timer stall/pending 注入未完整发生");
+            $finish;
+        end
+        if (REQUIRE_UART_WRITE != 0 && !uart_written) begin
+            $display("FAIL: FreeRTOS smoke 未产生 UART 上板成功标记");
             $finish;
         end
         if (EXPECT_QUEUE_DEMO != 0) begin

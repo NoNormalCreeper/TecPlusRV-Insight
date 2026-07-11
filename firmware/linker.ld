@@ -42,6 +42,9 @@ SECTIONS
     .data : AT(__data_load_slot_start) {
         . = ALIGN(4);
         __data_start = .;
+        /* RISC-V psABI 的 gp anchor；+0x800 让 sdata 两侧各有约 2 KiB
+         * 的 gp-relative 可达范围。startup.S 会在进入 C 前加载它。 */
+        PROVIDE(__global_pointer$ = . + 0x800);
         *(.sdata*)
         *(.data*)
         . = ALIGN(4);

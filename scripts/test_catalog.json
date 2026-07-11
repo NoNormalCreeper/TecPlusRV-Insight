@@ -569,6 +569,41 @@
       "requires": ["check_env", "rtl_syntax"]
     },
     {
+      "id": "freertos_build_contract",
+      "kind": "script",
+      "script": "scripts/test_freertos_build_contract.sh"
+    },
+    {
+      "id": "freertos_frame_contract",
+      "kind": "sim",
+      "sim_target": "freertos_frame_contract",
+      "timeout_sec": 90
+    },
+    {
+      "id": "freertos_first_task",
+      "kind": "sim",
+      "sim_target": "freertos_first_task",
+      "timeout_sec": 60
+    },
+    {
+      "id": "freertos_yield_smoke",
+      "kind": "sim",
+      "sim_target": "freertos_yield_smoke",
+      "timeout_sec": 180
+    },
+    {
+      "id": "freertos_smoke",
+      "kind": "sim",
+      "sim_target": "freertos_smoke",
+      "timeout_sec": 240
+    },
+    {
+      "id": "freertos_queue",
+      "kind": "sim",
+      "sim_target": "freertos_queue",
+      "timeout_sec": 60
+    },
+    {
       "id": "darkriscv_machine_trap",
       "kind": "sim",
       "sim_target": "darkriscv_machine_trap"
@@ -728,11 +763,20 @@
       "rv32mi_dark__sh_misaligned",
       "rv32mi_dark__sw_misaligned"
     ],
+    "freertos": [
+      "freertos_build_contract",
+      "freertos_frame_contract",
+      "freertos_first_task",
+      "freertos_yield_smoke",
+      "freertos_smoke",
+      "freertos_queue"
+    ],
     "local": [
       "@probe",
       "@platform",
       "@soc",
       "@rv32i_safe",
+      "@freertos",
       "@dual_core"
     ],
     "all": [

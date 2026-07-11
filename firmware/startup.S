@@ -14,6 +14,14 @@ _start:
     # linker.ld 提供 _stack_top，栈从 BRAM 顶部向低地址增长。
     la sp, _stack_top
 
+    # 建立确定的 RISC-V ABI 上下文。gp 的 la 必须禁止 linker relaxation，
+    # 否则它可能被优化成依赖尚未初始化 gp 的 addi；当前 runtime 无 TLS，tp=0。
+    .option push
+    .option norelax
+    la gp, __global_pointer$
+    .option pop
+    li tp, 0
+
     # 搬运 .data：从加载地址（LMA）逐字拷到运行地址（VMA）。
     la t0, __data_load_start
     la t1, __data_start

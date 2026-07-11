@@ -15,6 +15,28 @@ firmware profile。FreeRTOS 不是 Bad Apple 的专用 runtime；仓库应先用
 - 静态 queue 在 producer/consumer 之间传递消息；
 - kernel 与应用静态链接成一个可由现有 bootloader 装载的 BRAM payload。
 
+## 当前实现状态（2026-07-11）
+
+上述首轮能力已经实现，kernel 固定为 `V11.3.0` / commit
+`9b777ae5c5b8e9e456065a00294d1e5f5f9facf5`。自动 suite：
+
+```bash
+make test-freertos
+# 等价于 python3 scripts/test_runner.py run-suite freertos
+```
+
+包含 build contract、canonical frame、首任务、ecall yield、timer 抢占/delay/critical
+和静态 queue 六项，并已接入 `local/all`。当前 50 MHz 构建尺寸：
+
+| payload | `.text` | `.data` | BRAM `.bss` | `.bin` |
+| --- | ---: | ---: | ---: | ---: |
+| smoke | 5355 B | 4 B | 6096 B | 11460 B |
+| queue | 8189 B | 4 B | 6208 B | 14420 B |
+
+`.heap` 是 SDRAM NOLOAD reservation，不计入 BRAM image。自动 Gate 已完成；FreeRTOS
+独立 ISE Map/PAR/timing 与真实上板仍待人工验证。Bad Apple 迁移尚未开始，仍是后续
+独立设计/计划，不属于本轮 port 完成声明。
+
 ## 核心选择
 
 采用“官方 kernel + TecPlusRV 专用薄 port”，不直接链接官方 RISC-V
@@ -177,7 +199,7 @@ BRAM image。
 ```text
 make freertos-smoke
 make freertos-queue
-make freertos-bad-apple
+# 后续计划：make freertos-bad-apple
 ```
 
 输出隔离到：
@@ -279,6 +301,17 @@ python3 scripts/test_runner.py run-suite soc --keep-going
 
 任何自动化无法覆盖的 ISE、串口或真实板级步骤，都必须记录明确操作、预期输出和失败
 诊断；由开发者完成并回传结果后，才允许进入依赖该 gate 的下一阶段。
+
+当前人工命令与成功判据：
+
+```bash
+make ise-export ISE_TARGET=minisoc_freertos_dark
+make freertos-load PORT=COM8
+```
+
+ISE 必须确认 Map 无 overmap、50 MHz post-route slack 为正、DarkRISCV/timer hierarchy
+未被 trim；真实板上 UART 必须打印 `freertos smoke pass` 且 LED=5。仿真中的同一成功
+路径另写 `test_exit=1`。在这些证据回传前，不进入 `freertos-bad-apple` 实施。
 
 ## 非目标
 

@@ -5,6 +5,7 @@
 #include "drivers/gpio.h"
 #include "drivers/machine_timer.h"
 #include "drivers/mmio.h"
+#include "drivers/uart.h"
 
 #define COUNTS_PER_TICK (configCPU_CLOCK_HZ / configTICK_RATE_HZ)
 
@@ -94,6 +95,8 @@ void smoke_task_a(void *argument)
     if (task_a_counter == 0u || task_b_counter == 0u) {
         fail(0xf5010006u);
     }
+    uart_puts("freertos smoke pass\n");
+    uart_flush();
     gpio_write_led(5u);
     mmio_write(TINYBUS_TEST_EXIT, 1u);
     for (;;) {

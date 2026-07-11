@@ -24,10 +24,12 @@ BAD_APPLE_MIDI := $(REPO_ROOT)/firmware/assets/badapple-midifull.mid
 BOOT_IMAGE_TEST_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/boot_image_verify
 BOOT_IMAGE_TEST_ASSET := $(REPO_ROOT)/build/bootloader-test/pattern.bin
 TIMER_IRQ_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/timer_irq_smoke
+FREERTOS_SMOKE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/freertos/smoke/firmware
+FREERTOS_QUEUE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/freertos/queue/firmware
 DATA_BYTES ?= 65536
 SEED ?= 0x12345678
 
-.PHONY: help check-env firmware timer-irq-smoke timer-irq-load bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-dual-core test-all ci perf benchmark ise-export
+.PHONY: help check-env firmware timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-load bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci perf benchmark ise-export
 
 help:
 	@echo "常用目标："
@@ -36,6 +38,9 @@ help:
 	@echo "  make firmware FIRMWARE_OUT=... 构建到指定输出前缀"
 	@echo "  make timer-irq-smoke           构建 DarkRISCV timer IRQ 专用镜像"
 	@echo "  make timer-irq-load PORT=COM8  构建、上传并监视 timer IRQ 验收镜像"
+	@echo "  make freertos-smoke           构建 50 MHz FreeRTOS timer smoke 镜像"
+	@echo "  make freertos-queue           构建 50 MHz FreeRTOS 静态 queue 镜像"
+	@echo "  make freertos-load PORT=COM8  构建、上传并监视 FreeRTOS smoke 镜像"
 	@echo "  make bootload PORT=COM8        构建、上传并进入 serial monitor"
 	@echo "  make boot-image-test-build     构建 LOAD_IMAGE 全量读回 firmware/asset"
 	@echo "  make boot-image-test-load PORT=COM8  上传并显示正确性/吞吐结果"
@@ -47,6 +52,7 @@ help:
 	@echo "  make test-platform             跑平台层仿真"
 	@echo "  make test-soc                  跑 MiniSoC 通用 regression / 专项仿真"
 	@echo "  make test-smoke                跑当前分支的基础 smoke 与 board-top smoke"
+	@echo "  make test-freertos             跑 FreeRTOS build/port/demo 自动回归"
 	@echo "  make test-dual-core            跑双核 regression（如果当前分支提供）"
 	@echo "  make test-all                  跑全部正确性检查"
 	@echo "  make ci                        CI 入口，聚合失败后统一返回非零"
@@ -68,6 +74,20 @@ timer-irq-smoke:
 		FIRMWARE_OUT="$(TIMER_IRQ_FIRMWARE_OUT)" \
 		"$(BUILD_FIRMWARE)"
 
+freertos-smoke:
+	FIRMWARE_PROFILE=freertos \
+		FREERTOS_CPU_CLOCK_HZ=50000000 \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_smoke.c" \
+		FIRMWARE_OUT="$(FREERTOS_SMOKE_FIRMWARE_OUT)" \
+		"$(BUILD_FIRMWARE)"
+
+freertos-queue:
+	FIRMWARE_PROFILE=freertos \
+		FREERTOS_CPU_CLOCK_HZ=50000000 \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_queue.c" \
+		FIRMWARE_OUT="$(FREERTOS_QUEUE_FIRMWARE_OUT)" \
+		"$(BUILD_FIRMWARE)"
+
 bootload:
 	@if [ -z "$(PORT)" ]; then echo "用法：make bootload PORT=COM8" >&2; exit 1; fi
 	@if ! command -v wslpath >/dev/null 2>&1; then echo "bootload 需要在 WSL 中运行" >&2; exit 1; fi
@@ -86,6 +106,11 @@ timer-irq-load:
 	@$(MAKE) bootload PORT="$(PORT)" \
 		FIRMWARE_PROFILE=dark_irq \
 		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/timer_irq_smoke.c"
+
+freertos-load:
+	@$(MAKE) bootload PORT="$(PORT)" \
+		FIRMWARE_PROFILE=freertos \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_smoke.c"
 
 boot-image-test-build:
 	python3 "$(REPO_ROOT)/scripts/make_boot_image_test_asset.py" \
@@ -149,6 +174,9 @@ test-soc:
 
 test-smoke:
 	$(TEST_RUNNER) run-suite smoke
+
+test-freertos:
+	$(TEST_RUNNER) run-suite freertos
 
 test-dual-core:
 	$(TEST_RUNNER) run-suite dual_core

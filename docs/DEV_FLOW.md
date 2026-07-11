@@ -459,10 +459,10 @@ python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
 
 - `baremetal`：默认 profile，沿用现有 startup/runtime，不链接 trap runtime，也不会主动开启 IRQ。
 - `dark_irq`：当前已实现的 DarkRISCV-only 基础 profile，链接统一 trap frame 与 machine timer driver；应用仍须显式调用 `trap_init()` 和 enable helper。
-- `freertos`：后续 DarkRISCV-only profile，复用同一个 trap frame；官方 kernel 与 TecPlusRV 专用薄 port、应用静态链接成单一 payload。它是多个 demo 共用的运行 profile，不属于 Bad Apple 私有实现。
+- `freertos`：已实现的 DarkRISCV-only profile，复用同一个 trap frame；官方 kernel 与 TecPlusRV 专用薄 port、应用静态链接成单一 payload。它是多个 demo 共用的运行 profile，不属于 Bad Apple 私有实现。
 - `gdb-stub`：后续 DarkRISCV-only profile，复用同一个 trap frame；`ebreak/fault` 进入 remote loop。
 
-后两类目前只是稳定的接入契约，不是可选的现成构建值。bootloader 与 bitstream 继续共用，每次只装载一个 BRAM firmware image；FreeRTOS 是 bootloader 可装载的 payload，不是另一套 bootloader。
+`gdb-stub` 目前仍只是稳定的接入契约；`freertos` 已是可选构建值。bootloader 与 bitstream 继续共用，每次只装载一个 BRAM firmware image；FreeRTOS 是 bootloader 可装载的 payload，不是另一套 bootloader。
 
 FreeRTOS 不直接链接官方 RISC-V `portASM.S`，避免引入第二套 trap entry 和 context
 layout；项目只复用官方 kernel 的调度、delay 与 queue，实现映射到现有 canonical
@@ -475,7 +475,15 @@ layout；项目只复用官方 kernel 的调度、delay 与 queue，实现映射
 make firmware          # 默认 baremetal，可显式覆盖 profile/main
 make timer-irq-smoke   # 构建 dark_irq timer 验收镜像
 make timer-irq-load PORT=COM8  # 构建、上传并监视 timer IRQ 验收镜像
+make freertos-smoke    # 构建 50 MHz FreeRTOS 抢占/delay/critical smoke
+make freertos-queue    # 构建 50 MHz 静态 producer/consumer queue demo
+make test-freertos     # 跑 build/frame/task/yield/timer/queue 六项回归
+make freertos-load PORT=COM8  # 上传并监视 FreeRTOS smoke
 ```
+
+`freertos-load` 的成功现象是 UART 打印 `freertos smoke pass`、LED=5；仿真中同一
+firmware 还必须写 `test_exit=1`。若只有 LED=F 或始终没有 pass 文本，视为失败。
+当前 profile 只支持 `CPU_IMPL=1` 的 DarkRISCV。
 
 DarkRISCV core 默认具备 IRQ 能力，但普通 baremetal payload 不会主动安装 trap handler 或开启 IRQ。`make bootload` 默认仍加载 `baremetal + firmware/main.c`；需要其他 payload 时可通过 `FIRMWARE_PROFILE` 和 `FIRMWARE_MAIN` 覆盖同一个上传入口。
 
@@ -537,6 +545,7 @@ python3 scripts/test_runner.py run-suite all
 - `rv32i_safe` 是当前第一阶段必须稳定通过的官方 `RV32I` 子集。
 - `rv32i_optional` 暂时只放边界 case，例如 `fence_i` 和 `ma_data`。
 - `rv32mi_dark` 是 DarkRISCV-only machine-mode completion gate，不在 PicoRV32 上运行。
+- `freertos` 是 DarkRISCV-only build/port/demo gate，已经包含在 `local/all` 中。
 - `fence_i` 当前不纳入基线，因为这份 `PicoRV32` RTL 不支持 `fence.i`。
 - `ma_data` 当前不纳入基线，因为它会开始要求明确的 misaligned / trap 语义。
 
@@ -565,9 +574,14 @@ ISE 自己做：
 make ise-export ISE_TARGET=minisoc
 make ise-export ISE_TARGET=probe_uart
 make ise-export ISE_TARGET=probe_minisoc_sdram
+make ise-export ISE_TARGET=minisoc_freertos_dark
 ```
 
 导出目录默认是 `build/ise-export/<target>/`。仓库中的构建产物放在 `firmware/build/ise/<target>/firmware.*`；导出脚本只把对应 `.mem` 复制到导出包内的 `firmware/build/firmware.mem`，保持 RTL 默认 `$readmemh` 相对路径，同时不改写仓库的手动默认产物。
+
+`minisoc_freertos_dark` 会校验 FreeRTOS submodule revision，以 50 MHz 构建 smoke，
+并额外保存 `third_party/FreeRTOS-Kernel` 所需 source/header 与 `firmware/freertos`。
+这些 C/header 用于 payload 可复现，不要作为 RTL source 加入 ISE。
 
 ### ISE 一般真正需要的输入
 
@@ -631,6 +645,7 @@ make ise-export ISE_TARGET=probe_minisoc_sdram
 
 ```bash
 make ise-export ISE_TARGET=minisoc
+make ise-export ISE_TARGET=minisoc_freertos_dark
 ```
 
 ## ISE 里实际应该怎么操作

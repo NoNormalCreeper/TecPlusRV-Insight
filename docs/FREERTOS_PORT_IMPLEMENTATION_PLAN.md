@@ -826,6 +826,11 @@ git commit -m "feat: 增加 FreeRTOS 静态 queue 演示"
 - Modify: `scripts/test_catalog.json`
 - Modify: `Makefile`
 - Modify: `scripts/export_ise_project.sh`
+- Modify: `firmware/startup.S`
+- Modify: `firmware/linker.ld`
+- Modify: `firmware/tests/freertos_smoke.c`
+- Modify: `sim/tb_freertos_smoke.v`
+- Modify: `sim/run_sim.sh`
 - Modify: `docs/DEV_FLOW.md`
 - Modify: `docs/darkriscv_wrapper_summary.md`
 - Modify: `docs/FREERTOS_PORT_DESIGN.md`
@@ -834,7 +839,7 @@ git commit -m "feat: 增加 FreeRTOS 静态 queue 演示"
 - Consumes: Task 1-6 全部通过的 sim targets。
 - Produces: `freertos` suite、稳定 Make targets、ISE export 与人工 Gate 5 操作说明。
 
-- [ ] **Step 1: 先写 catalog 失败引用**
+- [x] **Step 1: 先写 catalog 失败引用**
 
 加入 cases：
 
@@ -849,7 +854,7 @@ git commit -m "feat: 增加 FreeRTOS 静态 queue 演示"
 
 先把 suite `freertos` 指向这些 case，并故意在尚未加入 `local` 前运行单 suite。
 
-- [ ] **Step 2: 运行 suite 确认能发现任何未接通项**
+- [x] **Step 2: 运行 suite 确认能发现任何未接通项**
 
 Run:
 
@@ -859,7 +864,11 @@ python3 scripts/test_runner.py run-suite freertos --keep-going
 
 Expected: 若 Task 1-6 有遗漏则 FAIL 并给出具体 case；不得通过删除失败 case 变绿。
 
-- [ ] **Step 3: 补 Make 与 export 入口**
+首次 suite 准确发现 `freertos_frame_contract` TIMEOUT。VCD 定位为 startup 未初始化
+`gp/tp`，导致 frame contract 的 x3/x4 比较传播 X；补齐 psABI `__global_pointer$` 与
+确定的 `gp/tp` 初始化后，单 case 与完整 suite 均通过。
+
+- [x] **Step 3: 补 Make 与 export 入口**
 
 Make targets：
 
@@ -885,12 +894,12 @@ freertos-load:
 ISE export 必须检查 submodule、复制 kernel source/include 与 `firmware/freertos`，并用
 50 MHz 构建 `freertos_smoke` payload；不把 kernel C 文件加入 RTL source list。
 
-- [ ] **Step 4: 把 freertos suite 接入 local/all**
+- [x] **Step 4: 把 freertos suite 接入 local/all**
 
 只有独立 suite 全绿后，才在 `local` 中加入 `@freertos`。保持 `.NOTPARALLEL`，避免多个
 firmware case 争用产物。
 
-- [ ] **Step 5: 运行完整自动 Gate 5**
+- [x] **Step 5: 运行完整自动 Gate 5**
 
 Run:
 
@@ -906,7 +915,11 @@ git diff --check
 
 Expected: 所有 suite 0 failure；`git diff --check` 无输出。
 
-- [ ] **Step 6: 更新文档为实际实现状态**
+实际结果：`freertos 6/6`、`platform 14/14`、`soc 23/23`、`rv32i_safe 1/1`、
+`rv32mi_dark 10/10`、聚合 `all 59/59`，且最终 ISE export 与 50 MHz Make targets
+均成功。
+
+- [x] **Step 6: 更新文档为实际实现状态**
 
 记录：
 
@@ -917,10 +930,12 @@ Expected: 所有 suite 0 failure；`git diff --check` 无输出。
 - FreeRTOS profile 仍只支持 DarkRISCV；
 - Bad Apple 尚未在本计划中迁移。
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add scripts/test_catalog.json Makefile scripts/export_ise_project.sh \
+  firmware/startup.S firmware/linker.ld firmware/tests/freertos_smoke.c \
+  sim/tb_freertos_smoke.v sim/run_sim.sh \
   docs/DEV_FLOW.md docs/darkriscv_wrapper_summary.md docs/FREERTOS_PORT_DESIGN.md
 git commit -m "test: 接入 FreeRTOS 自动回归与上板入口"
 ```
@@ -937,16 +952,17 @@ git commit -m "test: 接入 FreeRTOS 自动回归与上板入口"
 - Consumes: 自动 Gate 5 全绿、`make freertos-smoke`、`make freertos-load`。
 - Produces: 允许开始 `freertos-bad-apple` 独立设计/计划的硬件证据。
 
-- [ ] **Step 1: 导出并生成 FreeRTOS 工程**
+- [x] **Step 1: 导出并生成 FreeRTOS 工程**
 
 Run:
 
 ```bash
-bash scripts/export_ise_project.sh minisoc_dark
+bash scripts/export_ise_project.sh minisoc_freertos_dark
 make freertos-smoke
 ```
 
-Expected: export/build 成功，firmware `.bin` 小于 64 KiB。
+Expected: export/build 成功，firmware `.bin` 小于 64 KiB。当前自动结果为
+`11460 bytes`。
 
 - [ ] **Step 2: 由开发者运行 ISE Map/PAR**
 
@@ -972,10 +988,8 @@ make freertos-load PORT=COM8
 人工验收：
 
 ```text
-[ ] UART 输出 FreeRTOS smoke start
-[ ] 两个 task 的周期状态都出现
-[ ] LED 持续显示任务切换而非固定死值
 [ ] UART 输出 freertos smoke pass
+[ ] LED 最终显示 5
 [ ] 无 fatal/assert/stack overflow 错误码
 ```
 
