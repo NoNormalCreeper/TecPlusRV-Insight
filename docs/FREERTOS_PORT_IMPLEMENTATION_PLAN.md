@@ -32,6 +32,7 @@
 - `.gitmodules` / `third_party/FreeRTOS-Kernel`：固定的官方 kernel submodule。
 - `firmware/freertos/FreeRTOSConfig.h`：全仓唯一 kernel 配置。
 - `firmware/freertos/portmacro.h`：RV32I 类型、yield、critical 与 alignment 契约。
+- `firmware/freertos/compat/stdlib.h`、`string.h`：无 libc headers 工具链所需的最小标准声明，不提供 malloc/newlib。
 - `firmware/freertos/port.c`：初始 frame、scheduler、tick/yield trap 分发。
 - `firmware/freertos/freertos_hooks.c`：assert、stack overflow 与 task return fatal hook。
 - `firmware/tests/freertos_build_contract.c`：profile/header/build contract。
@@ -109,6 +110,8 @@ Expected: 只保留用户已有的 `.gitignore`、diary、issue draft；若出�
 - Create: `third_party/FreeRTOS-Kernel` (git submodule, tag `V11.3.0`)
 - Create: `firmware/freertos/FreeRTOSConfig.h`
 - Create: `firmware/freertos/portmacro.h`
+- Create: `firmware/freertos/compat/stdlib.h`
+- Create: `firmware/freertos/compat/string.h`
 - Create: `firmware/freertos/freertos_hooks.c`
 - Create: `firmware/tests/freertos_build_contract.c`
 - Create: `scripts/test_freertos_build_contract.sh`
@@ -119,7 +122,7 @@ Expected: 只保留用户已有的 `.gitignore`、diary、issue draft；若出�
 - Consumes: RISC-V GCC、现有 linker/startup、`FIRMWARE_PROFILE`/`FIRMWARE_MAIN`/`FIRMWARE_OUT`。
 - Produces: `FIRMWARE_PROFILE=freertos`；`FreeRTOS.h`/`task.h`/`queue.h` 可用；profile-only `-march=rv32i_zicsr`、section GC 与 `FREERTOS_CPU_CLOCK_HZ`；`freertos_assert_fail()`、`freertos_task_returned()`、`freertos_fatal_trap()`。
 
-- [ ] **Step 1: 写 build contract 失败测试**
+- [x] **Step 1: 写 build contract 失败测试**
 
 新增 `firmware/tests/freertos_build_contract.c`：
 
@@ -172,7 +175,7 @@ test "$bin_bytes" -lt 65536
 echo "PASS: FreeRTOS profile 固定 V11.3.0 且 BRAM image=${bin_bytes} bytes"
 ```
 
-- [ ] **Step 2: 运行测试确认 RED**
+- [x] **Step 2: 运行测试确认 RED**
 
 Run:
 
@@ -182,7 +185,7 @@ bash scripts/test_freertos_build_contract.sh
 
 Expected: FAIL at missing `third_party/FreeRTOS-Kernel/tasks.c` or unknown `FIRMWARE_PROFILE=freertos`。
 
-- [ ] **Step 3: 引入固定 submodule**
+- [x] **Step 3: 引入固定 submodule**
 
 Run:
 
@@ -194,7 +197,7 @@ git submodule status third_party/FreeRTOS-Kernel
 
 Expected: submodule 状态指向 V11.3.0 commit，前缀不是 `-` 或 `+`。
 
-- [ ] **Step 4: 写最小 FreeRTOSConfig.h**
+- [x] **Step 4: 写最小 FreeRTOSConfig.h**
 
 `firmware/freertos/FreeRTOSConfig.h` 固定以下配置：
 
@@ -217,6 +220,9 @@ Expected: submodule 状态指向 V11.3.0 commit，前缀不是 `-` 或 `+`。
 #define configMAX_TASK_NAME_LEN 16U
 #define configTICK_TYPE_WIDTH_IN_BITS TICK_TYPE_WIDTH_32_BITS
 #define configIDLE_SHOULD_YIELD 1
+#define configUSE_IDLE_HOOK 0
+#define configUSE_TICK_HOOK 0
+#define configUSE_CO_ROUTINES 0
 #define configUSE_TASK_NOTIFICATIONS 1
 #define configTASK_NOTIFICATION_ARRAY_ENTRIES 1
 #define configQUEUE_REGISTRY_SIZE 0
@@ -251,7 +257,7 @@ void freertos_assert_fail(const char *file, unsigned int line);
 #endif
 ```
 
-- [ ] **Step 5: 写最小 portmacro.h 和 fatal hooks**
+- [x] **Step 5: 写最小 portmacro.h、compat headers 和 fatal hooks**
 
 `portmacro.h` 必须完整给出 RV32I 类型、16-byte alignment、`ecall` yield、MIE 开关、TCB nesting：
 
@@ -311,7 +317,11 @@ void vApplicationStackOverflowHook(TaskHandle_t task, char *name);
 
 assert、stack overflow、task return 和 fatal trap 都写各自独立的 `test_exit` 错误码并停机；不得在 timer ISR 中打印 UART。`file`、`line`、`task`、`name` 在首轮仅用于避免丢失接口信息，不依赖 UART 才能判定失败。
 
-- [ ] **Step 6: 扩展 build profile**
+由于本机 `riscv64-unknown-elf-gcc` 不提供 libc headers，`compat/stdlib.h` 只定义
+`NULL`/`SIZE_MAX`，`compat/string.h` 只声明现有 runtime 或 kernel 会引用的 string
+接口。不得在这里加入 allocator 或伪造完整 libc。
+
+- [x] **Step 6: 扩展 build profile**
 
 `scripts/build_firmware.sh` 的 `freertos)` 分支必须：
 
@@ -320,7 +330,7 @@ FREERTOS_KERNEL="$REPO_ROOT/third_party/FreeRTOS-Kernel"
 FREERTOS_CPU_CLOCK_HZ=${FREERTOS_CPU_CLOCK_HZ:-50000000}
 MARCH=rv32i_zicsr  # 老 GCC 继续沿用现有探测回退
 CFLAGS="$CFLAGS -ffunction-sections -fdata-sections -DFREERTOS_CPU_CLOCK_HZ=$FREERTOS_CPU_CLOCK_HZ"
-INCLUDES="$INCLUDES -I$REPO_ROOT/firmware/freertos -I$FREERTOS_KERNEL/include"
+INCLUDES="$INCLUDES -I$REPO_ROOT/firmware/freertos/compat -I$REPO_ROOT/firmware/freertos -I$FREERTOS_KERNEL/include"
 LDFLAGS="$LDFLAGS -Wl,--gc-sections"
 PROFILE_SOURCES="$FREERTOS_KERNEL/tasks.c $FREERTOS_KERNEL/queue.c $FREERTOS_KERNEL/list.c $REPO_ROOT/firmware/freertos/freertos_hooks.c"
 ```
@@ -331,7 +341,7 @@ PROFILE_SOURCES="$FREERTOS_KERNEL/tasks.c $FREERTOS_KERNEL/queue.c $FREERTOS_KER
 缺少 FreeRTOS-Kernel；请运行 git submodule update --init --recursive
 ```
 
-- [ ] **Step 7: 运行测试确认 GREEN**
+- [x] **Step 7: 运行测试确认 GREEN**
 
 Run:
 
@@ -342,11 +352,12 @@ make firmware
 
 Expected: contract 输出 `PASS`；默认 baremetal 仍构建成功。
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add .gitmodules third_party/FreeRTOS-Kernel \
   firmware/freertos/FreeRTOSConfig.h firmware/freertos/portmacro.h \
+  firmware/freertos/compat/stdlib.h firmware/freertos/compat/string.h \
   firmware/freertos/freertos_hooks.c firmware/tests/freertos_build_contract.c \
   scripts/test_freertos_build_contract.sh scripts/build_firmware.sh Makefile
 git commit -m "build: 接入固定版本 FreeRTOS kernel"

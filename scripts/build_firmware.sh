@@ -56,20 +56,46 @@ trap cleanup EXIT
 # 否则会在链接期报 undefined reference to `memcpy`/`memset`。
 MARCH=rv32i
 PROFILE_SOURCES=""
+EXTRA_CFLAGS=""
+EXTRA_INCLUDES=""
+EXTRA_LDFLAGS=""
+
+select_zicsr_march() {
+    # 新工具链要求显式声明 Zicsr；旧 GCC 10 只接受 rv32i，
+    # 但其 assembler 仍能正确接受 CSR 指令。
+    if "$CC" -march=rv32i_zicsr -mabi=ilp32 \
+        -E -x c /dev/null -o /dev/null >/dev/null 2>&1; then
+        MARCH=rv32i_zicsr
+    fi
+}
 
 case "$FIRMWARE_PROFILE" in
     baremetal)
         ;;
     dark_irq)
-        # 新工具链按当前 ISA spelling 使用 Zicsr；旧 GCC 10 只接受 rv32i，
-        # 但仍能正确汇编 CSR 指令，因此先探测再回退。
-        if "$CC" -march=rv32i_zicsr -mabi=ilp32 -E -x c /dev/null -o /dev/null >/dev/null 2>&1; then
-            MARCH=rv32i_zicsr
-        fi
+        select_zicsr_march
         PROFILE_SOURCES="
 $REPO_ROOT/firmware/runtime/trap_entry.S
 $REPO_ROOT/firmware/runtime/trap.c
 $REPO_ROOT/firmware/drivers/machine_timer.c
+"
+        ;;
+    freertos)
+        FREERTOS_KERNEL="$REPO_ROOT/third_party/FreeRTOS-Kernel"
+        FREERTOS_CPU_CLOCK_HZ=${FREERTOS_CPU_CLOCK_HZ:-50000000}
+        if [ ! -f "$FREERTOS_KERNEL/tasks.c" ]; then
+            echo "缺少 FreeRTOS-Kernel；请运行 git submodule update --init --recursive" >&2
+            exit 1
+        fi
+        select_zicsr_march
+        EXTRA_CFLAGS="-ffunction-sections -fdata-sections -DFREERTOS_CPU_CLOCK_HZ=$FREERTOS_CPU_CLOCK_HZ"
+        EXTRA_INCLUDES="-I$REPO_ROOT/firmware/freertos/compat -I$REPO_ROOT/firmware/freertos -I$FREERTOS_KERNEL/include"
+        EXTRA_LDFLAGS="-Wl,--gc-sections"
+        PROFILE_SOURCES="
+$FREERTOS_KERNEL/tasks.c
+$FREERTOS_KERNEL/queue.c
+$FREERTOS_KERNEL/list.c
+$REPO_ROOT/firmware/freertos/freertos_hooks.c
 "
         ;;
     *)
@@ -78,9 +104,9 @@ $REPO_ROOT/firmware/drivers/machine_timer.c
         ;;
 esac
 
-CFLAGS="-march=$MARCH -mabi=ilp32 -ffreestanding -nostdlib -nostartfiles -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror -Os"
-INCLUDES="-I$REPO_ROOT/firmware"
-LDFLAGS="-T $REPO_ROOT/firmware/linker.ld"
+CFLAGS="-march=$MARCH -mabi=ilp32 -ffreestanding -nostdlib -nostartfiles -fno-tree-loop-distribute-patterns -Wall -Wextra -Werror -Os $EXTRA_CFLAGS"
+INCLUDES="-I$REPO_ROOT/firmware $EXTRA_INCLUDES"
+LDFLAGS="-T $REPO_ROOT/firmware/linker.ld $EXTRA_LDFLAGS"
 SOURCES="
 $REPO_ROOT/firmware/startup.S
 $REPO_ROOT/firmware/drivers/uart.c
