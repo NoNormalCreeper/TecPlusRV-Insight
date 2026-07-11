@@ -37,10 +37,10 @@ software timer。当前 50 MHz 构建尺寸：
 | acceptance | 22701 B | 4 B | 16840 B | 39549 B | 39564 B |
 
 `.heap` 是 64 KiB SDRAM NOLOAD reservation，不计入 BRAM image。smoke 已由用户真实
-上板输出 `freertos smoke pass`，当时 50 MHz timing slack 为 `+0.620 ns`；此后
-MiniSoC 补齐了 SDRAM subword 对齐，因此 acceptance target 仍必须重新执行 ISE
-Map/PAR/timing 和真实上板，旧 slack 不能替代本轮 Gate。Bad Apple 迁移尚未开始，仍是
-后续独立设计/计划。
+上板输出 `freertos smoke pass`，当时 50 MHz timing slack 为 `+0.620 ns`。补齐 SDRAM
+subword 对齐后，acceptance 也已完成 ISE Map/PAR/timing 和真实上板：UART 全阶段输出
+`freertos acceptance pass`、LED=`5`，重复运行通过，50 MHz timing slack 为
+`+0.590 ns`。Bad Apple 迁移尚未开始，仍是后续独立设计/计划。
 
 ## 核心选择
 
@@ -332,8 +332,8 @@ make test-freertos
 ```
 
 acceptance 必须输出 `freertos acceptance pass`、LED=`5`、`test_exit=1`，且 testbench
-观察到真实 SDRAM read/write。当前自动结果为 FreeRTOS `7/7`；ISE export 已验证可生成，
-Map/PAR/timing 与物理板 acceptance 仍待人工 Gate。
+观察到真实 SDRAM read/write。当前自动结果为 FreeRTOS `7/7`、全量回归 `62/62`；ISE
+export、Map/PAR、真实上板和重复运行均已通过，50 MHz timing slack 为 `+0.590 ns`。
 
 当前人工命令与成功判据：
 
