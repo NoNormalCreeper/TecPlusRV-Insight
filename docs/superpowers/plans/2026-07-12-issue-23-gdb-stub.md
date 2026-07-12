@@ -21,6 +21,8 @@
 - 所有新增注释、文档、测试输出和 commit message 使用中文，保留 GDB、packet、trap、UART 等常用术语。
 - 每个功能按 RED→GREEN 实施并形成独立 commit；共享 `sim/build` 的 suite 必须串行运行。
 
+> 2026-07-12 执行备注：用户要求 Task 2 之后不再即时 commit，避免权限审批阻塞；后续仍按 Task 边界记录和验证，最后再集中提交。
+
 ---
 
 ## File Structure
@@ -58,7 +60,7 @@
 - Produces: `gdb_packet_parser_init()`、`gdb_hex_nibble()`、`gdb_parse_hex_u32()`、`gdb_encode_u32_le()`、`gdb_decode_u32_le()`。
 - Invariant: `parser.payload` 只在 `GDB_PACKET_READY` 时包含 NUL-terminated payload。
 
-- [ ] **Step 1: 写 host-native 失败测试**
+- [x] **Step 1: 写 host-native 失败测试**
 
 `tests/test_gdb_packet.c` 直接喂入字节，覆盖：合法 `?`、错误 checksum、NACK、171-byte payload、512-byte overflow 后 `$` 重同步、u32 little-endian codec。测试入口使用普通 `assert()`：
 
@@ -98,7 +100,7 @@ static enum gdb_packet_event feed_text(struct gdb_packet_parser *parser,
 }
 ```
 
-- [ ] **Step 2: 接入 `gdb_packet` test target 并验证 RED**
+- [x] **Step 2: 接入 `gdb_packet` test target 并验证 RED**
 
 `sim/run_sim.sh gdb_packet` 使用 host compiler：
 
@@ -113,7 +115,7 @@ Run: `./sim/run_sim.sh gdb_packet`
 
 Expected: FAIL，因为 `firmware/gdb/gdb_packet.h`/实现尚不存在。
 
-- [ ] **Step 3: 实现最小 parser 与 codec**
+- [x] **Step 3: 实现最小 parser 与 codec**
 
 Header 固定以下 API：
 
@@ -134,19 +136,18 @@ struct gdb_packet_parser {
     unsigned int checksum;
     unsigned int received_checksum;
     unsigned int state;
-    unsigned int overflow;
 };
 ```
 
 状态机只识别 `$`、payload、`#`、两个 checksum hex digit 与顶层 `-`；任意状态收到新 `$` 都重新开始。overflow 后丢弃到下一个 `$`，不得产生 `READY`。
 
-- [ ] **Step 4: 验证 GREEN**
+- [x] **Step 4: 验证 GREEN**
 
 Run: `./sim/run_sim.sh gdb_packet`
 
 Expected: `PASS: GDB packet parser 与 codec`。
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add firmware/gdb/gdb_packet.c firmware/gdb/gdb_packet.h tests/test_gdb_packet.c sim/run_sim.sh scripts/test_catalog.json
@@ -170,7 +171,7 @@ git commit -m "feat: 实现 GDB packet parser"
 - Produces: strong `struct trap_frame *trap_dispatch(struct trap_frame *frame)`。
 - Produces: `FIRMWARE_PROFILE=gdb_stub` 与 `./sim/run_sim.sh gdb_stub`。
 
-- [ ] **Step 1: 写端到端失败 testbench**
+- [x] **Step 1: 写端到端失败 testbench**
 
 `tb_gdb_stub.v` 复用现有 MiniSoC UART bit timing，等待 firmware 执行 `ebreak` 后依次发送：
 
@@ -184,13 +185,13 @@ $g#67
 
 断言 target 分别回 ACK 与：`PacketSize=200`、empty、`OK`、`S05`、264 个 register hex 字符。`g` 中 x0 必须为 0，PC 必须等于 ELF symbol `gdb_stop_site`。
 
-- [ ] **Step 2: 接入 build/simulation target 并验证 RED**
+- [x] **Step 2: 接入 build/simulation target 并验证 RED**
 
 Run: `./sim/run_sim.sh gdb_stub`
 
 Expected: FAIL，`scripts/build_firmware.sh` 报告未知 `gdb_stub` profile 或 testbench 收不到 RSP reply。
 
-- [ ] **Step 3: 增加 `gdb_stub` profile 与 smoke firmware**
+- [x] **Step 3: 增加 `gdb_stub` profile 与 smoke firmware**
 
 Profile sources：
 
@@ -216,7 +217,7 @@ int main(void)
 }
 ```
 
-- [ ] **Step 4: 实现协商、stop reason、`g/G`**
+- [x] **Step 4: 实现协商、stop reason、`g/G`**
 
 `trap_dispatch()` 对 breakpoint/illegal/misaligned/access fault 进入 blocking loop；timer IRQ 原样返回。命令行为：
 
@@ -233,7 +234,7 @@ G               -> 写 x1..x31 + mepc，忽略 x0
 
 reply 必须保存最后一包，收到顶层 `-` 时重发；checksum error 只发送 `-`，合法 packet 先发送 `+` 再执行。
 
-- [ ] **Step 5: 验证 GREEN 与既有 trap 回归**
+- [x] **Step 5: 验证 GREEN 与既有 trap 回归**
 
 Run:
 
@@ -245,7 +246,7 @@ Run:
 
 Expected: 三项 PASS。
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Commit（按用户要求延后集中提交）**
 
 ```bash
 git add firmware/gdb/gdb_stub.c firmware/tests/gdb_stub_smoke.c scripts/build_firmware.sh sim/tb_gdb_stub.v sim/run_sim.sh scripts/test_catalog.json
@@ -265,29 +266,29 @@ git commit -m "feat: 接入 DarkRISCV GDB register stub"
 - Consumes: Task 2 stop loop。
 - Produces: `mADDR,LEN`、`MADDR,LEN:DATA`、`c`、`cADDR`。
 
-- [ ] **Step 1: 扩展失败 testbench**
+- [x] **Step 1: 扩展失败 testbench**
 
 依次验证：
 
 ```text
 m00000100,4                 -> 8 hex chars
 M00000100,4:78563412        -> OK，随后 m 返回 78563412
-M80000001,5:1122334455      -> OK，跨 word SDRAM byte write/read 一致
+M00003001,5:1122334455      -> OK，跨 word BRAM byte write/read 一致
 m10000010,1                 -> E01（拒绝 UART MMIO）
 m0000ffff,2                 -> E01（跨 BRAM 边界）
 mfffffffe,4                 -> E01（address+length overflow）
 c                           -> 无 reply，mepc 从 cooperative ebreak 推进 4
 ```
 
-继续执行后 `gdb_continue_seen == 1` 且 `test_exit == 1`。
+继续执行后 `gdb_continue_seen == 1` 且 `test_exit == 1`。SDRAM byte lane 不在此 testbench 重建第二份 SDRAM model，而由 Step 5 的既有 `minisoc_sdram_subword_dark` 端到端回归覆盖。
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
 Run: `./sim/run_sim.sh gdb_stub`
 
 Expected: FAIL，首个 `m/M` 返回 empty 或 `c` 未正确恢复。
 
-- [ ] **Step 3: 实现严格地址验证与 byte access**
+- [x] **Step 3: 实现严格地址验证与 byte access**
 
 范围检查必须使用减法形式避免 overflow：
 
@@ -301,7 +302,7 @@ static int range_inside(unsigned int addr, unsigned int len,
 
 `m/M` 的 `len` 还必须受 reply/request buffer 限制；使用 `volatile unsigned char *` 逐 byte 访问。任何 parse、长度或范围错误统一返回 `E01`，不得触碰 memory。
 
-- [ ] **Step 4: 实现 continue 语义**
+- [x] **Step 4: 实现 continue 语义**
 
 ```text
 c      + breakpoint -> mepc += 4 后返回 frame
@@ -311,7 +312,7 @@ cADDR                -> mepc = ADDR 后返回 frame
 
 只允许 4-byte aligned continue address；非法地址返回 `E01` 并留在 stop loop。
 
-- [ ] **Step 5: 验证 GREEN 与 SDRAM subword 回归**
+- [x] **Step 5: 验证 GREEN 与 SDRAM subword 回归**
 
 Run:
 
@@ -322,7 +323,7 @@ Run:
 
 Expected: 两项 PASS。
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Commit（按用户要求延后集中提交）**
 
 ```bash
 git add firmware/gdb/gdb_stub.c firmware/tests/gdb_stub_smoke.c sim/tb_gdb_stub.v
@@ -343,32 +344,32 @@ git commit -m "feat: 支持 GDB memory 与 continue"
 - Produces: `python3 scripts/gdb_stub_probe.py --port /dev/ttyUSB0 --baud 9600`。
 - Produces: 可注入 stream 的 `RspClient`，host unit test 不依赖物理串口。
 
-- [ ] **Step 1: 写失败的 Python unit test**
+- [x] **Step 1: 写失败的 Python unit test**
 
 使用 `io.BytesIO` 等价 fake stream 验证 checksum、ACK、NACK retry、empty reply、`S05` 与 264-char `g` reply；不引入 pyserial dependency 到 unit test。
 
-- [ ] **Step 2: 验证 RED**
+- [x] **Step 2: 验证 RED**
 
-Run: `python3 -m unittest tests/test_gdb_stub_probe.py -v`
+Run: `python3 -m unittest discover -s tests -p 'test_gdb_stub_probe.py' -v`
 
 Expected: FAIL，因为 `RspClient` 尚不存在。
 
-- [ ] **Step 3: 实现最小 raw probe**
+- [x] **Step 3: 实现最小 raw probe**
 
 CLI 只发送 `qSupported`、`?`、`g`、一组安全 BRAM `m`，打印 payload 并以非零 exit code 报 checksum/timeout/长度错误。物理串口通过标准库无法配置 raw baud，因此 CLI 使用已经存在的系统 `stty` 配置 fd，不新增 Python dependency。
 
-- [ ] **Step 4: 验证 GREEN 与 SoC RSP 回归**
+- [x] **Step 4: 验证 GREEN 与 SoC RSP 回归**
 
 Run:
 
 ```bash
-python3 -m unittest tests/test_gdb_stub_probe.py -v
+python3 -m unittest discover -s tests -p 'test_gdb_stub_probe.py' -v
 ./sim/run_sim.sh gdb_stub
 ```
 
 Expected: unit tests 与 CPU+UART RSP 回归均 PASS。真实 `gdb-multiarch` session 保留到 Task 5 的物理串口验收，不用第二份假 target 重复模拟。
 
-- [ ] **Step 5: 更新开发文档并 Commit**
+- [x] **Step 5: 更新开发文档（Commit 按用户要求延后）**
 
 ```bash
 git add scripts/gdb_stub_probe.py tests/test_gdb_stub_probe.py scripts/test_catalog.json docs/DEV_FLOW.md
@@ -387,7 +388,7 @@ git commit -m "test: 增加 GDB host 兼容探测"
 - Consumes: Tasks 1～4 全部 artifact。
 - Produces: 可构建、可仿真、可由 GDB 连接的 issue #23 MVP。
 
-- [ ] **Step 1: 串行运行完整相关回归**
+- [x] **Step 1: 串行运行完整相关回归**
 
 Run：
 
@@ -400,7 +401,7 @@ python3 scripts/test_runner.py run-suite rv32i_safe --keep-going
 
 Expected: platform 及 SoC 全部 PASS，RV32MI 10/10，RV32I safe PASS。禁止并行运行这些共享 `sim/build` 的 suite。
 
-- [ ] **Step 2: 构建独立 firmware artifact**
+- [x] **Step 2: 构建独立 firmware artifact**
 
 Run:
 
@@ -417,6 +418,8 @@ Expected: `.elf/.bin/.mem/.lst` 全部生成，BRAM image 低于 64 KiB。
 
 使用现有 full MiniSoC export/build 路径，确认 Map 无 `OVERMAPPED`、资源未超容量、50 MHz post-route timing slack 为正，且 GDB firmware 不要求新增 RTL。
 
+2026-07-12：当前环境未安装 `xst/map/par/trce`，本步保留为人工 Gate；本功能没有 RTL diff，不能用旧 revision 的 timing 报告冒充当前验证。
+
 - [ ] **Step 4: 物理串口验收**
 
 ```text
@@ -428,7 +431,9 @@ Expected: `.elf/.bin/.mem/.lst` 全部生成，BRAM image 低于 64 KiB。
 6. 确认 continue 后 firmware 写 test_exit=1，UART 无应用日志污染。
 ```
 
-- [ ] **Step 5: 记录不确定项并 Commit**
+2026-07-12：用户已用 `make gdb-stub-debug PORT=COM8 BOOTLOAD_BAUD=115200` 完成 Bootloader ACK、Windows xPack GDB 16.3 连接、register read、SDRAM read 和 continue。此后新增的 DWARF/source-path mapping 与二次 stop 仍需在最终 revision 再跑一次物理验收。
+
+- [x] **Step 5: 记录不确定项（Commit 按用户要求延后）**
 
 若本轮无法访问物理板或 ISE，必须在文档里明确保留未验证项，不得把仿真结果写成上板通过。完成可用证据后：
 
@@ -436,3 +441,126 @@ Expected: `.elf/.bin/.mem/.lst` 全部生成，BRAM image 低于 64 KiB。
 git add docs/DEV_FLOW.md docs/PROBES.md
 git commit -m "docs: 记录 GDB stub 验收流程"
 ```
+
+## 2026-07-12 自动验证证据
+
+- `gdb_packet`：覆盖合法/错误 checksum、NACK event、171-byte `qSupported`、overflow 重同步和 little-endian codec，PASS。
+- `gdb_stub_probe`：5 项 host fake-stream test PASS。
+- `gdb_stub_load_contract`：`gdb-stub-load` 复用原有 `bootload`/`uart_loader.py` 且 ACK 后不进入 monitor；`gdb-stub-debug` 随后启动 Windows GDB、加载 ELF、设置 baud 并连接 COM 口，PASS。
+- `gdb_stub_profile_contract`：自定义 `GDB_STUB_MAIN`、`gdb_breakpoint()`、`GDB_STUB_ACTIVE` 与用户源文件 DWARF 全部 PASS。
+- 一站式 Windows GDB 命令链 dry-run PASS；用户实际完成 115200 baud、COM8 与 Windows GDB 的物理闭环。
+- `gdb_stub`：真实 171-byte GDB 握手 request、target reply 重发、错误 checksum NACK、`vMustReplyEmpty`、`Hc/Hg`、`qAttached`、未知 query empty reply 全部 PASS。
+- stop reason 经真实 UART/RSP 验证：breakpoint `S05`、illegal instruction `S04`、misaligned/access fault `S0b`，全部 PASS。
+- register/memory 验证：`g/G`、x0 write-ignore、PC write、BRAM 跨 word `m/M`、非法 `M` 无 partial write、SDRAM write transaction，以及 MMIO/越界/overflow 拒绝全部 PASS。
+- resume 分三轮验证：普通 cooperative `c` 推进 4 并完成第二次 `ebreak` 主动 stop/resume、`G` 显式写 PC 后 `c` 不再推进、`cADDR` 精确跳转，全部 PASS。
+- `platform` 19/19、`soc` 26/26、`rv32mi_dark` 10/10、`rv32i_safe` PASS。
+- 独立 `gdb_stub` firmware 构建成功，BRAM image 8,992 bytes。
+- Task 2 之后修改按用户要求保留为未提交 worktree diff，等待后续集中 commit。
+
+---
+
+### Task 6: 收口用户程序调试契约
+
+**Files:**
+- Create: `firmware/gdb/gdb_stub.h`
+- Modify: `firmware/gdb/gdb_stub.c`
+- Modify: `firmware/tests/gdb_stub_smoke.c`
+- Modify: `scripts/build_firmware.sh`
+- Modify: `Makefile`
+- Modify: `sim/tb_gdb_stub.v`
+- Modify: `scripts/test_gdb_stub_load_contract.sh`
+- Create: `scripts/test_gdb_stub_profile_contract.sh`
+- Modify: `scripts/test_catalog.json`
+
+**Interfaces:**
+- Produces: `gdb_breakpoint()`，用户程序通过 `trap_init()` + `gdb_breakpoint()` cooperative 停机。
+- Produces: `GDB_STUB_MAIN=<path>`，覆盖一站式 debug target 的默认 smoke 入口。
+- Produces: GDB profile 的 `GDB_STUB_ACTIVE=1` 与 DWARF debug sections。
+- Invariant: 首次连接仍由 host 发 request；已连接后的再次 `ebreak/fault` 必须由 target 主动发送 stop reply。
+
+- [x] **Step 1: 扩展失败契约测试**
+
+`test_gdb_stub_load_contract.sh` dry-run `GDB_STUB_MAIN=/tmp/user.c`，断言构建入口使用该路径。`test_gdb_stub_profile_contract.sh` 构建 smoke ELF，断言用户源文件出现在 `.debug_info`，并编译调用 `gdb_breakpoint()` 的入口。
+
+- [x] **Step 2: 验证 RED**
+
+Run:
+
+```bash
+bash scripts/test_gdb_stub_load_contract.sh
+bash scripts/test_gdb_stub_profile_contract.sh
+```
+
+Expected: 前者因 `GDB_STUB_MAIN` 未接线失败；后者因缺少 `gdb_stub.h` 或用户代码无 DWARF 失败。
+
+- [x] **Step 3: 实现最小用户调试契约**
+
+`Makefile` 新增：
+
+```make
+GDB_STUB_MAIN ?= $(REPO_ROOT)/firmware/tests/gdb_stub_smoke.c
+```
+
+`gdb_stub` profile 增加 `-g3 -DGDB_STUB_ACTIVE=1`。`gdb_stub.h` 只提供：
+
+```c
+static inline void gdb_breakpoint(void)
+{
+    __asm__ volatile ("ebreak" ::: "memory");
+}
+```
+
+- [x] **Step 4: 扩展二次 stop 端到端测试并验证 RED**
+
+cooperative resume 模式在第一次 `c` 后执行第二个 `ebreak`；testbench 不发送 request，直接等待 target 的 `S05`，随后再发 `c` 才允许 firmware 写 `test_exit=2`。旧实现应 TIMEOUT。
+
+- [x] **Step 5: 实现已连接 target 的主动 stop reply**
+
+`gdb_stub.c` 以静态 `debugger_attached` 记录是否处理过合法 request。第二次及后续 trap 进入 remote loop 时，先把 `S05/S04/S0b` 保存为 last reply 并发送，再等待 host ACK/request；首次 boot-and-stop 行为不变。
+
+- [x] **Step 6: 验证 GREEN**
+
+Run:
+
+```bash
+python3 scripts/test_runner.py run-case gdb_stub_load_contract
+python3 scripts/test_runner.py run-case gdb_stub_profile_contract
+python3 scripts/test_runner.py run-case gdb_stub
+```
+
+Expected: 三项 PASS；`gdb_stub` 三种 resume 模式中 cooperative 模式额外完成第二次 stop/resume。
+
+### Task 7: 拆分开发文档与用户指南
+
+**Files:**
+- Create: `docs/GDB_STUB_DEVELOPMENT.md`
+- Create: `docs/GDB_USER_GUIDE.md`
+- Modify: `docs/DEV_FLOW.md`
+- Modify: `docs/WINDOWS_WSL_UART.md`
+- Modify: `README.md`
+
+- [x] **Step 1: 编写开发文档**
+
+覆盖 trap/context/RSP 数据流、packet 子集、寄存器布局、BRAM/SDRAM 白名单、UART 所有权、首次/再次 stop 状态、构建 profile、仿真与扩展边界。
+
+- [x] **Step 2: 编写用户指南**
+
+覆盖 Windows xPack GDB、WSL 一键命令、自定义 `GDB_STUB_MAIN`、用户程序模板、寄存器/内存/SDRAM/原始 packet 演示、UART 日志策略、已知限制和故障排查。
+
+- [x] **Step 3: 收敛入口文档**
+
+`DEV_FLOW.md` 和 `WINDOWS_WSL_UART.md` 只保留简明流程并链接两份专文；README 增加 GDB 入口，不复制协议细节。
+
+- [x] **Step 4: 合并前验证**
+
+Run:
+
+```bash
+python3 scripts/test_runner.py run-suite platform --keep-going
+python3 scripts/test_runner.py run-suite soc --keep-going
+python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
+python3 scripts/test_runner.py run-suite rv32i_safe --keep-going
+git diff --check
+```
+
+Expected: 全部 PASS；当前无 ISE/物理板的项目继续明确记录为人工 Gate，真实 115200 Windows GDB session 使用用户本轮日志作为人工验收证据。

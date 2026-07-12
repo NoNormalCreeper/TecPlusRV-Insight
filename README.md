@@ -14,6 +14,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 可切换 `PicoRV32 / DarkRISCV` 的 MiniSoC 板级 top 与 SoC 基础模块
 - U2 32 MiB SDRAM data-only 控制器与 MiniSoC 集成
 - UART RX -> BRAM -> CPU release 的 bootloader v1
+- 复用 Bootloader/UART 的 DarkRISCV cooperative GDB stub
 - 裸机 firmware 骨架
 - 本地构建和仿真入口
 
@@ -42,6 +43,8 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 开发与验证流程：`docs/DEV_FLOW.md`
 - UART bootloader 协议：`docs/BOOTLOADER_PROTOCOL.md`
 - Windows + WSL2 串口下载：`docs/WINDOWS_WSL_UART.md`
+- GDB 配置、体验与用户程序演示：`docs/GDB_USER_GUIDE.md`
+- GDB stub 实现与扩展：`docs/GDB_STUB_DEVELOPMENT.md`
 - 双核 wrapper 与 ISE/性能说明：`docs/darkriscv_wrapper_summary.md`
 
 ## 最简单环境配置教程

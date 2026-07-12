@@ -460,9 +460,9 @@ python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
 - `baremetal`：默认 profile，沿用现有 startup/runtime，不链接 trap runtime，也不会主动开启 IRQ。
 - `dark_irq`：当前已实现的 DarkRISCV-only 基础 profile，链接统一 trap frame 与 machine timer driver；应用仍须显式调用 `trap_init()` 和 enable helper。
 - `freertos`：已实现的 DarkRISCV-only profile，复用同一个 trap frame；官方 kernel 与 TecPlusRV 专用薄 port、应用静态链接成单一 payload。它是多个 demo 共用的运行 profile，不属于 Bad Apple 私有实现。
-- `gdb-stub`：后续 DarkRISCV-only profile，复用同一个 trap frame；`ebreak/fault` 进入 remote loop。
+- `gdb_stub`：已实现的 DarkRISCV-only cooperative profile，复用同一个 trap frame；`ebreak/fault` 进入 remote loop，首版支持 `?`、`g/G`、`m/M` 与 `c`。
 
-`gdb-stub` 目前仍只是稳定的接入契约；`freertos` 已是可选构建值。bootloader 与 bitstream 继续共用，每次只装载一个 BRAM firmware image；FreeRTOS 是 bootloader 可装载的 payload，不是另一套 bootloader。
+`gdb_stub`、`freertos` 都是可选构建值。bootloader 与 bitstream 继续共用，每次只装载一个 BRAM firmware image；二者都是 bootloader 可装载的 payload，不是另一套 bootloader。
 
 FreeRTOS 不直接链接官方 RISC-V `portASM.S`，避免引入第二套 trap entry 和 context
 layout；项目只复用官方 kernel 的调度、delay 与 queue，实现映射到现有 canonical
@@ -486,6 +486,33 @@ firmware 还必须写 `test_exit=1`。若只有 LED=F 或始终没有 pass 文�
 当前 profile 只支持 `CPU_IMPL=1` 的 DarkRISCV。
 
 DarkRISCV core 默认具备 IRQ 能力，但普通 baremetal payload 不会主动安装 trap handler 或开启 IRQ。`make bootload` 默认仍加载 `baremetal + firmware/main.c`；需要其他 payload 时可通过 `FIRMWARE_PROFILE` 和 `FIRMWARE_MAIN` 覆盖同一个上传入口。
+
+### GDB stub 开发与上板顺序
+
+GDB stub 的实现边界、trap/RSP 数据流、UART 所有权和扩展规则统一见 [`GDB_STUB_DEVELOPMENT.md`](GDB_STUB_DEVELOPMENT.md)。Windows xPack 安装、一站式连接、自定义用户程序和演示命令统一见 [`GDB_USER_GUIDE.md`](GDB_USER_GUIDE.md)。
+
+本地聚焦回归：
+
+```bash
+python3 scripts/test_runner.py run-case gdb_packet
+python3 scripts/test_runner.py run-case gdb_stub_probe
+python3 scripts/test_runner.py run-case gdb_stub_load_contract
+python3 scripts/test_runner.py run-case gdb_stub_profile_contract
+python3 scripts/test_runner.py run-case gdb_stub
+```
+
+Windows GDB 一站式入口：
+
+```bash
+make gdb-stub-debug \
+  PORT=COM8 \
+  BOOTLOAD_BAUD=115200 \
+  GDB_STUB_MAIN="$PWD/firmware/apps/example.c"
+```
+
+该 target 仍复用原有 Bootloader 和 `uart_loader.py`；ACK 后释放 COM 口，再启动 Windows GDB。GDB profile 期间 UART 归 RSP 独占，应用日志应改为可由 GDB 读取的 memory state。
+
+2026-07-12 已完成 115200 baud Bootloader、Windows xPack GDB 16.3、COM8 register/SDRAM read/continue 的真实上板闭环。后续 RTL、bitstream、baud、trap layout 或 stub protocol 变化后必须重新验收。
 
 ### 场景 3：改 board probe
 

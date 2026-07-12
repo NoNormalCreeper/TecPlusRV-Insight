@@ -101,6 +101,27 @@ loader 自身提示使用 cyan、错误使用 red；serial monitor 不修改 pay
 
 上传按 64-byte chunk 进行。如果在 `收到 READY，按 64-byte chunk 发送 ...` 之后再次按 RESET，host 会在收到新 READY 后废弃当前 attempt，并从 magic 自动整包重传；默认最多重传 3 次，超过上限才会失败退出。
 
+### 4a. 一条命令进入 Windows GDB
+
+GDB stub 继续保持同样分工：WSL 构建，Windows Python 上传，Windows GDB 直接打开 `COMx`。完整安装、用户程序模板、演示命令和故障排查见 [`GDB_USER_GUIDE.md`](GDB_USER_GUIDE.md)，实现边界见 [`GDB_STUB_DEVELOPMENT.md`](GDB_STUB_DEVELOPMENT.md)。
+
+安装包含 `riscv-none-elf-gdb.exe` 的 Windows xPack RISC-V 工具链后执行：
+
+```bash
+make gdb-stub-debug PORT=COM8
+```
+
+该 target 复用原有 `bootload` 和 `uart_loader.py`，上传时不进入 serial monitor；收到 ACK 并释放 COM8 后，WSL 通过 Windows Interop 启动 GDB，自动加载 `firmware/build/bootload/firmware.elf`、设置 9600 baud 并连接 COM8。GDB 是 Windows 进程，CP2102 始终归 Windows，不需要 usbipd。
+
+如果 GDB 没有加入 Windows PATH，可传入它的 WSL 路径：
+
+```bash
+make gdb-stub-debug PORT=COM8 \
+  WINDOWS_GDB=/mnt/c/Tools/xpack-riscv/bin/riscv-none-elf-gdb.exe
+```
+
+调试自定义用户程序时增加 `GDB_STUB_MAIN="$PWD/<源文件>"`。连接完成后直接使用 `info registers`、`list`、`x/8wx 0x80000000` 和 `continue`。
+
 ### 5. 重复下载新程序
 
 退出 monitor、修改源码后，再次执行同一条命令：
