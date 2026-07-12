@@ -48,7 +48,7 @@ SEED ?= 0x12345678
 START ?= 100
 DURATION ?= 40
 
-.PHONY: help check-env firmware timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load bad-apple-window-build bad-apple-window-preview bad-apple-window-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci perf benchmark ise-export
+.PHONY: help check-env firmware timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load bad-apple-window-build bad-apple-window-preview bad-apple-window-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci ci-full perf benchmark ise-export
 
 help:
 	@echo "常用目标："
@@ -82,7 +82,8 @@ help:
 	@echo "  make test-freertos             跑 FreeRTOS build/port/demo 自动回归"
 	@echo "  make test-dual-core            跑双核 regression（如果当前分支提供）"
 	@echo "  make test-all                  跑全部正确性检查"
-	@echo "  make ci                        CI 入口，聚合失败后统一返回非零"
+	@echo "  make ci                        push/PR 快速 CI，跳过分钟级长仿真"
+	@echo "  make ci-full                   手动完整 CI，运行 all suite"
 	@echo "  python3 scripts/test_runner.py list   列出 catalog 里的 suite / case"
 	@echo "  make perf / make benchmark     跑完整双核 benchmark，并生成日志、表格和环境快照"
 	@echo "  make ise-export ISE_TARGET=minisoc   导出 ISE 工程所需文件到新目录"
@@ -286,6 +287,9 @@ test-all:
 	$(TEST_RUNNER) run-suite all
 
 ci:
+	$(TEST_RUNNER) run-suite ci --keep-going
+
+ci-full:
 	$(TEST_RUNNER) run-suite all --keep-going
 
 perf: benchmark

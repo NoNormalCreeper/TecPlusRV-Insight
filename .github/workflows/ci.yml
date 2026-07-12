@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -26,6 +27,7 @@ jobs:
           sudo apt-get install -y \
             make \
             python3 \
+            ffmpeg \
             iverilog \
             gcc-riscv64-unknown-elf \
             binutils-riscv64-unknown-elf
@@ -34,7 +36,12 @@ jobs:
         run: make check-env
 
       - name: Test
-        run: make ci
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            make ci-full
+          else
+            make ci
+          fi
 
       - name: Upload debug artifacts
         if: failure()

@@ -478,5 +478,26 @@ exit 7
         self.assertIn("suite 引用出现循环", result.stderr)
 
 
+class CiSuiteContractTest(unittest.TestCase):
+    def test_ci_is_fast_subset_of_all(self):
+        catalog_path = Path(__file__).with_name("test_catalog.json")
+        loaded = __import__("scripts.test_runner", fromlist=["Catalog"]).Catalog.load(
+            catalog_path
+        )
+        ci_cases = set(loaded.suite_case_ids["ci"])
+        all_cases = set(loaded.suite_case_ids["all"])
+        long_cases = {
+            "bad_apple_minimal_pico",
+            "freertos_yield_smoke",
+            "freertos_smoke",
+            "bad_apple_full",
+            "dual_core_regression",
+        }
+
+        self.assertLess(ci_cases, all_cases)
+        self.assertTrue(long_cases <= all_cases)
+        self.assertTrue(ci_cases.isdisjoint(long_cases))
+
+
 if __name__ == "__main__":
     unittest.main()

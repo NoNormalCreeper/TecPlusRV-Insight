@@ -13,9 +13,10 @@ if [ ! -f "$KERNEL/tasks.c" ]; then
     exit 1
 fi
 
-kernel_tag=$(git -C "$KERNEL" describe --tags --exact-match 2>/dev/null || true)
-if [ "$kernel_tag" != "V11.3.0" ]; then
-    echo "FAIL: FreeRTOS-Kernel 必须固定为 V11.3.0，当前为 ${kernel_tag:-未知 revision}" >&2
+expected_kernel_revision=9b777ae5c5b8e9e456065a00294d1e5f5f9facf5
+kernel_revision=$(git -C "$KERNEL" rev-parse HEAD 2>/dev/null || true)
+if [ "$kernel_revision" != "$expected_kernel_revision" ]; then
+    echo "FAIL: FreeRTOS-Kernel 必须固定为 V11.3.0，当前 revision=${kernel_revision:-未知}" >&2
     exit 1
 fi
 

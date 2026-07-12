@@ -40,6 +40,7 @@ tecplus_minisoc_top #(
     .UART_BAUD(100000),
     .CPU_IMPL(CPU_IMPL),
     .BRAM_ADDR_WIDTH(14),
+    .BOOTLOADER_ENABLE(0),
     .BRAM_INIT_FILE(FIRMWARE_MEM_FILE)
 ) dut (
     .clk(clk), .reset(reset), .key(key), .led(led),
