@@ -65,7 +65,7 @@ frame counter 为基准，不以 UART、FreeRTOS tick 或主循环速度累计�
 
 播放器按 hardware VGA frame counter 每秒输出紧凑进度 `t=Ns`，完整一轮为
 `t=1s..t=219s`；默认 9600 baud 下短行阻塞小于一个 VGA tick。完成一轮后输出 PASS
-并重新从第一帧循环。
+并等待 10 秒，再从第一帧循环。
 
 ## BAM2 格式
 

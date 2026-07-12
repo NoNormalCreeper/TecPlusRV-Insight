@@ -18,6 +18,7 @@
 #define AUDIO_QUEUE_LENGTH 16u
 #define PLAYBACK_STACK_WORDS 768u
 #define AUDIO_STACK_WORDS 256u
+#define REPLAY_DELAY_MS 10000u
 
 struct bam2_info {
     unsigned int total_words;
@@ -220,7 +221,7 @@ static void playback_task(void *argument)
             mmio_write(TINYBUS_TEST_EXIT, 1u);
             completed_once = 1u;
         }
-        vTaskDelay(500u);
+        vTaskDelay(pdMS_TO_TICKS(REPLAY_DELAY_MS));
     }
 }
 

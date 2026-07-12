@@ -165,7 +165,8 @@ opcode、压缩字典或 custom glyph。
 `firmware/tests/bad_apple_full.c` 在启动时完整验证 BAM2 header、offset、所有 video
 records 和 audio tick；播放时以 hardware VGA frame counter 为唯一时间基准。UART
 每秒输出紧凑进度 `t=Ns`，从 `t=1s` 到 `t=219s`；默认 9600 baud 下单行阻塞约
-5..9 ms，小于一个约 16.8 ms VGA tick。旧的每 100 帧点号输出已移除。
+5..9 ms，小于一个约 16.8 ms VGA tick。旧的每 100 帧点号输出已移除。每轮完成后
+立即输出 PASS、LED=`5`、`test_exit=1`，等待 10 秒再从首帧和 `t=1s` 重新播放。
 
 FreeRTOS 是独立的通用 firmware profile，不是 Bad Apple 私有依赖，也不能用 Bad
 Apple 代替 port bring-up。必须先由 `freertos-smoke` 验证 tick/yield/delay/抢占，再由
@@ -184,7 +185,7 @@ buzzer。首轮不增加 mutex，status/log task 也不作为播放成立的前�
 - 2174 个 `64x48` 1bpp frames；
 - 1376 个单音 MIDI events，解析正式两轨钢琴 MIDI；
 - asset `902048 bytes`；
-- FreeRTOS firmware BRAM image `20940 bytes`。
+- FreeRTOS firmware BRAM image `20892 bytes`。
 
 自动验证：
 
