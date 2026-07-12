@@ -21,13 +21,15 @@ wire [15:0] sh_db;
 wire [31:0] model_read_command_count;
 wire [31:0] model_write_command_count;
 
-reg [31:0] asset_words [0:218];
+reg [31:0] asset_words [0:224];
 integer asset_word_count;
 integer i;
 integer cycles;
 integer bitmap_write_count;
 integer buzzer_write_count;
 integer uart_write_count;
+integer traffic_write_count;
+reg [3:0] beat_led_seen;
 reg spk_toggled;
 reg previous_spk;
 integer progress_state;
@@ -89,6 +91,16 @@ always @(posedge clk) begin
             buzzer_write_count = buzzer_write_count + 1;
         if (dut.uart_fire)
             uart_write_count = uart_write_count + 1;
+        if (dut.traffic_write)
+            traffic_write_count = traffic_write_count + 1;
+        if (dut.respond && dut.gpio_led_sel && dut.mmio_write_en) begin
+            case (dut.req_wdata[3:0])
+                4'h1: beat_led_seen[0] = 1'b1;
+                4'h2: beat_led_seen[1] = 1'b1;
+                4'h4: beat_led_seen[2] = 1'b1;
+                4'h8: beat_led_seen[3] = 1'b1;
+            endcase
+        end
         if (dut.uart_fire) begin
             #1;
             case (progress_state)
@@ -125,6 +137,8 @@ initial begin
     bitmap_write_count = 0;
     buzzer_write_count = 0;
     uart_write_count = 0;
+    traffic_write_count = 0;
+    beat_led_seen = 4'b0000;
     spk_toggled = 1'b0;
     previous_spk = 1'b0;
     progress_state = 0;
@@ -166,6 +180,11 @@ initial begin
         !progress_seen) begin
         $display("FAIL: 外设证据不足 buzzer=%0d spk=%b uart=%0d progress=%b",
                  buzzer_write_count, spk_toggled, uart_write_count, progress_seen);
+        $finish;
+    end
+    if (traffic_write_count == 0 || beat_led_seen !== 4'b1111) begin
+        $display("FAIL: 多任务外设证据不足 traffic=%0d beat_led=%b",
+                 traffic_write_count, beat_led_seen);
         $finish;
     end
     if (model_read_command_count == 0 || model_write_command_count != 0) begin
