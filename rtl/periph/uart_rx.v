@@ -3,7 +3,7 @@
 // asserted until the consumer pulses data_ready.
 module uart_rx #(
     parameter integer CLK_FREQ = 50000000,
-    parameter integer BAUD = 9600
+    parameter integer BAUD = 115200
 ) (
     input        clk,
     input        reset,

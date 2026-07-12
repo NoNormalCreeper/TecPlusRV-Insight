@@ -1,5 +1,5 @@
 // uart_tx 的最小行为仿真。
-// 把时钟和波特率缩小到 100 Hz / 10 baud，避免仿真等真实 9600 baud 那么久。
+// 把时钟和波特率缩小到 100 Hz / 10 baud，避免仿真等真实 115200 baud 那么久。
 `timescale 1ns/1ps
 
 module tb_uart_tx;

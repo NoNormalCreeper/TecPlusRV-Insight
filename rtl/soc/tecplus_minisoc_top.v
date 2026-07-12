@@ -4,18 +4,18 @@
 
 module tecplus_minisoc_top #(
     parameter integer CLK_FREQ = 50000000,
-    parameter integer UART_BAUD = 9600,
+    parameter integer UART_BAUD = 115200,
     parameter integer CPU_IMPL = 0,
     parameter integer BRAM_ADDR_WIDTH = 14,
     parameter integer SDRAM_CLK_INVERT = 1,
-    parameter integer BOOTLOADER_ENABLE = 0,
+    parameter integer BOOTLOADER_ENABLE = 1,
     parameter integer BOOT_TIMEOUT_CYCLES = CLK_FREQ,
     // 当前 writable text/tile 原型在 LX9 MiniSoC 中会 overmap，默认不参与综合。
     // 只在保留的 Bad Apple 仿真或后续资源实验中显式设为 1。
     parameter integer VGA_TEXT_ENABLE = 0,
     // 64x48 1bpp framebuffer 以 distributed RAM 为综合目标；最终资源类型以 ISE Map 为准。
     // 若与 VGA_TEXT_ENABLE 同时打开，bitmap 路径优先。
-    parameter integer VGA_BITMAP_ENABLE = 0,
+    parameter integer VGA_BITMAP_ENABLE = 1,
     parameter VGA_MF_DEFAULT = 1'b0,
     parameter VGA_CLR_DEFAULT = 1'b1,
     parameter VGA_QD_DEFAULT = 1'b0,
