@@ -203,6 +203,8 @@ trace facility 或 runtime stats。构建使用 function/data sections 与 linke
 不同 demo 通过 `FIRMWARE_MAIN` 选择应用，共用同一个 profile、kernel、port、bitstream
 和 bootloader：
 
+面向用户的新应用放在 `firmware/apps/freertos/`，通过 `make firmware APP=freertos/<程序>.c` 或 `make firmware-load ...` 使用；完整说明见 [`FIRMWARE_GUIDE.md`](FIRMWARE_GUIDE.md)。以下 target 是仓库验收入口：
+
 ```text
 make freertos-smoke
 make freertos-queue

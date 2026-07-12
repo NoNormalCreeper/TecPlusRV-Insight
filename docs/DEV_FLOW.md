@@ -130,13 +130,16 @@
 
 ### `firmware/`
 
-用途：放裸机程序、启动代码、驱动、链接脚本。
+用途：放用户应用、启动代码、驱动、链接脚本和 firmware 验收程序。
 
 当前典型文件：
 
 - `startup.S`
 - `linker.ld`
 - `main.c`
+- `apps/baremetal/*.c`
+- `apps/irq/*.c`
+- `apps/freertos/*.c`
 - `drivers/*.h`
 - `drivers/*.c`
 
@@ -457,10 +460,12 @@ python3 scripts/test_runner.py run-suite rv32mi_dark --keep-going
 
 ### Firmware profile 边界
 
+面向用户的目录、编译、上传和调试命令统一见 [`FIRMWARE_GUIDE.md`](FIRMWARE_GUIDE.md)。内部构建把程序运行模型与调试方式分开：apps 目录表达 `baremetal/irq/freertos`，GDB 是 bare-metal 应用的可选 debug 方式。
+
 - `baremetal`：默认 profile，沿用现有 startup/runtime，不链接 trap runtime，也不会主动开启 IRQ。
 - `dark_irq`：当前已实现的 DarkRISCV-only 基础 profile，链接统一 trap frame 与 machine timer driver；应用仍须显式调用 `trap_init()` 和 enable helper。
 - `freertos`：已实现的 DarkRISCV-only profile，复用同一个 trap frame；官方 kernel 与 TecPlusRV 专用薄 port、应用静态链接成单一 payload。它是多个 demo 共用的运行 profile，不属于 Bad Apple 私有实现。
-- `gdb_stub`：已实现的 DarkRISCV-only cooperative profile，复用同一个 trap frame；`ebreak/fault` 进入 remote loop，首版支持 `?`、`g/G`、`m/M` 与 `c`。
+- `gdb_stub`：保留的内部兼容 profile，等价于 `baremetal + gdb`；用户通过 `make firmware-debug APP=baremetal/<程序>.c` 使用。
 
 `gdb_stub`、`freertos` 都是可选构建值。bootloader 与 bitstream 继续共用，每次只装载一个 BRAM firmware image；二者都是 bootloader 可装载的 payload，不是另一套 bootloader。
 
@@ -501,13 +506,13 @@ python3 scripts/test_runner.py run-case gdb_stub_profile_contract
 python3 scripts/test_runner.py run-case gdb_stub
 ```
 
-Windows GDB 一站式入口：
+Windows GDB 用户入口：
 
 ```bash
-make gdb-stub-debug \
+make firmware-debug \
+  APP=baremetal/hello.c \
   PORT=COM8 \
-  BOOTLOAD_BAUD=115200 \
-  GDB_STUB_MAIN="$PWD/firmware/apps/example.c"
+  BOOTLOAD_BAUD=115200
 ```
 
 该 target 仍复用原有 Bootloader 和 `uart_loader.py`；ACK 后释放 COM 口，再启动 Windows GDB。GDB profile 期间 UART 归 RSP 独占，应用日志应改为可由 GDB 读取的 memory state。

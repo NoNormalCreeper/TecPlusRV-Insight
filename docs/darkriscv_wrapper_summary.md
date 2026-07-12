@@ -201,9 +201,10 @@ TinyBus 本身没改成另一套协议，但它的**地位**变了。
 **firmware 开发者**
 
 - 基本不需要改 MMIO 用法
-- 新增了 `FIRMWARE_MAIN=/abs/path/to/test.c scripts/build_firmware.sh` 这种入口切换方式，便于写裸机自检和 benchmark
-- 默认 `baremetal` profile 不链接 trap runtime；DarkRISCV timer IRQ 使用显式 `dark_irq` profile
-- 后续 FreeRTOS 与 GDB stub 必须复用现有 canonical trap frame 和唯一 `mtvec` 汇编入口
+- 用户应用按运行模型放入 `firmware/apps/baremetal/`、`irq/` 或 `freertos/`，统一通过 `make firmware APP=...` 和 `make firmware-load APP=...` 使用
+- GDB 是 bare-metal 应用的 debug 方式，通过 `make firmware-debug APP=baremetal/...` 启动，不是第四类应用目录
+- `FIRMWARE_MAIN/FIRMWARE_PROFILE` 继续作为仿真、自检和 benchmark 的内部兼容入口
+- FreeRTOS 与 GDB stub 均已复用 canonical trap frame 和唯一 `mtvec` 汇编入口；完整用户流程见 [`FIRMWARE_GUIDE.md`](FIRMWARE_GUIDE.md)
 
 **MMIO / 外设开发者**
 
@@ -261,15 +262,15 @@ sim/run_sim.sh minisoc_counter_source_dark
 
 这样后续如果有人又把顶层改回 SoC 代理计数，这里会先红。
 
-## Machine trap 与 firmware profile
+## Machine trap、runtime 与 debug 组合
 
-DarkRISCV wrapper 现在额外接受 `irq_external` / `irq_timer`，MiniSoC 第一版把 external IRQ 固定为 0，把 CLINT-like machine timer 的 level IRQ 接到 MTIP。软件侧固定三类长期 profile：
+DarkRISCV wrapper 现在额外接受 `irq_external` / `irq_timer`，MiniSoC 第一版把 external IRQ 固定为 0，把 CLINT-like machine timer 的 level IRQ 接到 MTIP。软件侧固定三类长期 runtime：
 
-- `baremetal`：默认不开 IRQ，保持现有程序与 PicoRV32 路径不变。
-- `freertos`：已实现的 DarkRISCV-only 静态镜像；复用官方 kernel，但使用 TecPlusRV 专用薄 port，scheduler 通过 `trap_dispatch()` 返回新的 canonical frame。
-- `gdb-stub`：后续 DarkRISCV-only 静态镜像，复用同一 frame 进入 remote loop。
+- `baremetal` runtime：默认不开 IRQ，保持现有程序与 PicoRV32 路径不变。
+- `irq` runtime：内部兼容 profile 名为 `dark_irq`，链接 canonical trap runtime 与 machine timer，应用实现 `trap_dispatch()`。
+- `freertos` runtime：已实现的 DarkRISCV-only 静态镜像；复用官方 kernel，但使用 TecPlusRV 专用薄 port，scheduler 通过 `trap_dispatch()` 返回新的 canonical frame。
 
-当前已实现的 `dark_irq` 是后两者共用的基础验收 profile，不是第四种长期产品形态。FreeRTOS 和 GDB stub 都不得重新定义 frame，也不得另建第二个 `mtvec` 入口。
+GDB 与 runtime 正交，但当前只支持 `baremetal + gdb`。内部兼容 profile `gdb_stub` 会链接同一 trap runtime、GDB remote loop 和 auto-attach main wrapper；FreeRTOS 与 GDB 都不重新定义 frame，也不另建第二个 `mtvec` 入口。
 
 FreeRTOS TCB 的 `pxTopOfStack` 固定指向该 task 最近保存的 canonical frame。首个 task
 由 `pxPortInitialiseStack()` 在静态 stack 顶部构造同样的 frame；critical nesting 使用

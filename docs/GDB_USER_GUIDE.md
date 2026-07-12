@@ -10,10 +10,10 @@ Windows：Python、CP2102 COM 口、riscv-none-elf-gdb.exe
 FPGA：现有 MiniSoC bootloader bitstream
 ```
 
-日常使用只需一条命令：
+用户应用的目录、普通构建和上传统一见 [`FIRMWARE_GUIDE.md`](FIRMWARE_GUIDE.md)。调试 bare-metal 应用使用：
 
 ```bash
-make gdb-stub-debug PORT=COM8 BOOTLOAD_BAUD=115200
+make firmware-debug APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200
 ```
 
 它会依次构建 GDB firmware、复用原有 Bootloader 上传、释放 COM8、启动 Windows GDB、加载 ELF、映射 WSL source path、设置 baud，并执行 `target remote COM8`。
@@ -23,7 +23,7 @@ make gdb-stub-debug PORT=COM8 BOOTLOAD_BAUD=115200
 支持：
 
 - cooperative `ebreak` 和同步 fault stop；
-- 在同一 session 中经过多个显式 `gdb_breakpoint()`；
+- 在同一 session 中经过多个显式 `DEBUG_BREAK()`；
 - 读写 x0～x31 和 PC；
 - 读写 64 KiB BRAM 与 32 MiB SDRAM；
 - 函数、源码行和 global variable 的 DWARF 信息；
@@ -90,6 +90,8 @@ FPGA 中应已经下载 MiniSoC bootloader bitstream，并满足：
 
 ## 3. 运行内置 smoke
 
+下面的旧 target 专门运行仓库内部 GDB smoke；调试自己的应用优先使用 `firmware-debug APP=...`。
+
 在 WSL 仓库根目录执行：
 
 ```bash
@@ -105,8 +107,10 @@ bootloader READY
 -> loader 关闭 COM8
 -> Windows GDB 打开 firmware.elf
 -> GDB 连接 COM8
--> target 停在 gdb_stop_site
+-> target 停在 __wrap_main 的首次 auto-attach breakpoint
 ```
+
+执行一次 `continue` 后，内置 smoke 才会进入 `gdb_stop_site`。
 
 如果 GDB 不在 PATH：
 
@@ -226,11 +230,10 @@ target remote COM8
 
 ## 5. 调试自己的用户程序
 
-创建例如 `firmware/apps/gdb_demo.c`：
+创建例如 `firmware/apps/baremetal/gdb_demo.c`：
 
 ```c
-#include "gdb/gdb_stub.h"
-#include "runtime/trap.h"
+#include "runtime/debug.h"
 
 struct demo_state {
     unsigned int phase;
@@ -242,16 +245,14 @@ volatile struct demo_state demo_state;
 
 int main(void)
 {
-    trap_init();
-
     demo_state.phase = 1u;
     demo_state.input = 7u;
     demo_state.output = demo_state.input * 3u;
-    gdb_breakpoint();
+    DEBUG_BREAK();
 
     demo_state.phase = 2u;
     demo_state.output += 5u;
-    gdb_breakpoint();
+    DEBUG_BREAK();
 
     demo_state.phase = 3u;
     for (;;) {
@@ -262,10 +263,10 @@ int main(void)
 一条命令构建、上传并连接：
 
 ```bash
-make gdb-stub-debug \
+make firmware-debug \
+  APP=baremetal/gdb_demo.c \
   PORT=COM8 \
-  BOOTLOAD_BAUD=115200 \
-  GDB_STUB_MAIN="$PWD/firmware/apps/gdb_demo.c"
+  BOOTLOAD_BAUD=115200
 ```
 
 第一次停住后：
@@ -278,7 +279,7 @@ list
 continue
 ```
 
-第二个 `gdb_breakpoint()` 会主动上报新的 `SIGTRAP`，GDB 再次回到 prompt：
+后续 `DEBUG_BREAK()` 会主动上报新的 `SIGTRAP`，GDB 再次回到 prompt：
 
 ```gdb
 p/x demo_state
@@ -341,7 +342,7 @@ p/x debug_error
 ### 上传 ACK 后 GDB 无法打开 COM8
 
 - 确认上传命令没有 `--monitor`；
-- 使用 `gdb-stub-debug` 或 `gdb-stub-load`，不要用普通 `bootload`；
+- 用户应用使用 `firmware-debug`；内部 smoke 仍可使用 `gdb-stub-debug`；不要用会进入 serial monitor 的普通 `bootload`；
 - 检查 Windows Python 进程是否已经退出；
 - 确认 CP2102 没有 attach 给 WSL。
 
@@ -360,7 +361,7 @@ show substitute-path
 info source
 ```
 
-确认用户源文件位于当前 WSL 仓库下，并使用最新 `gdb-stub-debug`；target 会自动把仓库根路径映射为 `wslpath -m` 生成的 Windows 路径。
+确认用户源文件位于 `firmware/apps/baremetal/`，并使用最新 `firmware-debug`；target 会自动把仓库根路径映射为 `wslpath -m` 生成的 Windows 路径。
 
 ### `warning: could not convert ... CP1252 ...`
 
@@ -368,11 +369,11 @@ xPack GDB 可能在 Windows host encoding 下打印转换 warning。本轮真实
 
 ### `break main`、`step` 或 Ctrl-C 不工作
 
-这是当前协议子集的已知边界。请在源码中显式放置 `gdb_breakpoint()`；多个 cooperative breakpoint 已支持，但动态 breakpoint、single-step 和运行中异步暂停尚未实现。
+这是当前协议子集的已知边界。请在源码中显式放置 `DEBUG_BREAK()`；多个 cooperative breakpoint 已支持，但动态 breakpoint、single-step 和运行中异步暂停尚未实现。
 
 ### `continue` 后一直显示 `Continuing`
 
-如果后续代码没有再次执行 `gdb_breakpoint()` 或发生 fault，这是正常现象。当前不能通过 Ctrl-C 把正在运行的程序异步拉回 stub；退出 GDB、RESET 并重新上传即可开始新 session。
+如果后续代码没有再次执行 `DEBUG_BREAK()` 或发生 fault，这是正常现象。当前不能通过 Ctrl-C 把正在运行的程序异步拉回 stub；退出 GDB、RESET 并重新上传即可开始新 session。
 
 ## 8. 本地回归
 

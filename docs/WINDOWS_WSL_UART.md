@@ -11,7 +11,7 @@ WSL2：源码、RISC-V 工具链、firmware 构建、Makefile
 Windows：ISE、JTAG、CP2102 COM 口、pyserial
 ```
 
-WSL 可以直接调用 Windows 的 `py.exe`。`make bootload` 会先在 WSL 构建 firmware，再把脚本和产物路径转换成 Windows 路径，由 Windows Python 打开 `COMx`；上传成功后继续使用同一个串口连接显示 payload 输出。
+WSL 可以直接调用 Windows 的 `py.exe`。用户通过 `make firmware-load APP=...` 选择应用；该入口复用底层 `bootload`，先在 WSL 构建 firmware，再把脚本和产物路径转换成 Windows 路径，由 Windows Python 打开 `COMx`。上传成功后继续使用同一个串口连接显示 payload 输出。
 
 这种方法不需要复制文件，也不需要使用 usbipd 把 CP2102 attach 到 WSL。
 
@@ -19,7 +19,7 @@ WSL 可以直接调用 Windows 的 `py.exe`。`make bootload` 会先在 WSL 构�
 
 先确认 FPGA 中已经配置 bootloader bitstream，并且 ISE 参数 `BOOTLOADER_ENABLE=1`。
 
-bootloader bitstream 只需在 FPGA 重新配置或掉电后重新下载。更换 payload 时不需要重新下载 bitstream，只需再次运行 `make bootload` 并按 RESET。
+bootloader bitstream 只需在 FPGA 重新配置或掉电后重新下载。更换 payload 时不需要重新下载 bitstream，只需再次运行同一条 `make firmware-load APP=...` 命令并按 RESET。
 
 不要用 CONFIG 代替 RESET：CONFIG 会触发 FPGA 重新配置；RESET 才会让当前 bootloader 重新接管 UART 和 BRAM。
 
@@ -41,7 +41,9 @@ command -v py.exe
 如果 `py.exe` 没有进入 WSL 的 `PATH`，可以在运行目标时显式指定，例如：
 
 ```bash
-make bootload PORT=COM8 WINDOWS_PYTHON=/mnt/c/Windows/py.exe
+make firmware-load APP=baremetal/hello.c PORT=COM8 \
+  BOOTLOAD_BAUD=115200 \
+  WINDOWS_PYTHON=/mnt/c/Windows/py.exe
 ```
 
 ### 3. 确认 CP2102 归 Windows 使用
@@ -68,19 +70,23 @@ usbipd detach --busid 1-1
 
 ### 4. 一条命令完成构建、上传和监视
 
+用户应用的目录选择和完整工作流见 [`FIRMWARE_GUIDE.md`](FIRMWARE_GUIDE.md)。
+
 在 WSL 的仓库根目录执行：
 
 ```bash
-make bootload PORT=COM8
+make firmware-load APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200
 ```
 
-要下载指定 firmware 入口：
+内部验收脚本仍可直接覆盖入口：
 
 ```bash
 make bootload \
   PORT=COM8 \
   FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c"
 ```
+
+`bootload/FIRMWARE_MAIN` 是仿真、验收和历史脚本使用的兼容入口；普通用户程序优先使用 `firmware-load/APP`。
 
 目标的完整流程是：
 
@@ -108,7 +114,7 @@ GDB stub 继续保持同样分工：WSL 构建，Windows Python 上传，Windows
 安装包含 `riscv-none-elf-gdb.exe` 的 Windows xPack RISC-V 工具链后执行：
 
 ```bash
-make gdb-stub-debug PORT=COM8 BOOTLOAD_BAUD=115200
+make firmware-debug APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200
 ```
 
 该 target 复用原有 `bootload` 和 `uart_loader.py`，上传时不进入 serial monitor；收到 ACK 并释放 COM8 后，WSL 通过 Windows Interop 启动 GDB，自动加载 `firmware/build/bootload/firmware.elf`、设置同一个 `BOOTLOAD_BAUD` 并连接 COM8。GDB 是 Windows 进程，CP2102 始终归 Windows，不需要 usbipd。
@@ -116,19 +122,21 @@ make gdb-stub-debug PORT=COM8 BOOTLOAD_BAUD=115200
 如果 GDB 没有加入 Windows PATH，可传入它的 WSL 路径：
 
 ```bash
-make gdb-stub-debug PORT=COM8 BOOTLOAD_BAUD=115200 \
+make firmware-debug APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200 \
   WINDOWS_GDB=/mnt/c/Tools/xpack-riscv/bin/riscv-none-elf-gdb.exe
 ```
 
-调试自定义用户程序时增加 `GDB_STUB_MAIN="$PWD/<源文件>"`。连接完成后直接使用 `info registers`、`list`、`x/8wx 0x80000000` 和 `continue`。
+连接完成后直接使用 `info registers`、`list`、`x/8wx 0x80000000` 和 `continue`。旧 `gdb-stub-debug/GDB_STUB_MAIN` 入口仅为兼容保留。
 
 ### 5. 重复下载新程序
 
 退出 monitor、修改源码后，再次执行同一条命令：
 
 ```bash
-make bootload PORT=COM8
+make firmware-load APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200
 ```
+
+仍使用默认 `firmware/main.c` 的历史流程可以继续执行 `make bootload PORT=COM8`。
 
 看到提示后再按 RESET。RESET 会让 bootloader 重新接管 BRAM，因此可以反复下载不同 payload，不需要重新烧录 bitstream。
 
@@ -139,7 +147,7 @@ make bootload PORT=COM8
 需要单独排查构建或 host 工具时，可以在 WSL 构建：
 
 ```bash
-make firmware
+make firmware APP=baremetal/hello.c
 ```
 
 然后在 Windows PowerShell 直接读取 WSL 文件。先用 `wsl -l -q` 确认发行版名称，再设置仓库路径：
@@ -202,7 +210,7 @@ python3 -m pip install pyserial
 分步构建并下载：
 
 ```bash
-make firmware
+make firmware APP=baremetal/hello.c
 python3 scripts/uart_loader.py \
   --port /dev/ttyUSB0 \
   --baud 9600 \
@@ -218,7 +226,7 @@ usbipd detach --busid 1-1
 
 ## 常见问题
 
-### `make bootload` 提示找不到 Windows Python
+### `make firmware-load` / `make bootload` 提示找不到 Windows Python
 
 先在 Windows PowerShell 安装 Python，再确认 WSL 能执行：
 

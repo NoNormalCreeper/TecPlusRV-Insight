@@ -30,7 +30,9 @@
 | 文件 | 职责 |
 | --- | --- |
 | `firmware/gdb/gdb_packet.h/.c` | 无副作用的 RSP framing、checksum 和 hex codec |
-| `firmware/gdb/gdb_stub.h` | 用户程序可调用的 `gdb_breakpoint()` |
+| `firmware/gdb/gdb_stub.h` | stub 内部 cooperative breakpoint primitive |
+| `firmware/gdb/gdb_bootstrap.c` | `--wrap=main` auto-attach 入口 |
+| `firmware/runtime/debug.h` | 用户程序跨普通/GDB build 使用的 `DEBUG_BREAK()` |
 | `firmware/gdb/gdb_stub.c` | trap dispatcher、command dispatch、寄存器和 memory 语义 |
 | `firmware/runtime/trap_entry.S` | 保存和恢复 canonical machine context |
 | `firmware/runtime/trap_frame.h` | 汇编与 C 共用的 frame layout |
@@ -49,6 +51,7 @@ firmware/runtime/trap_entry.S
 firmware/runtime/trap.c
 firmware/gdb/gdb_packet.c
 firmware/gdb/gdb_stub.c
+firmware/gdb/gdb_bootstrap.c
 ```
 
 该 profile 还定义：
@@ -59,52 +62,38 @@ GDB_STUB_ACTIVE=1
 
 并使用 `-g3` 生成 DWARF。debug sections 只保留在 ELF 中，不进入 `.bin`，因此不占用板上 64 KiB BRAM image。profile 继续保留 `-Os`，需要稳定观察的局部状态应优先放在 `volatile` 全局对象中。
 
+该 profile 是内部兼容入口，等价于 `FIRMWARE_RUNTIME=baremetal FIRMWARE_DEBUG=gdb`。用户命令统一见 [`FIRMWARE_GUIDE.md`](FIRMWARE_GUIDE.md)。
+
 独立构建示例：
 
 ```bash
 FIRMWARE_PROFILE=gdb_stub \
-FIRMWARE_MAIN="$PWD/firmware/apps/example.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/hello.c" \
 FIRMWARE_OUT=firmware/build/gdb-example/firmware \
   ./scripts/build_firmware.sh
 ```
 
 ## 用户程序接入契约
 
-用户程序必须先安装 machine trap vector，再执行 cooperative breakpoint：
+GDB main wrapper 会在用户 `main()` 前自动安装 trap 并产生首次 stop。用户只在需要后续 cooperative stop 时调用公共接口：
 
 ```c
-#include "gdb/gdb_stub.h"
-#include "runtime/trap.h"
+#include "runtime/debug.h"
 
 volatile unsigned int debug_value;
 
 int main(void)
 {
-    trap_init();
     debug_value = 0x12345678u;
-    gdb_breakpoint();
+    DEBUG_BREAK();
     for (;;) {
     }
 }
 ```
 
-`gdb_breakpoint()` 是带 `memory` clobber 的 inline `ebreak`。它保证编译器不会把 breakpoint 两侧的普通 memory access 跨过停点重排，但不阻止 `-Os` 优化未使用的局部变量。
+GDB build 中 `DEBUG_BREAK()` 展开为带 `memory` clobber 的 inline `ebreak`；普通 build 中它是 no-op。它保证编译器不会把 breakpoint 两侧的普通 memory access 跨过停点重排，但不阻止 `-Os` 优化未使用的局部变量。
 
-如果源文件需要同时支持普通运行和 GDB build，可使用：
-
-```c
-#if GDB_STUB_ACTIVE
-    gdb_breakpoint();
-#endif
-```
-
-普通 profile 不定义 `GDB_STUB_ACTIVE`，跨 profile 共享代码时建议写成：
-
-```c
-#ifdef GDB_STUB_ACTIVE
-    gdb_breakpoint();
-#endif
-```
+用户应用不应自行判断 `GDB_STUB_ACTIVE`；该宏继续保留给 stub 和内部 contract 使用。
 
 ## trap frame 与 register packet
 
@@ -134,7 +123,7 @@ PC 写入与 continue 的关系：
 
 ## 首次 stop 与后续 stop
 
-首次启动时，firmware 通常在 GDB 尚未打开 COM 口前已经进入 `gdb_breakpoint()`。stub 此时只等待 host request；GDB 连接后发送 `qSupported`、`?` 等 packet，建立 session。
+首次启动时，`gdb_bootstrap.c` 会在 GDB 尚未打开 COM 口前安装 trap 并进入 auto-attach breakpoint。stub 此时只等待 host request；GDB 连接后发送 `qSupported`、`?` 等 packet，建立 session。首次 `continue` 跳过 wrapper 中的 `ebreak`，随后调用用户 `main()`。
 
 一旦处理过合法 request，`debugger_attached` 会保持为 1。之后 `continue` 返回用户程序，再次进入 `ebreak` 或同步 fault 时，stub 必须主动发送 stop reply：
 

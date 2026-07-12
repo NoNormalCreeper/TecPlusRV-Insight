@@ -140,10 +140,10 @@ TEC-PLUS 的程序 RESET 与 FPGA CONFIG 是两件事。bootloader bitstream 下
 Windows + WSL2 推荐直接在 WSL 仓库根目录执行：
 
 ```bash
-make bootload PORT=COM8
+make firmware-load APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200
 ```
 
-该目标会构建到专属的 `firmware/build/bootload/firmware.*`，不会改写手动构建的默认 `firmware/build/firmware.*`；随后通过 Windows Python 打开 `COM8` 完成下载，并在收到 ACK 后使用同一个串口连接进入 serial monitor。完整环境配置见 `docs/WINDOWS_WSL_UART.md`。
+该目标会构建到专属的 `firmware/build/bootload/firmware.*`，不会改写手动构建的默认 `firmware/build/firmware.*`；随后通过 Windows Python 打开 `COM8` 完成下载，并在收到 ACK 后使用同一个串口连接进入 serial monitor。应用目录与构建入口见 [`FIRMWARE_GUIDE.md`](FIRMWARE_GUIDE.md)，完整环境配置见 `docs/WINDOWS_WSL_UART.md`。
 
 DarkRISCV timer IRQ 上板验收可复用同一条 bootloader 路径：
 

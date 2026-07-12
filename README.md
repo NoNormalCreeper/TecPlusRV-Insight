@@ -41,6 +41,7 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 项目目标与边界：`docs/PROJECT_SPEC.md`
 - 探针说明：`docs/PROBES.md`
 - 开发与验证流程：`docs/DEV_FLOW.md`
+- **Firmware 编译、上传与调试统一入口，有大改，先看这里：`docs/FIRMWARE_GUIDE.md`**
 - UART bootloader 协议：`docs/BOOTLOADER_PROTOCOL.md`
 - Windows + WSL2 串口下载：`docs/WINDOWS_WSL_UART.md`
 - GDB 配置、体验与用户程序演示：`docs/GDB_USER_GUIDE.md`
@@ -194,29 +195,24 @@ python3 scripts/test_runner.py run-suite rtl_syntax_internal
 
 `make rtl-syntax` 和 `bash scripts/check_rtl_syntax.sh` 仍然保留，但只是兼容入口。
 
-单独构建 firmware：
+构建用户 firmware：
 
 ```bash
-make firmware
+make firmware APP=baremetal/hello.c
 ```
 
-这条手动入口默认生成 `firmware/build/firmware.{elf,bin,mem,lst}`。需要指定入口、目录或文件名时，使用不带扩展名的 `FIRMWARE_OUT` 输出前缀：
+用户程序按运行模型放进 `firmware/apps/baremetal/`、`irq/` 或 `freertos/`。上传和 GDB 调试分别使用：
 
 ```bash
-make firmware \
-  FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" \
-  FIRMWARE_OUT=firmware/build/manual/boot_payload
+make firmware-load APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200
+make firmware-debug APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200
 ```
 
-自动目标不会改写默认 `firmware.*`：`bootload` 使用 `firmware/build/bootload/`，仿真使用 `firmware/build/sim/<target>/`，regression、perf 和 ISE export 也各自使用专属目录。
+完整目录规则、产物说明、三类程序模板和兼容入口见 [`docs/FIRMWARE_GUIDE.md`](docs/FIRMWARE_GUIDE.md)。无参数 `make firmware`、`FIRMWARE_MAIN` 和 `bootload` 继续作为内部/历史兼容入口。
 
 在 Windows + WSL2 中，推荐让 CP2102 保持为 Windows `COMx`，由 WSL 一条命令完成构建、上传并进入 serial monitor：
 
-```bash
-make bootload PORT=COM8
-```
-
-Windows 端只需预先安装一次 `pyserial`：`py -m pip install pyserial`。指定其他 firmware 入口时可附加 `FIRMWARE_MAIN=...`；完整配置和备用 USB/IP 流程见 `docs/WINDOWS_WSL_UART.md`。
+Windows 端只需预先安装一次 `pyserial`：`py -m pip install pyserial`。完整配置和备用 USB/IP 流程见 `docs/WINDOWS_WSL_UART.md`。
 
 上传期间如果再次按 RESET，host 会检测 READY、废弃当前 attempt，并从 magic 自动整包重传。
 
