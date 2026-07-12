@@ -11,9 +11,12 @@ EXPORT_ISE_PROJECT := $(REPO_ROOT)/scripts/export_ise_project.sh
 UART_LOADER := $(REPO_ROOT)/scripts/uart_loader.py
 TEST_RUNNER := python3 $(REPO_ROOT)/scripts/test_runner.py
 WINDOWS_PYTHON ?= py.exe
+WINDOWS_GDB ?= riscv-none-elf-gdb.exe
 BOOTLOAD_BAUD ?= 9600
+BOOTLOAD_MONITOR_ARG ?= --monitor
 FIRMWARE_PROFILE ?= baremetal
 FIRMWARE_MAIN ?= $(REPO_ROOT)/firmware/main.c
+GDB_STUB_MAIN ?= $(REPO_ROOT)/firmware/tests/gdb_stub_smoke.c
 BOOTLOAD_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bootload/firmware
 BAD_APPLE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bad_apple_minimal
 BAD_APPLE_ASSET := $(REPO_ROOT)/build/badapple/bad_apple_20s.bin
@@ -40,7 +43,7 @@ FREERTOS_ACCEPTANCE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/freertos/accepta
 DATA_BYTES ?= 65536
 SEED ?= 0x12345678
 
-.PHONY: help check-env firmware timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci perf benchmark ise-export
+.PHONY: help check-env firmware timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload gdb-stub-load gdb-stub-debug boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci perf benchmark ise-export
 
 help:
 	@echo "常用目标："
@@ -55,6 +58,8 @@ help:
 	@echo "  make freertos-load PORT=COM8  构建、上传并监视 FreeRTOS smoke 镜像"
 	@echo "  make freertos-acceptance-load PORT=COM8  上传并监视综合验收镜像"
 	@echo "  make bootload PORT=COM8        构建、上传并进入 serial monitor"
+	@echo "  make gdb-stub-load PORT=COM8   复用 bootloader 上传 GDB stub 并释放串口"
+	@echo "  make gdb-stub-debug PORT=COM8  上传后启动 Windows GDB 并连接 COM 口"
 	@echo "  make boot-image-test-build     构建 LOAD_IMAGE 全量读回 firmware/asset"
 	@echo "  make boot-image-test-load PORT=COM8  上传并显示正确性/吞吐结果"
 	@echo "  make bad-apple-build           构建保留的 BAM1 仿真原型与媒体预览"
@@ -124,8 +129,20 @@ bootload:
 	"$(WINDOWS_PYTHON)" "$$(wslpath -w "$(UART_LOADER)")" \
 		--port "$(PORT)" \
 		--baud "$(BOOTLOAD_BAUD)" \
-		--input "$$(wslpath -w "$(BOOTLOAD_FIRMWARE_OUT).bin")" \
-		--monitor
+		--input "$$(wslpath -w "$(BOOTLOAD_FIRMWARE_OUT).bin")" $(BOOTLOAD_MONITOR_ARG)
+
+gdb-stub-load:
+	@$(MAKE) bootload PORT="$(PORT)" \
+		FIRMWARE_PROFILE=gdb_stub \
+		FIRMWARE_MAIN="$(GDB_STUB_MAIN)" \
+		BOOTLOAD_MONITOR_ARG=
+
+gdb-stub-debug: gdb-stub-load
+	@if ! command -v "$(WINDOWS_GDB)" >/dev/null 2>&1; then echo "找不到 Windows GDB：$(WINDOWS_GDB)" >&2; exit 1; fi
+	"$(WINDOWS_GDB)" "$$(wslpath -w "$(BOOTLOAD_FIRMWARE_OUT).elf")" \
+		-ex "set serial baud $(BOOTLOAD_BAUD)" \
+		-ex "set substitute-path $(REPO_ROOT) $$(wslpath -m "$(REPO_ROOT)")" \
+		-ex "target remote $(PORT)"
 
 timer-irq-load:
 	@$(MAKE) bootload PORT="$(PORT)" \
