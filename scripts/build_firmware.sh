@@ -14,7 +14,9 @@ SIZE=${SIZE:-riscv64-unknown-elf-size}
 PYTHON=${PYTHON:-python3}
 FIRMWARE_MAIN=${FIRMWARE_MAIN:-$REPO_ROOT/firmware/main.c}
 FIRMWARE_OUT=${FIRMWARE_OUT:-$REPO_ROOT/firmware/build/firmware}
-FIRMWARE_PROFILE=${FIRMWARE_PROFILE:-baremetal}
+FIRMWARE_PROFILE=${FIRMWARE_PROFILE:-}
+FIRMWARE_RUNTIME=${FIRMWARE_RUNTIME:-}
+FIRMWARE_DEBUG=${FIRMWARE_DEBUG:-none}
 
 case "$FIRMWARE_OUT" in
     */) echo "FIRMWARE_OUT 必须是文件前缀，不能以 / 结尾：$FIRMWARE_OUT" >&2; exit 1 ;;
@@ -57,7 +59,8 @@ trap cleanup EXIT
 # 逐字节循环“优化”成对 memcpy/memset 的库调用——我们 -nostdlib，没有这些符号，
 # 否则会在链接期报 undefined reference to `memcpy`/`memset`。
 MARCH=rv32i
-PROFILE_SOURCES=""
+RUNTIME_SOURCES=""
+DEBUG_SOURCES=""
 EXTRA_CFLAGS=""
 EXTRA_INCLUDES=""
 EXTRA_LDFLAGS=""
@@ -71,25 +74,45 @@ select_zicsr_march() {
     fi
 }
 
-case "$FIRMWARE_PROFILE" in
+# 旧 FIRMWARE_PROFILE 继续作为内部兼容入口；用户入口使用 runtime/debug 两个维度。
+if [ -n "$FIRMWARE_PROFILE" ]; then
+    case "$FIRMWARE_PROFILE" in
+        baremetal)
+            profile_runtime=baremetal
+            ;;
+        dark_irq)
+            profile_runtime=irq
+            ;;
+        freertos)
+            profile_runtime=freertos
+            ;;
+        gdb_stub)
+            profile_runtime=baremetal
+            FIRMWARE_DEBUG=gdb
+            ;;
+        *)
+            echo "未知 FIRMWARE_PROFILE：$FIRMWARE_PROFILE" >&2
+            exit 1
+            ;;
+    esac
+
+    if [ -n "$FIRMWARE_RUNTIME" ] && [ "$FIRMWARE_RUNTIME" != "$profile_runtime" ]; then
+        echo "FIRMWARE_PROFILE=$FIRMWARE_PROFILE 与 FIRMWARE_RUNTIME=$FIRMWARE_RUNTIME 冲突" >&2
+        exit 1
+    fi
+    FIRMWARE_RUNTIME=$profile_runtime
+fi
+FIRMWARE_RUNTIME=${FIRMWARE_RUNTIME:-baremetal}
+
+case "$FIRMWARE_RUNTIME" in
     baremetal)
         ;;
-    dark_irq)
+    irq)
         select_zicsr_march
-        PROFILE_SOURCES="
+        RUNTIME_SOURCES="
 $REPO_ROOT/firmware/runtime/trap_entry.S
 $REPO_ROOT/firmware/runtime/trap.c
 $REPO_ROOT/firmware/drivers/machine_timer.c
-"
-        ;;
-    gdb_stub)
-        select_zicsr_march
-        EXTRA_CFLAGS="-g3 -DGDB_STUB_ACTIVE=1"
-        PROFILE_SOURCES="
-$REPO_ROOT/firmware/runtime/trap_entry.S
-$REPO_ROOT/firmware/runtime/trap.c
-$REPO_ROOT/firmware/gdb/gdb_packet.c
-$REPO_ROOT/firmware/gdb/gdb_stub.c
 "
         ;;
     freertos)
@@ -103,7 +126,7 @@ $REPO_ROOT/firmware/gdb/gdb_stub.c
         EXTRA_CFLAGS="-ffunction-sections -fdata-sections -DFREERTOS_CPU_CLOCK_HZ=$FREERTOS_CPU_CLOCK_HZ"
         EXTRA_INCLUDES="-I$REPO_ROOT/firmware/freertos/compat -I$REPO_ROOT/firmware/freertos -I$FREERTOS_KERNEL/include"
         EXTRA_LDFLAGS="-Wl,--gc-sections"
-        PROFILE_SOURCES="
+        RUNTIME_SOURCES="
 $FREERTOS_KERNEL/tasks.c
 $FREERTOS_KERNEL/queue.c
 $FREERTOS_KERNEL/list.c
@@ -119,7 +142,32 @@ $REPO_ROOT/firmware/freertos/freertos_hooks.c
 "
         ;;
     *)
-        echo "未知 FIRMWARE_PROFILE：$FIRMWARE_PROFILE" >&2
+        echo "未知 FIRMWARE_RUNTIME：$FIRMWARE_RUNTIME" >&2
+        exit 1
+        ;;
+esac
+
+case "$FIRMWARE_DEBUG" in
+    none)
+        ;;
+    gdb)
+        if [ "$FIRMWARE_RUNTIME" != baremetal ]; then
+            echo "当前 GDB 调试尚不支持 $FIRMWARE_RUNTIME 应用" >&2
+            exit 1
+        fi
+        select_zicsr_march
+        EXTRA_CFLAGS="$EXTRA_CFLAGS -g3 -DGDB_STUB_ACTIVE=1"
+        EXTRA_LDFLAGS="$EXTRA_LDFLAGS -Wl,--wrap=main"
+        DEBUG_SOURCES="
+$REPO_ROOT/firmware/runtime/trap_entry.S
+$REPO_ROOT/firmware/runtime/trap.c
+$REPO_ROOT/firmware/gdb/gdb_packet.c
+$REPO_ROOT/firmware/gdb/gdb_stub.c
+$REPO_ROOT/firmware/gdb/gdb_bootstrap.c
+"
+        ;;
+    *)
+        echo "未知 FIRMWARE_DEBUG：$FIRMWARE_DEBUG" >&2
         exit 1
         ;;
 esac
@@ -137,7 +185,8 @@ $REPO_ROOT/firmware/drivers/vga.c
 $REPO_ROOT/firmware/runtime/rt_string.c
 $REPO_ROOT/firmware/runtime/rt_print.c
 $REPO_ROOT/firmware/runtime/rt_alloc.c
-$PROFILE_SOURCES
+$RUNTIME_SOURCES
+$DEBUG_SOURCES
 $FIRMWARE_MAIN
 $REPO_ROOT/firmware/drivers/perf.c
 $REPO_ROOT/firmware/tests/selftest.c
@@ -183,6 +232,8 @@ fi
 
 echo "firmware 构建完成："
 echo "  entry: $FIRMWARE_MAIN"
+echo "  runtime: $FIRMWARE_RUNTIME"
+echo "  debug: $FIRMWARE_DEBUG"
 echo "  output: $FIRMWARE_OUT"
 echo "  $FIRMWARE_OUT.elf"
 echo "  $FIRMWARE_OUT.bin"

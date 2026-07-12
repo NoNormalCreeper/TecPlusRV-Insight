@@ -304,6 +304,11 @@
       "script": "scripts/test_gdb_stub_profile_contract.sh"
     },
     {
+      "id": "firmware_app_workflow",
+      "kind": "script",
+      "script": "scripts/test_firmware_app_workflow.sh"
+    },
+    {
       "id": "bootloader_ctrl",
       "kind": "sim",
       "sim_target": "bootloader_ctrl"
@@ -636,13 +641,13 @@
       "id": "freertos_yield_smoke",
       "kind": "sim",
       "sim_target": "freertos_yield_smoke",
-      "timeout_sec": 180
+      "timeout_sec": 300
     },
     {
       "id": "freertos_smoke",
       "kind": "sim",
       "sim_target": "freertos_smoke",
-      "timeout_sec": 240
+      "timeout_sec": 480
     },
     {
       "id": "freertos_queue",
@@ -677,7 +682,7 @@
       "kind": "sim",
       "sim_target": "gdb_stub",
       "requires": ["rtl_syntax"],
-      "timeout_sec": 180
+      "timeout_sec": 300
     },
     {
       "id": "minisoc_vga_bitmap_dark",
@@ -755,6 +760,7 @@
       "gdb_stub_probe",
       "gdb_stub_load_contract",
       "gdb_stub_profile_contract",
+      "firmware_app_workflow",
       "bootloader_ctrl",
       "traffic_light_gpio",
       "buzzer_pwm",

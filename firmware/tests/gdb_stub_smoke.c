@@ -1,7 +1,6 @@
 // GDB stub 的 cooperative ebreak smoke firmware。
 #include "drivers/mmio.h"
-#include "gdb/gdb_stub.h"
-#include "runtime/trap.h"
+#include "runtime/debug.h"
 
 volatile unsigned int gdb_continue_seen;
 
@@ -41,11 +40,10 @@ static void gdb_known_context_break(void)
 
 int main(void)
 {
-    trap_init();
     gdb_known_context_break();
 
     // 已连接的 GDB 必须在第二次 cooperative stop 时主动收到 stop reply。
-    gdb_breakpoint();
+    DEBUG_BREAK();
 
     // 正常 cooperative continue 的 fallback；端到端 G/PC 测试会跳到
     // gdb_pc_continue_target，不应落到这里。

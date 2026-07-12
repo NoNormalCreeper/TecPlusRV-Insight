@@ -15,8 +15,11 @@ WINDOWS_GDB ?= riscv-none-elf-gdb.exe
 BOOTLOAD_BAUD ?= 9600
 BOOTLOAD_MONITOR_ARG ?= --monitor
 FIRMWARE_PROFILE ?= baremetal
+FIRMWARE_RUNTIME ?=
+FIRMWARE_DEBUG ?= none
 FIRMWARE_MAIN ?= $(REPO_ROOT)/firmware/main.c
 GDB_STUB_MAIN ?= $(REPO_ROOT)/firmware/tests/gdb_stub_smoke.c
+APP ?=
 BOOTLOAD_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bootload/firmware
 BAD_APPLE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bad_apple_minimal
 BAD_APPLE_ASSET := $(REPO_ROOT)/build/badapple/bad_apple_20s.bin
@@ -51,12 +54,53 @@ SEED ?= 0x12345678
 START ?= 100
 DURATION ?= 40
 
-.PHONY: help check-env firmware timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload gdb-stub-load gdb-stub-debug boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load bad-apple-window-build bad-apple-window-preview bad-apple-window-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci ci-full perf benchmark ise-export
+ifneq ($(strip $(APP)),)
+APP_INPUT := $(patsubst firmware/apps/%,%,$(strip $(APP)))
+APP_KIND := $(firstword $(subst /, ,$(APP_INPUT)))
+APP_CANDIDATE := $(REPO_ROOT)/firmware/apps/$(APP_INPUT)
+APP_SOURCE := $(realpath $(APP_CANDIDATE))
+APP_ROOT := $(realpath $(REPO_ROOT)/firmware/apps)
+
+ifeq ($(APP_KIND),baremetal)
+APP_RUNTIME := baremetal
+else ifeq ($(APP_KIND),irq)
+APP_RUNTIME := irq
+else ifeq ($(APP_KIND),freertos)
+APP_RUNTIME := freertos
+else ifneq ($(filter ../% /%,$(APP_INPUT)),)
+$(error APP 必须位于 firmware/apps/baremetal、irq 或 freertos 目录)
+else
+$(error 未知 APP 运行模型：$(APP_KIND))
+endif
+
+ifeq ($(APP_SOURCE),)
+$(error 找不到 APP 文件：$(APP_CANDIDATE))
+endif
+ifneq ($(filter $(APP_ROOT)/%,$(APP_SOURCE)),$(APP_SOURCE))
+$(error APP 必须位于 firmware/apps/baremetal、irq 或 freertos 目录)
+endif
+APP_IS_FILE := $(shell test -f "$(APP_SOURCE)" && echo yes)
+ifneq ($(APP_IS_FILE),yes)
+$(error APP 必须是普通 .c 文件：$(APP_SOURCE))
+endif
+ifneq ($(suffix $(APP_SOURCE)),.c)
+$(error APP 必须是 .c 文件：$(APP_SOURCE))
+endif
+endif
+
+SELECTED_FIRMWARE_PROFILE := $(if $(strip $(APP)),,$(FIRMWARE_PROFILE))
+SELECTED_FIRMWARE_RUNTIME := $(if $(strip $(APP)),$(APP_RUNTIME),$(FIRMWARE_RUNTIME))
+SELECTED_FIRMWARE_MAIN := $(if $(strip $(APP)),$(APP_SOURCE),$(FIRMWARE_MAIN))
+
+.PHONY: help check-env firmware firmware-load firmware-debug timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload gdb-stub-load gdb-stub-debug boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load bad-apple-window-build bad-apple-window-preview bad-apple-window-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci ci-full perf benchmark ise-export
 
 help:
 	@echo "常用目标："
 	@echo "  make check-env                 检查本地工具链"
 	@echo "  make firmware                  构建手动默认 firmware 镜像"
+	@echo "  make firmware APP=baremetal/hello.c  按 apps 目录构建用户程序"
+	@echo "  make firmware-load APP=... PORT=COM8 构建、上传并监视用户程序"
+	@echo "  make firmware-debug APP=baremetal/... PORT=COM8  启动 Windows GDB"
 	@echo "  make firmware FIRMWARE_OUT=... 构建到指定输出前缀"
 	@echo "  make timer-irq-smoke           构建 DarkRISCV timer IRQ 专用镜像"
 	@echo "  make timer-irq-load PORT=COM8  构建、上传并监视 timer IRQ 验收镜像"
@@ -97,9 +141,25 @@ check-env:
 	"$(CHECK_ENV)"
 
 firmware:
-	FIRMWARE_PROFILE="$(FIRMWARE_PROFILE)" \
-		FIRMWARE_MAIN="$(FIRMWARE_MAIN)" \
+	FIRMWARE_PROFILE="$(SELECTED_FIRMWARE_PROFILE)" \
+		FIRMWARE_RUNTIME="$(SELECTED_FIRMWARE_RUNTIME)" \
+		FIRMWARE_DEBUG="$(FIRMWARE_DEBUG)" \
+		FIRMWARE_MAIN="$(SELECTED_FIRMWARE_MAIN)" \
 		"$(BUILD_FIRMWARE)"
+
+firmware-load:
+	$(if $(APP),,$(error firmware-load 需要 APP，例如 APP=baremetal/hello.c))
+	$(if $(PORT),,$(error firmware-load 需要 PORT，例如 PORT=COM8))
+	@$(MAKE) bootload PORT="$(PORT)" \
+		FIRMWARE_PROFILE= \
+		FIRMWARE_RUNTIME="$(APP_RUNTIME)" \
+		FIRMWARE_MAIN="$(APP_SOURCE)"
+
+firmware-debug:
+	$(if $(APP),,$(error firmware-debug 需要 APP，例如 APP=baremetal/hello.c))
+	$(if $(PORT),,$(error firmware-debug 需要 PORT，例如 PORT=COM8))
+	$(if $(filter baremetal,$(APP_RUNTIME)),,$(error 当前 GDB 调试尚不支持 $(APP_RUNTIME) 应用))
+	@$(MAKE) gdb-stub-debug PORT="$(PORT)" GDB_STUB_MAIN="$(APP_SOURCE)"
 
 timer-irq-smoke:
 	FIRMWARE_PROFILE=dark_irq \
@@ -133,6 +193,8 @@ bootload:
 	@if ! command -v wslpath >/dev/null 2>&1; then echo "bootload 需要在 WSL 中运行" >&2; exit 1; fi
 	@if ! command -v "$(WINDOWS_PYTHON)" >/dev/null 2>&1; then echo "找不到 Windows Python：$(WINDOWS_PYTHON)" >&2; exit 1; fi
 	@FIRMWARE_PROFILE="$(FIRMWARE_PROFILE)" \
+		FIRMWARE_RUNTIME="$(FIRMWARE_RUNTIME)" \
+		FIRMWARE_DEBUG="$(FIRMWARE_DEBUG)" \
 		FIRMWARE_MAIN="$(FIRMWARE_MAIN)" \
 		FIRMWARE_OUT="$(BOOTLOAD_FIRMWARE_OUT)" \
 		"$(BUILD_FIRMWARE)"

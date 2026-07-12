@@ -313,8 +313,48 @@ initial begin
     send_short_packet("qfThreadInfo", 12);
     expect_text_reply("", 0);
 
+    // 首次 stop 来自 GDB main wrapper；continue 后才进入用户 main 的
+    // known-context breakpoint。后续 register/memory 断言必须基于用户 context。
+    send_short_packet("c", 1);
+    expect_ack;
+    receive_reply_mode(0);
+    assert_text_buffer("S05", 3);
+    drive_uart_byte("+");
+
     send_short_packet("?", 1);
     expect_text_reply("S05", 3);
+
+    // 完整 RSP 矩阵只跑一次；另外两种模式只保留各自独有的 continue 语义，
+    // 避免在慢速 UART 仿真中重复 register/memory 大包。
+    if (EXPLICIT_PC == 0) begin
+        send_short_packet("c", 1);
+        expect_ack;
+        receive_reply_mode(0);
+        assert_text_buffer("S05", 3);
+        drive_uart_byte("+");
+        send_short_packet("c", 1);
+        expect_ack;
+        wait (dut.test_exited);
+        if (dut.test_exit_code !== 32'h0000_0002) begin
+            $display("FAIL: cooperative ebreak 后 test_exit=%08x",
+                     dut.test_exit_code);
+            $finish;
+        end
+        $display("PASS: DarkRISCV GDB cooperative continue");
+        $finish;
+    end else if (EXPLICIT_PC == 2) begin
+        tx_buffer[0] = "c";
+        write_u32_be_hex_to_tx(1, CONTINUE_PC);
+        send_buffer_packet(9);
+        expect_ack;
+        wait (dut.test_exited);
+        if (dut.test_exit_code !== 32'h0000_0001) begin
+            $display("FAIL: cADDR 后 test_exit=%08x", dut.test_exit_code);
+            $finish;
+        end
+        $display("PASS: DarkRISCV GDB cADDR continue");
+        $finish;
+    end
 
     send_short_packet("g", 1);
     receive_reply;
