@@ -31,6 +31,12 @@ BAD_APPLE_FULL_PREVIEW_AUDIO := $(BAD_APPLE_FULL_DIR)/bad_apple_full_preview.wav
 BAD_APPLE_SOURCE_AUDIO_PREVIEW := $(BAD_APPLE_FULL_DIR)/bad_apple_source_pitch_preview.wav
 BAD_APPLE_SOURCE_AUDIO_REPORT := $(BAD_APPLE_FULL_DIR)/bad_apple_source_pitch_preview.json
 BAD_APPLE_COMPACT_MIDI := $(REPO_ROOT)/firmware/assets/touhou-bad-apple-featnomico-26035-nonstop2k.com.mid
+BAD_APPLE_WINDOW_DIR := $(REPO_ROOT)/build/badapple_window
+BAD_APPLE_WINDOW_ASSET := $(BAD_APPLE_WINDOW_DIR)/bad_apple_window.bin
+BAD_APPLE_WINDOW_REPORT := $(BAD_APPLE_WINDOW_DIR)/bad_apple_window.json
+BAD_APPLE_WINDOW_PREVIEW := $(BAD_APPLE_WINDOW_DIR)/bad_apple_window_preview.mp4
+BAD_APPLE_WINDOW_PREVIEW_AUDIO := $(BAD_APPLE_WINDOW_DIR)/bad_apple_window_preview.wav
+BAD_APPLE_WINDOW_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/freertos/bad_apple_window/firmware
 BOOT_IMAGE_TEST_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/boot_image_verify
 BOOT_IMAGE_TEST_ASSET := $(REPO_ROOT)/build/bootloader-test/pattern.bin
 TIMER_IRQ_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/timer_irq_smoke
@@ -39,8 +45,10 @@ FREERTOS_QUEUE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/freertos/queue/firmwa
 FREERTOS_ACCEPTANCE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/freertos/acceptance/firmware
 DATA_BYTES ?= 65536
 SEED ?= 0x12345678
+START ?= 100
+DURATION ?= 40
 
-.PHONY: help check-env firmware timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci perf benchmark ise-export
+.PHONY: help check-env firmware timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load bad-apple-window-build bad-apple-window-preview bad-apple-window-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci perf benchmark ise-export
 
 help:
 	@echo "常用目标："
@@ -63,7 +71,8 @@ help:
 	@echo "  make bad-apple-full-preview    由最终 BAM2 生成带模拟 buzzer 音频的 MP4"
 	@echo "  make bad-apple-source-audio-preview  从 MP4 音轨提取单音 pitch WAV"
 	@echo "  make bad-apple-compact-midi-preview  试听新增两轨 MIDI 的旋律/click 归约"
-	@echo "  make bad-apple-full-load PORT=COM8  用当前 BOOTLOAD_BAUD 上传正式 player + asset"
+	@echo "  make bad-apple-full-load PORT=COM8 [BRAM_ONLY=1]  上传正式 player，可复用板上 asset"
+	@echo "  make bad-apple-window-load PORT=COM8 START=100 DURATION=40  快速复现指定原片窗口"
 	@echo "  make rtl-syntax                跑 RTL 语法 smoke"
 	@echo "  make sim TARGET=minisoc_pico   单独运行一个仿真目标"
 	@echo "  make test-probe                跑探针类仿真"
@@ -215,7 +224,33 @@ bad-apple-full-load: bad-apple-full-build
 	"$(WINDOWS_PYTHON)" "$$(wslpath -w "$(UART_LOADER)")" \
 		--port "$(PORT)" --baud "$(BOOTLOAD_BAUD)" \
 		--input "$$(wslpath -w "$(BAD_APPLE_FULL_FIRMWARE_OUT).bin")" \
-		--sdram-input "$$(wslpath -w "$(BAD_APPLE_FULL_ASSET)")" \
+		$(if $(filter 1,$(BRAM_ONLY)),,--sdram-input "$$(wslpath -w "$(BAD_APPLE_FULL_ASSET)")" --sdram-address 0x81000000) \
+		--monitor
+
+bad-apple-window-build:
+	python3 "$(REPO_ROOT)/scripts/make_bad_apple_full_asset.py" \
+		--video "$(BAD_APPLE_VIDEO)" --midi "$(BAD_APPLE_COMPACT_MIDI)" \
+		--midi-mode compact-piano --midi-time-scale 1.0 --midi-tail-align 217.080 \
+		--transpose -12 --start "$(START)" --duration "$(DURATION)" \
+		--output "$(BAD_APPLE_WINDOW_ASSET)" --report "$(BAD_APPLE_WINDOW_REPORT)"
+	FIRMWARE_PROFILE=freertos FREERTOS_CPU_CLOCK_HZ=50000000 \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/bad_apple_full.c" \
+		FIRMWARE_OUT="$(BAD_APPLE_WINDOW_FIRMWARE_OUT)" "$(BUILD_FIRMWARE)"
+
+bad-apple-window-preview: bad-apple-window-build
+	python3 "$(REPO_ROOT)/scripts/make_bad_apple_full_asset.py" \
+		--preview-input "$(BAD_APPLE_WINDOW_ASSET)" \
+		--preview "$(BAD_APPLE_WINDOW_PREVIEW)" \
+		--preview-audio "$(BAD_APPLE_WINDOW_PREVIEW_AUDIO)"
+
+bad-apple-window-load: bad-apple-window-build
+	@if [ -z "$(PORT)" ]; then echo "用法：make bad-apple-window-load PORT=COM8 START=100 DURATION=40" >&2; exit 1; fi
+	@if ! command -v wslpath >/dev/null 2>&1; then echo "bad-apple-window-load 需要在 WSL 中运行" >&2; exit 1; fi
+	@if ! command -v "$(WINDOWS_PYTHON)" >/dev/null 2>&1; then echo "找不到 Windows Python：$(WINDOWS_PYTHON)" >&2; exit 1; fi
+	"$(WINDOWS_PYTHON)" "$$(wslpath -w "$(UART_LOADER)")" \
+		--port "$(PORT)" --baud "$(BOOTLOAD_BAUD)" \
+		--input "$$(wslpath -w "$(BAD_APPLE_WINDOW_FIRMWARE_OUT).bin")" \
+		--sdram-input "$$(wslpath -w "$(BAD_APPLE_WINDOW_ASSET)")" \
 		--sdram-address 0x81000000 --monitor
 
 rtl-syntax:
