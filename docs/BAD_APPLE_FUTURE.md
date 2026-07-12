@@ -183,9 +183,9 @@ buzzer。首轮不增加 mutex，status/log task 也不作为播放成立的前�
 
 - MP4 输入 `219.099 s`；BAM2 播放时间 `219.1392 s`；
 - 2174 个 `64x48` 1bpp frames；
-- 1376 个单音 MIDI events，解析正式两轨钢琴 MIDI；
-- asset `902048 bytes`；
-- FreeRTOS firmware BRAM image `20892 bytes`。
+- 1421 个 audio events，其中包含 497 个 MIDI quarter-note beat markers；
+- asset `902408 bytes`；
+- FreeRTOS 多任务 diagnostic firmware BRAM image `27404 bytes`。
 
 自动验证：
 
@@ -226,6 +226,94 @@ make bad-apple-full-load PORT=COM8
 
 约 219 秒后 UART 应输出 `bad apple full pass`、LED=`5`，随后循环。真实板仍需检查
 画面黑白方向、完整时长、音频连续性与 reset 后重新上传。
+
+## 多任务演示
+
+正式 player 现在同时运行五个静态 task：
+
+- playback task 独占 VGA，并维护不包含暂停时间的逻辑播放 tick；
+- audio task 独占 buzzer；
+- LED task 按 MIDI quarter-note 依次显示 `1 -> 2 -> 4 -> 8`；
+- traffic task 每 500 ms 循环 GREEN、YELLOW、RED；
+- button task 对低有效 KEY1 做约 30 ms debounce，按下沿切换暂停/继续。
+
+playback 使用优先级 2，并在每轮处理后阻塞 1 tick；1 ms 远小于约 16.8 ms 的 VGA
+tick，也能让优先级 1 的 LED/traffic 获得运行机会。audio 和 button 使用优先级 3，
+以保证音频命令和按键响应及时。不能在高优先级 tight loop 中只调用 `taskYIELD()`，
+因为它不会让给低优先级 task。
+
+beat 由离线脚本按 MIDI PPQ 与 tempo map 生成，经过与音频相同的 time-scale、尾部对齐
+和窗口裁剪后，使用 BAM2 audio value 的 bit 31 标记。bit 0..30 仍是 buzzer Hz；beat
+本身不会重启相同频率的蜂鸣器，只通过 task notification 推进 LED 四拍。
+
+暂停时画面、声音、UART `t=Ns` 和歌曲拍位冻结，交通灯继续轮转，LED 改为较慢的
+跑马灯，证明 scheduler 仍在工作。恢复后 UART 输出 `resumed at t=Ns`，画面和声音从
+原位置继续。每轮结束后的 10 秒等待也显示慢速 LED 跑马灯。
+
+暂停/播放只需要两个状态 bit，使用单核 RV32 上 aligned 32-bit 原子读写的共享
+`volatile` word，并在 read-modify-write 时进入 FreeRTOS critical section；不使用
+Event Group，避免为无人阻塞等待的状态引入额外 kernel list 路径。
+
+当前无需重新导出 ISE 工程：复用已经烧录、启用 VGA bitmap/bootloader 且 UART 为
+115200 Baud 的 bitstream，重新上传 firmware 与 asset 即可：
+
+```bash
+make bad-apple-full-load PORT=COM8 BOOTLOAD_BAUD=115200
+```
+
+上板检查：LED 四拍顺序、KEY1 单次按下只切换一次、暂停期间 traffic 仍变化且 buzzer
+静音、恢复后没有跳帧。traffic raw pattern 沿用既有 demo 假设；若实际颜色顺序不同，
+只校准 `TRAFFIC_RED/YELLOW/GREEN` 三个常量。
+
+多任务首次运行还会在 `t=1s` 输出各 task 剩余的最小 stack words，例如：
+
+```text
+stack free words: video=... audio=... led=... button=... traffic=...
+```
+
+任一值接近 0 表示对应 task stack 太小；该行用于上板诊断，确认余量后可保留为演示
+证据或删除。当前辅助 task 使用 256 words，playback 使用 768 words。
+
+## 109 秒卡屏诊断
+
+播放器在启动验证之后仍会在每次实际消费 SDRAM record 时重新检查：
+
+- video cursor 未越过 video stream；
+- `change_count <= 96` 且 record 未越界；
+- framebuffer `word_index < 96`；
+- audio tick 严格递增且小于总时长；
+- buzzer frequency 不超过 5000 Hz。
+
+运行时异常会停止 buzzer、设置 LED 为错误码低 nibble，并输出：
+
+```text
+bad apple runtime fail: <原因>
+code=0x0000ba14
+t=109s
+f=1082
+cursor=0x00066f30
+value=0xffffffff
+```
+
+错误码：`ba13=video cursor`、`ba14=change count`、`ba15=word index`、
+`ba16=audio tick`、`ba17=audio frequency`。
+
+快速区分固定内容错误与长时间 SDRAM 错误：
+
+```bash
+make bad-apple-window-preview START=100 DURATION=40
+make bad-apple-window-load PORT=COM8 START=100 DURATION=40 BOOTLOAD_BAUD=115200
+```
+
+`bad-apple-window-load` 复用当前已经烧录的 `bad_apple_full_dark` bitstream；只要该
+bitstream 的 UART 是 115200 Baud，就不需要重新 `ise-export` 或重新生成 bitstream。
+
+窗口版 UART 的 `t=1s` 对应原片约 `101s`，`t=9s` 对应原片约 `109s`。若窗口版也在
+约 9 秒失败，优先检查固定 frame record/MMIO；若窗口版完整通过而完整版仍在运行约
+109 秒后失败，优先检查 SDRAM refresh、retention 或板级读时序。窗口版 PASS 后同样
+等待 10 秒循环。若画面卡住但 UART 继续、又没有任何 `runtime fail`，说明 cursor、
+record 长度和索引仍然合法；下一步应增加 SDRAM 内容 readback/CRC，或单独观察 VGA
+MMIO 写入路径，而不是继续改播放器调度。
 
 ## 历史实施任务
 
