@@ -58,7 +58,7 @@ command -v py.exe
 
 ### Windows RISC-V GDB
 
-安装 Windows xPack GNU RISC-V Embedded GCC，确认包含：
+[安装 Windows xPack GNU RISC-V Embedded GCC](https://xpack-dev-tools.github.io/riscv-none-elf-gcc-xpack/docs/install/)，确认包含：
 
 ```text
 riscv-none-elf-gdb.exe
