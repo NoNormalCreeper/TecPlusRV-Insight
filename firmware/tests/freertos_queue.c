@@ -26,7 +26,7 @@ static volatile unsigned int queue_states;
 #define QUEUE_SAW_FULL 4u
 
 static StaticTask_t task_tcb[2];
-static StackType_t task_stack[2][512] __attribute__((aligned(16)));
+static StackType_t task_stack[2][1024] __attribute__((aligned(16)));
 
 static void fail(unsigned int code) __attribute__((noreturn));
 
@@ -106,11 +106,11 @@ int main(void)
         queue_states |= QUEUE_SAW_EMPTY;
     }
 
-    if (xTaskCreateStatic(queue_consumer_task, "consumer", 512u, 0,
+    if (xTaskCreateStatic(queue_consumer_task, "consumer", 1024u, 0,
             tskIDLE_PRIORITY + 1u, task_stack[0], &task_tcb[0]) == 0) {
         fail(0xf6010005u);
     }
-    if (xTaskCreateStatic(queue_producer_task, "producer", 512u, 0,
+    if (xTaskCreateStatic(queue_producer_task, "producer", 1024u, 0,
             tskIDLE_PRIORITY + 2u, task_stack[1], &task_tcb[1]) == 0) {
         fail(0xf6010006u);
     }

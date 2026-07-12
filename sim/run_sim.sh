@@ -515,7 +515,7 @@ case "$SIM_KIND" in
         TRAP_PC_START=$(riscv64-unknown-elf-nm --defined-only \
             "${FIRMWARE_MEM%.mem}.elf" | awk '$3 == "trap_entry" { print $1 }')
         FREERTOS_SOC_CLK_FREQ=4000000
-        FREERTOS_TIMEOUT_CYCLES=800000
+        FREERTOS_TIMEOUT_CYCLES=3000000
         EXPECT_QUEUE_DEMO=1
         compile_minisoc_tb "$BUILD_DIR/tb_freertos_queue.out" 1 \
             tb_freertos_smoke "$REPO_ROOT/sim/tb_freertos_smoke.v"

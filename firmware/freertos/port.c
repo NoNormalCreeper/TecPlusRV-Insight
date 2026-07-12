@@ -17,6 +17,7 @@ void freertos_fatal_trap(const struct trap_frame *frame)
     __attribute__((noreturn));
 
 static volatile unsigned int freertos_trap_depth;
+static volatile unsigned int freertos_yield_pending;
 static unsigned int counts_per_tick;
 static unsigned long long next_compare;
 
@@ -55,6 +56,20 @@ int freertos_port_in_trap(void)
     return freertos_trap_depth != 0u;
 }
 
+void freertos_port_request_yield(void)
+{
+    freertos_yield_pending = 1u;
+}
+
+void freertos_port_enable_interrupts(void)
+{
+    __asm__ volatile ("csrs mstatus, %0" :: "r"(8u) : "memory");
+    if (freertos_yield_pending != 0u && freertos_trap_depth == 0u) {
+        freertos_yield_pending = 0u;
+        __asm__ volatile ("ecall" ::: "memory");
+    }
+}
+
 struct trap_frame *trap_dispatch(struct trap_frame *frame)
 {
     pxCurrentTCB->pxTopOfStack = (StackType_t *)(void *)frame;
@@ -63,7 +78,11 @@ struct trap_frame *trap_dispatch(struct trap_frame *frame)
     if (frame->mcause == 0x0000000bu) {
         // DarkRISCV 当前仅实现 32-bit 指令；这里只跳过 machine ecall。
         frame->mepc += 4u;
-        vTaskSwitchContext();
+        if ((frame->mstatus & 0x80u) != 0u) {
+            vTaskSwitchContext();
+        } else {
+            freertos_yield_pending = 1u;
+        }
     } else if (frame->mcause == MACHINE_TIMER_INTERRUPT_CAUSE) {
         next_compare += counts_per_tick;
         machine_timer_set_compare(next_compare);

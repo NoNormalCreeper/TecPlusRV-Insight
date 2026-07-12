@@ -25,6 +25,8 @@ typedef uint32_t TickType_t;
 void vTaskEnterCritical(void);
 void vTaskExitCritical(void);
 int freertos_port_in_trap(void);
+void freertos_port_enable_interrupts(void);
+void freertos_port_request_yield(void);
 
 static inline UBaseType_t freertos_port_set_interrupt_mask(void)
 {
@@ -44,10 +46,12 @@ static inline void freertos_port_clear_interrupt_mask(UBaseType_t old_mask)
 }
 
 #define portYIELD() __asm__ volatile ("ecall" ::: "memory")
+#define portYIELD_WITHIN_API() \
+    portYIELD()
 #define portDISABLE_INTERRUPTS() \
     __asm__ volatile ("csrc mstatus, %0" :: "r"(8u) : "memory")
 #define portENABLE_INTERRUPTS() \
-    __asm__ volatile ("csrs mstatus, %0" :: "r"(8u) : "memory")
+    freertos_port_enable_interrupts()
 #define portENTER_CRITICAL() vTaskEnterCritical()
 #define portEXIT_CRITICAL() vTaskExitCritical()
 #define portASSERT_IF_IN_ISR() configASSERT(freertos_port_in_trap() == 0)

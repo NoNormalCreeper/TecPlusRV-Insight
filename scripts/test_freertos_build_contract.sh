@@ -7,6 +7,7 @@ KERNEL="$REPO_ROOT/third_party/FreeRTOS-Kernel"
 OUT="$REPO_ROOT/firmware/build/freertos/build-contract/firmware"
 NM=${NM:-riscv64-unknown-elf-nm}
 BUILD_LOG="$OUT.build.log"
+mkdir -p "$(dirname "$OUT")"
 
 if [ ! -f "$KERNEL/tasks.c" ]; then
     echo "FAIL: 缺少 FreeRTOS-Kernel；请运行 git submodule update --init --recursive" >&2
