@@ -75,6 +75,24 @@ class MidiReducerTest(unittest.TestCase):
     def test_default_offset_matches_mp4_leading_silence(self):
         self.assertAlmostEqual(self.packer.MIDI_OFFSET_SECONDS, 1.369, places=6)
 
+    def test_quarter_note_beats_follow_tempo_map(self):
+        midi = {"ppqn": 100, "tempos": [(0, 1_000_000), (200, 500_000)],
+                "tracks": [{"name": "", "events": [], "end_tick": 400}]}
+        self.assertEqual(self.packer.build_quarter_note_beats(
+            midi, duration_seconds=4.0, offset_seconds=0.0, time_scale=1.0),
+            [0, 60, 119, 149, 179])
+
+    def test_beat_marker_merges_with_current_frequency(self):
+        flag = self.packer.AUDIO_BEAT_FLAG
+        self.assertEqual(self.packer.merge_audio_beats(
+            [(0, 440), (20, 494), (50, 0)], [10, 20, 40]),
+            [(0, 440), (10, flag | 440), (20, flag | 494),
+             (40, flag | 494), (50, 0)])
+
+    def test_clip_beats_keeps_window_start(self):
+        self.assertEqual(self.packer.clip_beat_ticks([10, 60, 90, 130], 60, 120),
+                         [0, 30])
+
     def test_synth2_intro_melody_beats_bass_tracks(self):
         midi = self.midi([
             {"name": "Synth2", "events": [(0, 0, True, 72)]},
@@ -217,6 +235,13 @@ class Bam2Test(unittest.TestCase):
         self.assertEqual(report["duration_vga_ticks"], 12)
         self.assertEqual(report["decoded_frames"], frames)
         self.assertEqual(report["decoded_audio_events"], audio)
+
+    def test_round_trip_preserves_audio_beat_flag(self):
+        marker = self.packer.AUDIO_BEAT_FLAG | 440
+        data = self.packer.encode_asset([[0] * 96], [(0, marker)], duration_ticks=6)
+        report = self.packer.validate_asset(data)
+        self.assertEqual(report["flags"], self.packer.ASSET_FLAG_AUDIO_BEATS)
+        self.assertEqual(report["decoded_audio_events"], [(0, marker)])
 
     def test_asset_limit_is_enforced(self):
         self.packer.MAX_ASSET_BYTES = 64

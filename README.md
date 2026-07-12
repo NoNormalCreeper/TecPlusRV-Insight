@@ -126,6 +126,16 @@ make test-all
 1. MiniSoC 通用 regression / counter-source 等 SoC 级仿真
 2. 双核 firmware regression
 
+GitHub Actions 的 push / pull request 默认执行 `make ci`，跑 `ci` suite 并跳过
+Bad Apple player、FreeRTOS 长时间切换/抢占与双核 benchmark 等分钟级仿真。
+需要完整回归时，在 GitHub Actions 手动触发 CI，或在本地运行：
+
+```bash
+make ci-full
+```
+
+`ci-full` 仍执行完整 `all` suite，不删减任何覆盖。
+
 ## 官方 `RV32I` 回归
 
 当前仓库已经接入一条独立的官方 `riscv-tests` 验证支线，用来验证基础 `RV32I` 指令语义，而不影响默认 `firmware/main.c` 主线。

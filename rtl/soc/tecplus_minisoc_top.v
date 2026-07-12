@@ -4,18 +4,18 @@
 
 module tecplus_minisoc_top #(
     parameter integer CLK_FREQ = 50000000,
-    parameter integer UART_BAUD = 9600,
+    parameter integer UART_BAUD = 115200,
     parameter integer CPU_IMPL = 0,
     parameter integer BRAM_ADDR_WIDTH = 14,
     parameter integer SDRAM_CLK_INVERT = 1,
-    parameter integer BOOTLOADER_ENABLE = 0,
+    parameter integer BOOTLOADER_ENABLE = 1,
     parameter integer BOOT_TIMEOUT_CYCLES = CLK_FREQ,
     // 当前 writable text/tile 原型在 LX9 MiniSoC 中会 overmap，默认不参与综合。
     // 只在保留的 Bad Apple 仿真或后续资源实验中显式设为 1。
     parameter integer VGA_TEXT_ENABLE = 0,
     // 64x48 1bpp framebuffer 以 distributed RAM 为综合目标；最终资源类型以 ISE Map 为准。
     // 若与 VGA_TEXT_ENABLE 同时打开，bitmap 路径优先。
-    parameter integer VGA_BITMAP_ENABLE = 0,
+    parameter integer VGA_BITMAP_ENABLE = 1,
     parameter VGA_MF_DEFAULT = 1'b0,
     parameter VGA_CLR_DEFAULT = 1'b1,
     parameter VGA_QD_DEFAULT = 1'b0,
@@ -69,10 +69,10 @@ wire [3:0]  mem_wstrb;
 reg  [31:0] mem_rdata;
 
 wire        start_req;
-wire        bram_en;
-wire [BRAM_ADDR_WIDTH-1:0] bram_addr;
-wire [31:0] bram_wdata;
-wire [3:0] bram_wstrb;
+reg         bram_en;
+reg  [BRAM_ADDR_WIDTH-1:0] bram_addr;
+reg  [31:0] bram_wdata;
+reg  [3:0] bram_wstrb;
 wire [31:0] bram_data_rdata;
 wire        cpu_bram_en;
 wire [BRAM_ADDR_WIDTH-1:0] cpu_bram_addr;
@@ -142,11 +142,11 @@ wire        uart_rx_framing_error;
 wire        uart_rx_consume;
 wire        uart_overrun_clear;
 wire        uart_framing_error_clear;
-wire        uart_rx_ready;
-wire        uart_rx_overrun_clear;
-wire        uart_rx_framing_error_clear;
-wire        uart_tx_valid;
-wire [7:0]  uart_tx_data;
+reg         uart_rx_ready;
+reg         uart_rx_overrun_clear;
+reg         uart_rx_framing_error_clear;
+reg         uart_tx_valid;
+reg  [7:0]  uart_tx_data;
 wire        boot_active;
 wire        boot_cpu_release;
 wire        boot_rx_ready;
@@ -182,10 +182,13 @@ wire        buzzer_enabled;
 wire [31:0] buzzer_half_period;
 wire        mmio_stall;
 // SDRAM 内部请求与物理数据通路。
-wire        sdram_req_valid;
+reg         sdram_req_valid;
 wire        cpu_sdram_req_valid;
 wire        sdram_req_fire;
-wire [31:0] sdram_request_addr;
+reg  [31:0] sdram_request_addr;
+reg         sdram_request_we;
+reg  [31:0] sdram_request_wdata;
+reg  [3:0]  sdram_request_wstrb;
 wire        sdram_req_ready;
 wire        sdram_resp_valid;
 wire [31:0] sdram_resp_rdata;
@@ -197,7 +200,7 @@ wire        sdram_dq_oe;
 wire        test_exited;
 wire [31:0] test_exit_code;
 wire        same_as_last_req;
-wire [31:0] response_rdata;
+reg  [31:0] response_rdata;
 
 wire bram_done   = req_is_bram;
 wire mmio_done   = req_is_mmio && !mmio_stall;
@@ -220,10 +223,19 @@ wire is_mmio   = !(is_bram || is_sdram);   // 包括 0x1000_0000 和 0x2000_0000
 assign cpu_bram_en = start_req && is_bram;
 assign cpu_bram_addr = mem_addr[BRAM_ADDR_WIDTH+1:2];
 assign boot_active = (BOOTLOADER_ENABLE != 0) && !boot_cpu_release;
-assign bram_en = boot_active ? boot_bram_en : cpu_bram_en;
-assign bram_addr = boot_active ? boot_bram_addr : cpu_bram_addr;
-assign bram_wdata = boot_active ? boot_bram_wdata : mem_wdata;
-assign bram_wstrb = boot_active ? boot_bram_wstrb : mem_wstrb;
+always @* begin
+    if (boot_active) begin
+        bram_en = boot_bram_en;
+        bram_addr = boot_bram_addr;
+        bram_wdata = boot_bram_wdata;
+        bram_wstrb = boot_bram_wstrb;
+    end else begin
+        bram_en = cpu_bram_en;
+        bram_addr = cpu_bram_addr;
+        bram_wdata = mem_wdata;
+        bram_wstrb = mem_wstrb;
+    end
+end
 assign ifetch_is_bram = (ifetch_addr < BRAM_BYTES);
 assign ifetch_en = ifetch_valid && !ifetch_pending && ifetch_is_bram;
 assign ifetch_bram_addr = ifetch_addr[BRAM_ADDR_WIDTH+1:2];
@@ -268,13 +280,33 @@ assign cpu_sdram_req_valid =
 // 两个 requester 都必须遵守 controller 的 ready-first 约定：若 refresh 期间
 // ready 为低，不能提前暴露 valid，否则 controller 会接收请求而 bootloader
 // 仍停在等待 ready 的状态。
-assign sdram_req_valid = boot_active
-    ? (boot_sdram_req_valid && sdram_req_ready) : cpu_sdram_req_valid;
+always @* begin
+    if (boot_active) begin
+        sdram_req_valid = boot_sdram_req_valid && sdram_req_ready;
+        sdram_request_addr = boot_sdram_req_addr;
+        sdram_request_we = 1'b1;
+        sdram_request_wdata = boot_sdram_req_wdata;
+        sdram_request_wstrb = boot_sdram_req_wstrb;
+    end else begin
+        sdram_req_valid = cpu_sdram_req_valid;
+        sdram_request_addr = req_addr;
+        sdram_request_we = req_we_reg;
+        sdram_request_wdata = req_wdata;
+        sdram_request_wstrb = req_wstrb;
+    end
+end
 assign sdram_req_fire = !boot_active && cpu_sdram_req_valid && sdram_req_ready;
-assign response_rdata =
-    (req_is_replay && req_is_sdram) ? last_req_rdata :
-    req_is_bram   ? bram_data_rdata :
-    req_is_sdram  ? sdram_resp_rdata : mmio_rdata;
+always @* begin
+    if (req_is_replay && req_is_sdram) begin
+        response_rdata = last_req_rdata;
+    end else if (req_is_bram) begin
+        response_rdata = bram_data_rdata;
+    end else if (req_is_sdram) begin
+        response_rdata = sdram_resp_rdata;
+    end else begin
+        response_rdata = mmio_rdata;
+    end
+end
 
 assign mmio_stall = pending && req_is_mmio && !req_is_replay && uart_data_sel && mmio_write_en && !uart_tx_ready;
 //assign respond = pending && !mmio_stall;
@@ -286,12 +318,21 @@ assign uart_overrun_clear =
 assign uart_framing_error_clear =
     respond && req_is_mmio && !req_is_replay &&
     uart_status_sel && mmio_write_en && req_wdata[3];
-assign uart_rx_ready = boot_active ? boot_rx_ready : uart_rx_consume;
-assign uart_rx_overrun_clear = boot_active ? boot_rx_overrun_clear : uart_overrun_clear;
-assign uart_rx_framing_error_clear =
-    boot_active ? boot_rx_framing_error_clear : uart_framing_error_clear;
-assign uart_tx_valid = boot_active ? boot_tx_valid : uart_fire;
-assign uart_tx_data = boot_active ? boot_tx_data : req_wdata[7:0];
+always @* begin
+    if (boot_active) begin
+        uart_rx_ready = boot_rx_ready;
+        uart_rx_overrun_clear = boot_rx_overrun_clear;
+        uart_rx_framing_error_clear = boot_rx_framing_error_clear;
+        uart_tx_valid = boot_tx_valid;
+        uart_tx_data = boot_tx_data;
+    end else begin
+        uart_rx_ready = uart_rx_consume;
+        uart_rx_overrun_clear = uart_overrun_clear;
+        uart_rx_framing_error_clear = uart_framing_error_clear;
+        uart_tx_valid = uart_fire;
+        uart_tx_data = req_wdata[7:0];
+    end
+end
 assign test_exit_write = respond && req_is_mmio && !req_is_replay && test_exit_sel && mmio_write_en;
 assign traffic_write = respond && req_is_mmio && !req_is_replay && traffic_sel && mmio_write_en;
 assign buzzer_ctrl_write = respond && !req_is_bram && !req_is_replay && buzzer_ctrl_sel && mmio_write_en;
@@ -368,12 +409,12 @@ sdram_data_ctrl #(
     .reset(rst),
     .req_valid(sdram_req_valid),
     .req_ready(sdram_req_ready),
-    .req_we(boot_active ? 1'b1 : req_we_reg),
+    .req_we(sdram_request_we),
     // CPU 保留原始 byte address 做 load lane 选择；controller 只接收
     // 32-bit 对齐地址，并用 req_wstrb/DQM 选择实际写入的 byte lane。
     .req_addr({sdram_request_addr[31:2], 2'b00}),
-    .req_wdata(boot_active ? boot_sdram_req_wdata : req_wdata),
-    .req_wstrb(boot_active ? boot_sdram_req_wstrb : req_wstrb),
+    .req_wdata(sdram_request_wdata),
+    .req_wstrb(sdram_request_wstrb),
     .resp_valid(sdram_resp_valid),
     .resp_rdata(sdram_resp_rdata),
     .resp_err(sdram_resp_err),
@@ -391,8 +432,6 @@ sdram_data_ctrl #(
     .dbg_state(),
     .dbg_refresh_pending()
 );
-
-assign sdram_request_addr = boot_active ? boot_sdram_req_addr : req_addr;
 
 tinybus_decode u_decode (
     .valid(pending && req_is_mmio),

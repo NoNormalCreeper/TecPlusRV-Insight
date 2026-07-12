@@ -3,7 +3,7 @@
 // 1 个低电平起始位、8 个 LSB-first 数据位、1 个高电平停止位。
 module uart_tx #(
     parameter integer CLK_FREQ = 50000000,
-    parameter integer BAUD = 9600
+    parameter integer BAUD = 115200
 ) (
     input        clk,
     input        reset,
@@ -13,7 +13,7 @@ module uart_tx #(
     output reg   txd
 );
 
-// 四舍五入得到每个 bit 占多少个 clk。50 MHz / 9600 不是整数，
+// 四舍五入得到每个 bit 占多少个 clk。50 MHz / 115200 不是整数，
 // 这里的误差对早期串口探针足够小，但不是高精度 baud generator。
 localparam integer BAUD_DIV = (CLK_FREQ + (BAUD / 2)) / BAUD;
 

@@ -193,6 +193,14 @@ python3 scripts/uart_loader.py \
   --sdram-address 0x81000000 \
   --monitor
 ```
+
+如果 Bad Apple asset 已经在板上 SDRAM 中，只需更新 BRAM 执行代码，可以运行：
+
+```bash
+make bad-apple-full-load PORT=COM8 BRAM_ONLY=1
+```
+
+该模式使用 `LOAD_AND_RUN`，不会向 SDRAM 发送 asset；不传 `BRAM_ONLY=1` 时仍保持原有 `LOAD_IMAGE` 行为。
 Windows + WSL2 的 usbipd、`/dev/ttyUSB0`、权限与故障排查见 `docs/WINDOWS_WSL_UART.md`。
 
 ## RTL 与验证入口

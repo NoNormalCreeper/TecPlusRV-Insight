@@ -26,6 +26,8 @@ VGA_TICKS_DEN = 21
 VIDEO_FPS_NUM = 625
 VIDEO_FPS_DEN = 63
 MAX_ASSET_BYTES = 16 * 1024 * 1024
+AUDIO_BEAT_FLAG = 1 << 31
+ASSET_FLAG_AUDIO_BEATS = 1 << 0
 # 与 MP4 开头约 1.370 秒静音精确对齐；不同 tracks 的分层进入不是全局 pre-roll。
 MIDI_OFFSET_SECONDS = 1.369
 MIDI_TIME_SCALE = 1.00218
@@ -145,6 +147,49 @@ def tick_to_seconds(tick: int, ppqn: int,
 
 def note_hz(note: int) -> int:
     return round(440.0 * 2.0 ** ((note - 69) / 12.0))
+
+
+def build_quarter_note_beats(
+    midi: dict,
+    *,
+    duration_seconds: float,
+    offset_seconds: float,
+    time_scale: float,
+) -> list[int]:
+    """按 MIDI PPQ/tempo map 生成与正式音频同时间轴的四分音符 tick。"""
+    max_midi_tick = max((track.get("end_tick", 0) for track in midi["tracks"]),
+                        default=0)
+    beats = []
+    for midi_tick in range(0, max_midi_tick + 1, midi["ppqn"]):
+        seconds = offset_seconds + tick_to_seconds(
+            midi_tick, midi["ppqn"], midi["tempos"]) * time_scale
+        if 0.0 <= seconds < duration_seconds:
+            vga_tick = round(seconds * VGA_TICKS_NUM / VGA_TICKS_DEN)
+            if not beats or beats[-1] != vga_tick:
+                beats.append(vga_tick)
+    return beats
+
+
+def clip_beat_ticks(beats: list[int], start_tick: int, end_tick: int) -> list[int]:
+    """截取 beat tick；窗口起点本身算作新窗口的 tick 0。"""
+    return [tick - start_tick for tick in beats
+            if start_tick <= tick < end_tick]
+
+
+def merge_audio_beats(events: list[tuple[int, int]],
+                      beats: list[int]) -> list[tuple[int, int]]:
+    """把 beat marker 合入音频事件，并携带该时刻仍然有效的频率。"""
+    event_map = dict(events)
+    all_ticks = sorted(set(event_map) | set(beats))
+    beat_set = set(beats)
+    current_hz = 0
+    merged = []
+    for tick in all_ticks:
+        if tick in event_map:
+            current_hz = event_map[tick] & ~AUDIO_BEAT_FLAG
+        value = current_hz | (AUDIO_BEAT_FLAG if tick in beat_set else 0)
+        merged.append((tick, value))
+    return merged
 
 
 def _track_priority(name: str) -> int | None:
@@ -395,9 +440,11 @@ def encode_asset(frames: list[list[int]], audio_events: list[tuple[int, int]],
     total_bytes = audio_offset + len(audio_events) * 8
     if total_bytes > MAX_ASSET_BYTES:
         raise ValueError(f"asset 超过 16 MiB 上限：{total_bytes} bytes")
+    flags = (ASSET_FLAG_AUDIO_BEATS if any(value & AUDIO_BEAT_FLAG
+                                           for _tick, value in audio_events) else 0)
     words = [MAGIC, VERSION, total_bytes, duration_ticks, len(frames),
              video_offset, VIDEO_PERIOD_TICKS, len(audio_events), audio_offset,
-             FRAMEBUFFER_WORDS, 0, 0] + video_words
+             FRAMEBUFFER_WORDS, flags, 0] + video_words
     for tick, hz in audio_events:
         words.extend((tick, hz))
     return struct.pack(f"<{len(words)}I", *words)
@@ -414,7 +461,7 @@ def validate_asset(data: bytes) -> dict:
         raise ValueError("BAM2 magic/version/size 不匹配")
     if framebuffer_words != FRAMEBUFFER_WORDS or period != VIDEO_PERIOD_TICKS:
         raise ValueError("BAM2 framebuffer 或 period 不匹配")
-    if flags or reserved or video_offset != HEADER_WORDS * 4:
+    if flags & ~ASSET_FLAG_AUDIO_BEATS or reserved or video_offset != HEADER_WORDS * 4:
         raise ValueError("BAM2 reserved/header offset 不匹配")
     if audio_offset < video_offset or audio_offset + audio_count * 8 != len(data):
         raise ValueError("BAM2 audio stream 边界不匹配")
@@ -447,9 +494,13 @@ def validate_asset(data: bytes) -> dict:
         raise ValueError("BAM2 audio tick 不是严格递增")
     if audio and audio[-1][0] >= duration_ticks:
         raise ValueError("BAM2 audio event 超出总时长")
+    if any(value & AUDIO_BEAT_FLAG for _tick, value in audio) and not (
+            flags & ASSET_FLAG_AUDIO_BEATS):
+        raise ValueError("BAM2 beat marker 缺少 header flag")
     return {"total_bytes": total_bytes, "duration_vga_ticks": duration_ticks,
             "frame_count": frame_count, "audio_event_count": audio_count,
-            "decoded_frames": frames, "decoded_audio_events": audio}
+            "flags": flags, "decoded_frames": frames,
+            "decoded_audio_events": audio}
 
 
 def probe_video_duration(path: Path) -> float:
@@ -480,7 +531,7 @@ def write_buzzer_wav(data: bytes, output, *, sample_rate: int = 44100) -> None:
     for sample_index in range(total_samples):
         tick = sample_index * VGA_TICKS_NUM / (sample_rate * VGA_TICKS_DEN)
         while event_index < len(events) and events[event_index][0] <= tick:
-            hz = events[event_index][1]
+            hz = events[event_index][1] & ~AUDIO_BEAT_FLAG
             event_index += 1
         if hz:
             samples.append(10000 if phase < 0.5 else -10000)
@@ -539,7 +590,8 @@ def build_synthetic_asset() -> bytes:
     third[0] = 0
     third[95] = 0xFFFFFFFF
     # 72 ticks 超过 1 秒，端到端仿真可同时验证每秒 UART 进度。
-    return encode_asset([first, second, third], [(0, 440), (7, 494), (14, 0)],
+    audio = merge_audio_beats([(0, 440), (7, 494), (14, 0)], [0, 20, 40, 60])
+    return encode_asset([first, second, third], audio,
                         duration_ticks=72)
 
 
@@ -614,9 +666,14 @@ def main() -> None:
         audio = build_all_track_events(
             midi, duration_seconds=args.start + duration, offset_seconds=midi_offset,
             time_scale=args.midi_time_scale, transpose=args.transpose)
+    beats = build_quarter_note_beats(
+        midi, duration_seconds=args.start + duration, offset_seconds=midi_offset,
+        time_scale=args.midi_time_scale)
     duration_ticks = len(frames) * VIDEO_PERIOD_TICKS
     start_tick = round(args.start * VGA_TICKS_NUM / VGA_TICKS_DEN)
     audio = clip_audio_events(audio, start_tick, start_tick + duration_ticks)
+    beats = clip_beat_ticks(beats, start_tick, start_tick + duration_ticks)
+    audio = merge_audio_beats(audio, beats)
     data = encode_asset(frames, audio, duration_ticks=duration_ticks)
     checked = validate_asset(data)
     args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -635,6 +692,7 @@ def main() -> None:
                    "midi_mode": args.midi_mode,
                    "midi_offset_seconds": midi_offset,
                    "midi_time_scale": args.midi_time_scale,
+                   "beat_count": len(beats),
                    "track_note_on_counts": track_notes,
                    "estimated_upload_seconds_115200": len(data) * 10 / 115200})
     if args.report:

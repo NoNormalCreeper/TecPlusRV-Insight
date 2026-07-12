@@ -567,6 +567,15 @@ python3 scripts/test_runner.py run-suite local
 python3 scripts/test_runner.py run-suite all
 ```
 
+push / pull request 的 GitHub Actions 只跑快速 `ci` suite：
+
+```bash
+make ci
+```
+
+分钟级长仿真仅在 GitHub Actions 手动触发时运行；本地对应入口为
+`make ci-full`，其内部仍执行完整 `all` suite。
+
 补充说明：
 
 - `rv32i_safe` 是当前第一阶段必须稳定通过的官方 `RV32I` 子集。

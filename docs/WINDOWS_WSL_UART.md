@@ -108,15 +108,15 @@ GDB stub 继续保持同样分工：WSL 构建，Windows Python 上传，Windows
 安装包含 `riscv-none-elf-gdb.exe` 的 Windows xPack RISC-V 工具链后执行：
 
 ```bash
-make gdb-stub-debug PORT=COM8
+make gdb-stub-debug PORT=COM8 BOOTLOAD_BAUD=115200
 ```
 
-该 target 复用原有 `bootload` 和 `uart_loader.py`，上传时不进入 serial monitor；收到 ACK 并释放 COM8 后，WSL 通过 Windows Interop 启动 GDB，自动加载 `firmware/build/bootload/firmware.elf`、设置 9600 baud 并连接 COM8。GDB 是 Windows 进程，CP2102 始终归 Windows，不需要 usbipd。
+该 target 复用原有 `bootload` 和 `uart_loader.py`，上传时不进入 serial monitor；收到 ACK 并释放 COM8 后，WSL 通过 Windows Interop 启动 GDB，自动加载 `firmware/build/bootload/firmware.elf`、设置同一个 `BOOTLOAD_BAUD` 并连接 COM8。GDB 是 Windows 进程，CP2102 始终归 Windows，不需要 usbipd。
 
 如果 GDB 没有加入 Windows PATH，可传入它的 WSL 路径：
 
 ```bash
-make gdb-stub-debug PORT=COM8 \
+make gdb-stub-debug PORT=COM8 BOOTLOAD_BAUD=115200 \
   WINDOWS_GDB=/mnt/c/Tools/xpack-riscv/bin/riscv-none-elf-gdb.exe
 ```
 

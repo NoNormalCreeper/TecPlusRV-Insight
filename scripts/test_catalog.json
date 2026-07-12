@@ -841,6 +841,47 @@
       "freertos_acceptance",
       "bad_apple_full"
     ],
+    "ci_soc": [
+      "minisoc_smoke_pico",
+      "minisoc_smoke_dark",
+      "minisoc_vga_bitmap_dark",
+      "bootloader_pico",
+      "bootloader_dark",
+      "bad_apple_full_asset",
+      "boot_image_verify_pico",
+      "boot_image_verify_dark",
+      "boot_image_asset_tool",
+      "uart_loader_tool",
+      "firmware_output_isolation",
+      "minisoc_sdram_pico",
+      "minisoc_sdram_dark",
+      "minisoc_sdram_subword_pico",
+      "minisoc_sdram_subword_dark",
+      "minisoc_counter_source_pico",
+      "minisoc_counter_source_dark",
+      "minisoc_counter_reset_pico",
+      "minisoc_counter_reset_dark",
+      "tb_mode_check",
+      "uart_once_regression",
+      "uart_echo_regression",
+      "traffic_light_regression",
+      "buzzer_regression",
+      "perf_targets_require_addrs"
+    ],
+    "ci_freertos": [
+      "freertos_build_contract",
+      "freertos_frame_contract",
+      "freertos_first_task",
+      "freertos_queue",
+      "freertos_acceptance"
+    ],
+    "ci": [
+      "@probe",
+      "@platform",
+      "@ci_soc",
+      "@rv32i_safe",
+      "@ci_freertos"
+    ],
     "local": [
       "@probe",
       "@platform",
