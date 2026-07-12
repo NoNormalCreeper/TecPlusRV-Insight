@@ -108,6 +108,18 @@ compile_minisoc_tb() {
         )
     fi
 
+    if [ -n "${TB_GDB_CONTINUE_PC:-}" ]; then
+        extra_params+=(
+            -P "$tb_module.CONTINUE_PC=32'h$TB_GDB_CONTINUE_PC"
+        )
+    fi
+
+    if [ -n "${TB_GDB_EXPLICIT_PC:-}" ]; then
+        extra_params+=(
+            -P "$tb_module.EXPLICIT_PC=$TB_GDB_EXPLICIT_PC"
+        )
+    fi
+
     if [ "$arg_count" -ge 8 ]; then
         extra_params+=(
             -P "$tb_module.EXPECT_UART_FIRE_COUNT=$expect_uart_fire_count"
@@ -526,6 +538,32 @@ case "$SIM_KIND" in
                 tb_minisoc_timer_irq "$REPO_ROOT/sim/tb_minisoc_timer_irq.v"
         run_and_check "$BUILD_DIR/tb_minisoc_timer_irq_dark.log" \
             vvp "$BUILD_DIR/tb_minisoc_timer_irq_dark.out"
+        ;;
+    gdb_stub)
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/gdb_stub_smoke.c" \
+        FIRMWARE_PROFILE=gdb_stub \
+            prepare_firmware
+        GDB_CONTINUE_PC=$(riscv64-unknown-elf-nm --defined-only \
+            "${FIRMWARE_MEM%.mem}.elf" | awk '$3 == "gdb_pc_continue_target" { print $1 }')
+        if [ -z "$GDB_CONTINUE_PC" ]; then
+            echo "找不到 gdb_pc_continue_target symbol" >&2
+            exit 1
+        fi
+        TB_GDB_CONTINUE_PC="$GDB_CONTINUE_PC" TB_GDB_EXPLICIT_PC=1 \
+            compile_minisoc_tb "$BUILD_DIR/tb_gdb_stub_explicit_pc.out" 1 \
+                tb_gdb_stub "$REPO_ROOT/sim/tb_gdb_stub.v"
+        run_and_check "$BUILD_DIR/tb_gdb_stub_explicit_pc.log" \
+            vvp "$BUILD_DIR/tb_gdb_stub_explicit_pc.out"
+        TB_GDB_CONTINUE_PC="$GDB_CONTINUE_PC" TB_GDB_EXPLICIT_PC=0 \
+            compile_minisoc_tb "$BUILD_DIR/tb_gdb_stub_cooperative.out" 1 \
+                tb_gdb_stub "$REPO_ROOT/sim/tb_gdb_stub.v"
+        run_and_check "$BUILD_DIR/tb_gdb_stub_cooperative.log" \
+            vvp "$BUILD_DIR/tb_gdb_stub_cooperative.out"
+        TB_GDB_CONTINUE_PC="$GDB_CONTINUE_PC" TB_GDB_EXPLICIT_PC=2 \
+            compile_minisoc_tb "$BUILD_DIR/tb_gdb_stub_caddr.out" 1 \
+                tb_gdb_stub "$REPO_ROOT/sim/tb_gdb_stub.v"
+        run_and_check "$BUILD_DIR/tb_gdb_stub_caddr.log" \
+            vvp "$BUILD_DIR/tb_gdb_stub_caddr.out"
         ;;
     minisoc_vga_bitmap_dark)
         FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/vga_bitmap_smoke.c" \

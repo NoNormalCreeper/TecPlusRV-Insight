@@ -82,6 +82,16 @@ $REPO_ROOT/firmware/runtime/trap.c
 $REPO_ROOT/firmware/drivers/machine_timer.c
 "
         ;;
+    gdb_stub)
+        select_zicsr_march
+        EXTRA_CFLAGS="-g3 -DGDB_STUB_ACTIVE=1"
+        PROFILE_SOURCES="
+$REPO_ROOT/firmware/runtime/trap_entry.S
+$REPO_ROOT/firmware/runtime/trap.c
+$REPO_ROOT/firmware/gdb/gdb_packet.c
+$REPO_ROOT/firmware/gdb/gdb_stub.c
+"
+        ;;
     freertos)
         FREERTOS_KERNEL="$REPO_ROOT/third_party/FreeRTOS-Kernel"
         FREERTOS_CPU_CLOCK_HZ=${FREERTOS_CPU_CLOCK_HZ:-50000000}

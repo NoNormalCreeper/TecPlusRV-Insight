@@ -17,7 +17,6 @@ void gdb_packet_parser_init(struct gdb_packet_parser *parser)
     parser->checksum = 0u;
     parser->received_checksum = 0u;
     parser->state = PARSER_WAIT_START;
-    parser->overflow = 0u;
 }
 
 static void start_packet(struct gdb_packet_parser *parser)
@@ -27,7 +26,6 @@ static void start_packet(struct gdb_packet_parser *parser)
     parser->checksum = 0u;
     parser->received_checksum = 0u;
     parser->state = PARSER_PAYLOAD;
-    parser->overflow = 0u;
 }
 
 enum gdb_packet_event gdb_packet_feed(struct gdb_packet_parser *parser,
@@ -54,7 +52,6 @@ enum gdb_packet_event gdb_packet_feed(struct gdb_packet_parser *parser,
             return GDB_PACKET_NONE;
         }
         if (parser->length >= GDB_PACKET_CAPACITY) {
-            parser->overflow = 1u;
             parser->state = PARSER_DISCARD;
             return GDB_PACKET_OVERFLOW;
         }

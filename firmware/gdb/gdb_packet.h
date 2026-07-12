@@ -19,7 +19,6 @@ struct gdb_packet_parser {
     unsigned int checksum;
     unsigned int received_checksum;
     unsigned int state;
-    unsigned int overflow;
 };
 
 void gdb_packet_parser_init(struct gdb_packet_parser *parser);
