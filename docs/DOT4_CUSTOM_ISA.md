@@ -62,6 +62,12 @@ make ise-export ISE_TARGET=minisoc_dot4_dark
 make dot4-load PORT=COM8
 ```
 
+阶段性人工记录见 [`reports/dot4-board-validation.md`](../reports/dot4-board-validation.md)。
+该报告已经记录 Map 资源、真实开发板 UART benchmark、50 MHz timing 和
+`OVERMAPPED` 搜索结果；XST report 已出现 `Unit <u_dot4>`，`g_darkriscv`
+层级名未直接检索到，当前以 `CPU_IMPL=1`、DSP48A1 使用量与 UART PASS
+作为间接证据。
+
 本分支的面积基线是共同祖先 `35968e6` 上的 `minisoc_dark`，不是当前分支的
 `minisoc_dark`：当前分支已经全局接入 DOT4，拿它作对照会把加速器也综合进去。本地已
 准备两份脱离源码树仍可独立 elaboration 的导出包：
