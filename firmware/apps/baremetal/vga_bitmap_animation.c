@@ -1,4 +1,4 @@
-// 64x48 1bpp VGA MMIO 动态写入验收固件。
+// 64x48 1bpp VGA MMIO 动态写入 demo。
 #include "drivers/gpio.h"
 #include "drivers/uart.h"
 #include "drivers/vga.h"

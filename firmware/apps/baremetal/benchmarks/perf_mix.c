@@ -1,5 +1,5 @@
-#include "testlib.h"
-#include "../drivers/perf.h"
+#include "tests/testlib.h"
+#include "drivers/perf.h"
 
 static volatile unsigned int perf_buf[64];
 #define MIXED_ROUNDS 32u

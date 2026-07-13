@@ -156,7 +156,7 @@ make timer-irq-load PORT=COM8
 构建测试 payload：
 
 ```bash
-FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/boot_payload.c" \
 FIRMWARE_OUT=firmware/build/manual/boot_payload \
   ./scripts/build_firmware.sh
 ```

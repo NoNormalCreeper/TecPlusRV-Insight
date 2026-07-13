@@ -1,4 +1,4 @@
-// 64x48 1bpp VGA MMIO 静态图样验收固件。
+// 64x48 1bpp VGA MMIO 静态图样上板验收程序。
 #include "drivers/vga.h"
 #include "tests/testlib.h"
 

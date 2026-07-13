@@ -1,4 +1,4 @@
-// FreeRTOS timer smoke：覆盖抢占、delay 与每 task critical nesting。
+// FreeRTOS 上板 smoke：覆盖抢占、delay 与每 task critical nesting。
 #include "FreeRTOS.h"
 #include "task.h"
 

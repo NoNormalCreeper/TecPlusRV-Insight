@@ -1,4 +1,4 @@
-// DarkRISCV machine timer IRQ 的端到端 firmware。
+// DarkRISCV machine timer IRQ 上板验收程序，同时供端到端仿真复用。
 #include "drivers/machine_timer.h"
 #include "drivers/mmio.h"
 #include "drivers/uart.h"

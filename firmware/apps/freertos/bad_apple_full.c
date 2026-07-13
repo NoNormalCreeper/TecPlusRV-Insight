@@ -1,4 +1,4 @@
-// 全时长 Bad Apple：FreeRTOS 同步播放 SDRAM 中的 BAM2 bitmap/MIDI asset。
+// 全时长 Bad Apple demo：FreeRTOS 同步播放 SDRAM 中的 BAM2 bitmap/MIDI asset。
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"

@@ -1,4 +1,4 @@
-// 裸机 firmware 入口。
+// 默认裸机 SoC 自检应用。
 // 启动后先打 boot log，再让 CPU 主动自检硬件（ISA / BRAM / MMIO），
 // 最后把自检结果写进 test_exit：PASS 写 1，FAIL 写 0xdeadXXXX 错误码。
 // 仿真 testbench 和上板 LED 都靠这个结果判断系统是否真的跑通。

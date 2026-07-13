@@ -230,35 +230,8 @@ target remote COM8
 
 ## 5. 调试自己的用户程序
 
-创建例如 `firmware/apps/baremetal/gdb_demo.c`：
-
-```c
-#include "runtime/debug.h"
-
-struct demo_state {
-    unsigned int phase;
-    unsigned int input;
-    unsigned int output;
-};
-
-volatile struct demo_state demo_state;
-
-int main(void)
-{
-    demo_state.phase = 1u;
-    demo_state.input = 7u;
-    demo_state.output = demo_state.input * 3u;
-    DEBUG_BREAK();
-
-    demo_state.phase = 2u;
-    demo_state.output += 5u;
-    DEBUG_BREAK();
-
-    demo_state.phase = 3u;
-    for (;;) {
-    }
-}
-```
+仓库提供 `firmware/apps/baremetal/gdb_demo.c`。它在第一次 `DEBUG_BREAK()` 前把
+`input` 初始化为 7，继续后计算 `output = input * 3`，再在第二次 breakpoint 暴露结果。
 
 一条命令构建、上传并连接：
 
@@ -272,9 +245,8 @@ make firmware-debug \
 第一次停住后：
 
 ```gdb
-p/x demo_state
-p/x demo_state.phase
-p/x demo_state.output
+p/x gdb_demo_state
+set var gdb_demo_state.input = 10
 list
 continue
 ```
@@ -282,9 +254,13 @@ continue
 后续 `DEBUG_BREAK()` 会主动上报新的 `SIGTRAP`，GDB 再次回到 prompt：
 
 ```gdb
-p/x demo_state
+p/x gdb_demo_state
+p/x gdb_demo_state.output
 continue
 ```
+
+如果第一次停住时把 `input` 改为 10，第二次停住时 `output` 应为 30。这同时证明
+symbol/DWARF、memory write、cooperative stop 和 continue 路径。
 
 最后一次 `continue` 后程序进入无限循环。因为当前不支持异步 Ctrl-C，要开始新 session，请退出 GDB、重新执行一站式命令并按 RESET。
 

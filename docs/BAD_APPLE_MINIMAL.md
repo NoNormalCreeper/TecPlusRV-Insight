@@ -42,7 +42,7 @@ Bad Apple 完成态。
   - 真实 MP4 抽帧
   - format-1 MIDI、tempo、running status、note on/off 解析
   - MIDI track、transpose、offset、time-scale 校准
-- `firmware/tests/bad_apple_minimal.c`
+- `firmware/apps/baremetal/bad_apple_minimal.c`
   - SDRAM asset 边界检查
   - diff replay、蜂鸣器、LED、低频 UART 输出
 - `sim/tb_bad_apple_minimal.v`

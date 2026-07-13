@@ -1,4 +1,4 @@
-// GDB stub 的 cooperative ebreak smoke firmware。
+// GDB stub 的 cooperative ebreak 上板验收程序，同时供端到端仿真复用。
 #include "drivers/mmio.h"
 #include "runtime/debug.h"
 

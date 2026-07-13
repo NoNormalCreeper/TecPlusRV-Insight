@@ -73,7 +73,7 @@ expect_failure_contains '当前 GDB 调试尚不支持 freertos 应用' \
 expect_failure_contains 'firmware-load 需要 PORT' \
     firmware-load APP=baremetal/hello.c
 
-expect_success_contains 'firmware/main.c' firmware
+expect_success_contains 'firmware/apps/baremetal/soc_selftest.c' firmware
 expect_success_contains 'FIRMWARE_MAIN="/tmp/gdb_user_program.c"' \
     gdb-stub-debug PORT=COM8 GDB_STUB_MAIN=/tmp/gdb_user_program.c
 
@@ -89,6 +89,34 @@ for app in baremetal/hello.c irq/timer_demo.c freertos/queue_demo.c; do
         fi
     done
 done
+
+for app in \
+    baremetal/board_demo.c \
+    baremetal/soc_selftest.c \
+    baremetal/gdb_demo.c \
+    baremetal/vga_bitmap_animation.c \
+    baremetal/benchmarks/system_bench.c \
+    irq/timer_irq_smoke.c \
+    freertos/bad_apple_full.c; do
+    if [ ! -f "$repo_root/firmware/apps/$app" ]; then
+        echo "FAIL: 缺少应位于 firmware/apps 的上板程序：$app" >&2
+        exit 1
+    fi
+done
+
+legacy_board_sources='firmware/tests/(board_demo|boot_payload|boot_image_verify|buzzer_tone|gdb_stub_smoke|sdram_memtest|traffic_light_mmio|vga_bitmap_smoke|vga_bitmap_animation|timer_irq_smoke|freertos_smoke|freertos_acceptance|bad_apple_minimal|bad_apple_full|perf_mix|system_bench|sdram_sum_bench|riscv_bench_median|riscv_bench_memcpy)\.c'
+if grep -E "$legacy_board_sources" \
+    "$repo_root/Makefile" "$repo_root/scripts/export_ise_project.sh" >/dev/null; then
+    echo "FAIL: 上板入口仍引用 firmware/tests 中的单用户程序" >&2
+    exit 1
+fi
+
+if grep -F 'firmware/main.c' \
+    "$repo_root/Makefile" "$repo_root/scripts/build_firmware.sh" \
+    "$repo_root/sim/run_sim.sh" >/dev/null; then
+    echo "FAIL: 默认上板程序仍位于 firmware/apps 之外" >&2
+    exit 1
+fi
 
 grep -F 'make firmware APP=baremetal/hello.c' \
     "$repo_root/docs/FIRMWARE_GUIDE.md" >/dev/null

@@ -6,7 +6,7 @@ set -eu
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 REGRESSION_DIR="$REPO_ROOT/sim/build/regression"
-DEFAULT_MAIN="$REPO_ROOT/firmware/main.c"
+DEFAULT_MAIN="$REPO_ROOT/firmware/apps/baremetal/soc_selftest.c"
 TESTS=${TESTS:-"smoke alu_branch load_store counters perf_mix sdram_memtest runtime_heap_smoke sdram_overlap_read system_bench riscv_bench_median riscv_bench_memcpy"}
 
 mkdir -p "$REGRESSION_DIR"
@@ -18,6 +18,15 @@ for test_name in $TESTS; do
     pico_log="tb_minisoc_pico.log"
     dark_log="tb_minisoc_dark.log"
     firmware_out="$REPO_ROOT/firmware/build/regression/$test_name/firmware"
+
+    case "$test_name" in
+        sdram_memtest)
+            test_main="$REPO_ROOT/firmware/apps/baremetal/sdram_memtest.c"
+            ;;
+        perf_mix|sdram_sum_bench|system_bench|riscv_bench_median|riscv_bench_memcpy)
+            test_main="$REPO_ROOT/firmware/apps/baremetal/benchmarks/$test_name.c"
+            ;;
+    esac
 
     case "$test_name" in
         sdram_memtest|sdram_sum_bench|runtime_heap_smoke|sdram_overlap_read|system_bench|riscv_bench_median|riscv_bench_memcpy)

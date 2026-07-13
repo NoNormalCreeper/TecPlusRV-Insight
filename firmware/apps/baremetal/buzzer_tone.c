@@ -1,6 +1,6 @@
-// Board-facing buzzer example: play a continuous 1 kHz tone at 50 MHz.
-#include "../drivers/buzzer.h"
-#include "../drivers/gpio.h"
+// 板级蜂鸣器 demo：在 50 MHz 时钟下持续播放 1 kHz 音调。
+#include "drivers/buzzer.h"
+#include "drivers/gpio.h"
 
 #define BOARD_CLOCK_HZ 50000000u
 #define TONE_HZ        1000u

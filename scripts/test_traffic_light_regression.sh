@@ -4,7 +4,7 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
-TRAFFIC_MAIN="$REPO_ROOT/firmware/tests/traffic_light_mmio.c"
+TRAFFIC_MAIN="$REPO_ROOT/firmware/apps/baremetal/traffic_light_mmio.c"
 FIRMWARE_OUT="$REPO_ROOT/firmware/build/regression/traffic_light/firmware"
 
 FIRMWARE_MAIN="$TRAFFIC_MAIN" FIRMWARE_OUT="$FIRMWARE_OUT" \

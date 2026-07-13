@@ -1,11 +1,11 @@
 // 来源：riscv-software-src/riscv-tests 的 benchmarks/memcpy。
 // 保留 upstream dataset，分别测量 BRAM->BRAM 与 SDRAM->SDRAM 的标准 memcpy。
-#include "testlib.h"
-#include "../drivers/perf.h"
-#include "../runtime/rt_alloc.h"
-#include "../runtime/rt_string.h"
+#include "tests/testlib.h"
+#include "drivers/perf.h"
+#include "runtime/rt_alloc.h"
+#include "runtime/rt_string.h"
 
-#include "../../tests/riscv_tests/riscv-tests/benchmarks/memcpy/dataset1.h"
+#include "../../../../tests/riscv_tests/riscv-tests/benchmarks/memcpy/dataset1.h"
 
 static int bram_result[DATA_SIZE];
 

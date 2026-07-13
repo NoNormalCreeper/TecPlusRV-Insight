@@ -202,9 +202,9 @@ TESTS="smoke alu_branch load_store counters perf_mix sdram_memtest" \
 固定求和 benchmark 使用 `1024` 个 32-bit word，填充 `a[i] = i` 后顺序求和。运行方式：
 
 ```bash
-FIRMWARE_MAIN="$PWD/firmware/tests/sdram_sum_bench.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/benchmarks/sdram_sum_bench.c" \
   ./sim/run_sim.sh minisoc_sdram_pico
-FIRMWARE_MAIN="$PWD/firmware/tests/sdram_sum_bench.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/benchmarks/sdram_sum_bench.c" \
   ./sim/run_sim.sh minisoc_sdram_dark
 ```
 

@@ -179,8 +179,8 @@ firmware/freertos/FreeRTOSConfig.h     全仓唯一 FreeRTOS 配置
 firmware/freertos/portmacro.h          RV32I 类型、yield、critical 宏
 firmware/freertos/port.c               初始 frame、scheduler、trap dispatch
 firmware/freertos/freertos_hooks.c     assert、stack overflow、静态 idle memory
-firmware/tests/freertos_smoke.c         tick/yield/delay/抢占 smoke
-firmware/tests/freertos_queue.c         静态 producer/consumer queue demo
+firmware/apps/freertos/freertos_smoke.c 上板 tick/yield/delay/抢占 smoke
+firmware/tests/freertos_queue.c         静态 producer/consumer queue 自动回归
 sim/tb_freertos_smoke.v                 通用 FreeRTOS MiniSoC 验收 bench
 ```
 

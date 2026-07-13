@@ -11,7 +11,7 @@ user_output=$(make --no-print-directory -n -C "$repo_root" gdb-stub-debug \
 
 grep -F 'bootload PORT="COM8"' <<<"$output" >/dev/null
 grep -F 'FIRMWARE_PROFILE="gdb_stub"' <<<"$output" >/dev/null
-grep -F 'firmware/tests/gdb_stub_smoke.c' <<<"$output" >/dev/null
+grep -F 'firmware/apps/baremetal/gdb_stub_smoke.c' <<<"$output" >/dev/null
 grep -F 'scripts/uart_loader.py' <<<"$output" >/dev/null
 
 if grep -F -- '--monitor' <<<"$output" >/dev/null; then

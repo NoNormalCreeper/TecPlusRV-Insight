@@ -369,34 +369,34 @@ case "$ISE_TARGET" in
         package_minisoc
         ;;
     minisoc_dark)
-        package_minisoc "$REPO_ROOT/firmware/tests/timer_irq_smoke.c" "这是 DarkRISCV machine timer IRQ 验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包同时包含 firmware/build/firmware.bin，可通过共用 bootloader 装载；仓库中也可运行 make timer-irq-load PORT=COM8。UART 输出 timer irq pass: ticks=<次数> loops=<前台循环次数> 表示 firmware 验收通过。2026-07-11 当前 revision 已完成 Map/PAR 与真实上板：50 MHz post-route timing slack 为 0.462 ns，上板输出 ticks=3 loops=46；后续 RTL 或约束变化必须重新验收。" "dark_irq"
+        package_minisoc "$REPO_ROOT/firmware/apps/irq/timer_irq_smoke.c" "这是 DarkRISCV machine timer IRQ 验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包同时包含 firmware/build/firmware.bin，可通过共用 bootloader 装载；仓库中也可运行 make timer-irq-load PORT=COM8。UART 输出 timer irq pass: ticks=<次数> loops=<前台循环次数> 表示 firmware 验收通过。2026-07-11 当前 revision 已完成 Map/PAR 与真实上板：50 MHz post-route timing slack 为 0.462 ns，上板输出 ticks=3 loops=46；后续 RTL 或约束变化必须重新验收。" "dark_irq"
         ;;
     minisoc_freertos_dark|freertos_dark)
         FREERTOS_CPU_CLOCK_HZ=50000000 \
-            package_minisoc "$REPO_ROOT/firmware/tests/freertos_smoke.c" "这是 DarkRISCV FreeRTOS timer/preemption/delay/critical smoke 上板目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包的 firmware/build/firmware.bin 可通过共用 bootloader 装载；仓库中也可运行 make freertos-load PORT=COM8。LED=5 且 test_exit=1 表示 smoke 完成。导出包内的 third_party/ 与 firmware/freertos/ 是 payload 可复现源码，不要作为 RTL source 加入 ISE。真实 Map/PAR/timing 与上板 UART 仍属于人工 Gate。" "freertos"
+            package_minisoc "$REPO_ROOT/firmware/apps/freertos/freertos_smoke.c" "这是 DarkRISCV FreeRTOS timer/preemption/delay/critical smoke 上板目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包的 firmware/build/firmware.bin 可通过共用 bootloader 装载；仓库中也可运行 make freertos-load PORT=COM8。LED=5 且 test_exit=1 表示 smoke 完成。导出包内的 third_party/ 与 firmware/freertos/ 是 payload 可复现源码，不要作为 RTL source 加入 ISE。真实 Map/PAR/timing 与上板 UART 仍属于人工 Gate。" "freertos"
         package_freertos_sources
         ;;
     minisoc_freertos_acceptance_dark|freertos_acceptance_dark)
         FREERTOS_CPU_CLOCK_HZ=50000000 \
-            package_minisoc "$REPO_ROOT/firmware/tests/freertos_acceptance.c" "这是 DarkRISCV FreeRTOS SDRAM 综合验收上板目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。验收依次覆盖 heap_5、scheduler、queue/notification、semaphore/mutex、event group、software timer 和 dynamic object；UART 输出 freertos acceptance pass、LED=5 表示通过。仓库中可运行 make freertos-acceptance-load PORT=COM8。当前只完成自动仿真，Map/PAR/timing 与真实上板属于人工 Gate。" "freertos"
+            package_minisoc "$REPO_ROOT/firmware/apps/freertos/freertos_acceptance.c" "这是 DarkRISCV FreeRTOS SDRAM 综合验收上板目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。验收依次覆盖 heap_5、scheduler、queue/notification、semaphore/mutex、event group、software timer 和 dynamic object；UART 输出 freertos acceptance pass、LED=5 表示通过。仓库中可运行 make freertos-acceptance-load PORT=COM8。当前只完成自动仿真，Map/PAR/timing 与真实上板属于人工 Gate。" "freertos"
         package_freertos_sources
         ;;
     minisoc_vga_bitmap_dark|vga_bitmap_dark)
-        package_minisoc "$REPO_ROOT/firmware/tests/vga_bitmap_smoke.c" "这是 64x48 1bpp VGA MMIO 的 DarkRISCV 上板验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_BITMAP_ENABLE=1、VGA_TEXT_ENABLE=0。烧录后用 firmware/build/firmware.bin 通过共用 bootloader 装载；屏幕应显示白色边框和中心十字，UART 应输出 vga bitmap smoke pass。动态写入可另行运行 make bootload PORT=COM8 FIRMWARE_MAIN=firmware/tests/vga_bitmap_animation.c。2026-07-11 已通过 ISE 综合与 PAR：4216/5720 LUT（73%）、1585/11440 registers（13%），framebuffer 已推断为 LUT Memory，50 MHz slack 为 +0.620 ns；固件真实上板显示仍待验证。"
+        package_minisoc "$REPO_ROOT/firmware/apps/baremetal/vga_bitmap_smoke.c" "这是 64x48 1bpp VGA MMIO 的 DarkRISCV 上板验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_BITMAP_ENABLE=1、VGA_TEXT_ENABLE=0。烧录后运行 make firmware-load APP=baremetal/vga_bitmap_smoke.c PORT=COM8；屏幕应显示白色边框和中心十字，UART 应输出 vga bitmap smoke pass。动态写入可运行 make firmware-load APP=baremetal/vga_bitmap_animation.c PORT=COM8。2026-07-11 已通过 ISE 综合与 PAR：4216/5720 LUT（73%）、1585/11440 registers（13%），framebuffer 已推断为 LUT Memory，50 MHz slack 为 +0.620 ns；固件真实上板显示仍待验证。"
         ;;
     bad_apple_full_dark|bad_apple_full)
         FREERTOS_CPU_CLOCK_HZ=50000000 \
-            package_minisoc "$REPO_ROOT/firmware/tests/bad_apple_full.c" "这是全时长 Bad Apple BAM2 上板目标。请在 ISE Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_BITMAP_ENABLE=1、VGA_TEXT_ENABLE=0；UART_BAUD 必须与 make bad-apple-full-load 使用的 BOOTLOAD_BAUD 一致，默认均为 9600。先烧录 bitstream，再运行 make bad-apple-full-load PORT=COM8。约 219 秒后 UART 输出 bad apple full pass、LED=5 并循环。" "freertos"
+            package_minisoc "$REPO_ROOT/firmware/apps/freertos/bad_apple_full.c" "这是全时长 Bad Apple BAM2 上板目标。请在 ISE Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_BITMAP_ENABLE=1、VGA_TEXT_ENABLE=0；UART_BAUD 必须与 make bad-apple-full-load 使用的 BOOTLOAD_BAUD 一致，默认均为 9600。先烧录 bitstream，再运行 make bad-apple-full-load PORT=COM8。约 219 秒后 UART 输出 bad apple full pass、LED=5 并循环。" "freertos"
         package_freertos_sources
         ;;
     minisoc_bootloader|bootloader)
-        package_minisoc "$REPO_ROOT/firmware/tests/boot_payload.c" "这是 UART bootloader 目标。请在 ISE 的 Generics, Parameters 中设置 BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0，并让 UART_BAUD 与 host --baud 一致；程序复位后等待 READY。LOAD_IMAGE 全量读回与吞吐测试见 docs/BOOTLOADER_BOARD_TEST.md。"
+        package_minisoc "$REPO_ROOT/firmware/apps/baremetal/boot_payload.c" "这是 UART bootloader 目标。请在 ISE 的 Generics, Parameters 中设置 BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0，并让 UART_BAUD 与 host --baud 一致；程序复位后等待 READY。LOAD_IMAGE 全量读回与吞吐测试见 docs/BOOTLOADER_BOARD_TEST.md。"
         ;;
     bad_apple_minimal|bad_apple)
-        package_minisoc "$REPO_ROOT/firmware/tests/bad_apple_minimal.c" "这是保留的 BAM1 仿真/资源实验原型，不是当前可上板目标。若要重现实验，请显式设置 BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=1；已知 writable text/tile RAM 会让 LX9 MiniSoC overmap。后续 1bpp 改造见 docs/BAD_APPLE_FUTURE.md。"
+        package_minisoc "$REPO_ROOT/firmware/apps/baremetal/bad_apple_minimal.c" "这是保留的 BAM1 仿真/资源实验原型，不是当前可上板目标。若要重现实验，请显式设置 BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=1；已知 writable text/tile RAM 会让 LX9 MiniSoC overmap。后续 1bpp 改造见 docs/BAD_APPLE_FUTURE.md。"
         ;;
     probe_minisoc_sdram|minisoc_sdram_probe|m2b_probe)
-        package_minisoc "$REPO_ROOT/firmware/tests/sdram_memtest.c" "这是 M2b 板级 probe：真实 CPU 从 BRAM 取指，经数据总线访问 BRAM、TinyBus MMIO 与 U2 SDRAM。LED=5 且 UART 打印 all patterns verified 表示通过。"
+        package_minisoc "$REPO_ROOT/firmware/apps/baremetal/sdram_memtest.c" "这是 M2b 板级 probe：真实 CPU 从 BRAM 取指，经数据总线访问 BRAM、TinyBus MMIO 与 U2 SDRAM。LED=5 且 UART 打印 all patterns verified 表示通过。"
         ;;
     *)
         echo "未知 ISE 导出目标：$ISE_TARGET" >&2

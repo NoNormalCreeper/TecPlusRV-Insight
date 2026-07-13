@@ -3,8 +3,8 @@
 // 这不是 microbenchmark：每个输出同时依赖相邻三个输入，覆盖真实的数据读、
 // 计算与写回路径；相邻迭代还会重叠读取同一元素，可作为 Dark SDRAM 读请求
 // 重放修复的上层回归。
-#include "testlib.h"
-#include "../drivers/perf.h"
+#include "tests/testlib.h"
+#include "drivers/perf.h"
 
 #define WORDS 256u
 #define ROUNDS 4u

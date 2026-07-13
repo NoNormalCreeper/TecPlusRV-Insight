@@ -139,7 +139,7 @@ make ci-full
 
 ## 官方 `RV32I` 回归
 
-当前仓库已经接入一条独立的官方 `riscv-tests` 验证支线，用来验证基础 `RV32I` 指令语义，而不影响默认 `firmware/main.c` 主线。
+当前仓库已经接入一条独立的官方 `riscv-tests` 验证支线，用来验证基础 `RV32I` 指令语义，而不影响默认 `firmware/apps/baremetal/soc_selftest.c` 主线。
 
 目录约定：
 
@@ -260,7 +260,7 @@ python3 scripts/test_uart_loader.py
 构建并检查可下载 payload：
 
 ```bash
-FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/boot_payload.c" \
 FIRMWARE_OUT=firmware/build/manual/boot_payload \
   ./scripts/build_firmware.sh
 python3 scripts/uart_loader.py \
@@ -331,17 +331,17 @@ make ise-export ISE_TARGET=probe_minisoc_sdram
 make ise-export ISE_TARGET=probe_uart ISE_EXPORT_MODE=full
 ```
 
-导出交通灯 MMIO 上板测试固件：
+导出交通灯 MMIO 上板验收程序：
 
 ```bash
-FIRMWARE_MAIN="$PWD/firmware/tests/traffic_light_mmio.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/traffic_light_mmio.c" \
 make ise-export ISE_TARGET=minisoc
 ```
 
 导出蜂鸣器 1 kHz 持续音示例：
 
 ```bash
-FIRMWARE_MAIN="$PWD/firmware/tests/buzzer_tone.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/buzzer_tone.c" \
 make ise-export ISE_TARGET=minisoc
 ```
 
@@ -460,9 +460,9 @@ M2.5 的 SDRAM firmware 验收使用以下入口：
 ```bash
 TESTS="smoke alu_branch load_store counters perf_mix sdram_memtest" \
   bash scripts/test_dual_core_regression.sh
-FIRMWARE_MAIN="$PWD/firmware/tests/sdram_sum_bench.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/benchmarks/sdram_sum_bench.c" \
   ./sim/run_sim.sh minisoc_sdram_pico
-FIRMWARE_MAIN="$PWD/firmware/tests/sdram_sum_bench.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/benchmarks/sdram_sum_bench.c" \
   ./sim/run_sim.sh minisoc_sdram_dark
 ```
 

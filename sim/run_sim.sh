@@ -8,9 +8,9 @@ SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 BUILD_DIR="$REPO_ROOT/sim/build"
 SIM_KIND=${1:-uart_tx}
-DEFAULT_FIRMWARE_MAIN="$REPO_ROOT/firmware/main.c"
+DEFAULT_FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/baremetal/soc_selftest.c"
 # SDRAM 目标默认跑 memtest；显式传入 FIRMWARE_MAIN 时用于 benchmark/runtime 验收。
-SDRAM_FIRMWARE_MAIN=${FIRMWARE_MAIN:-$REPO_ROOT/firmware/tests/sdram_memtest.c}
+SDRAM_FIRMWARE_MAIN=${FIRMWARE_MAIN:-$REPO_ROOT/firmware/apps/baremetal/sdram_memtest.c}
 FIRMWARE_MEM=${FIRMWARE_MEM:-}
 
 need_tool() {
@@ -377,7 +377,7 @@ case "$SIM_KIND" in
         python3 "$REPO_ROOT/scripts/make_bad_apple_minimal_asset.py" \
             --output "$BUILD_DIR/bad_apple_minimal.bin" \
             --mem-output "$ASSET_MEM" >/dev/null
-        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/bad_apple_minimal.c"
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/baremetal/bad_apple_minimal.c"
         compile_minisoc_tb "$BUILD_DIR/tb_bad_apple_minimal_pico.out" 0 tb_bad_apple_minimal "$REPO_ROOT/sim/tb_bad_apple_minimal.v"
         run_and_check "$BUILD_DIR/tb_bad_apple_minimal_pico.log" vvp "$BUILD_DIR/tb_bad_apple_minimal_pico.out"
         ;;
@@ -386,7 +386,7 @@ case "$SIM_KIND" in
         python3 "$REPO_ROOT/scripts/make_bad_apple_full_asset.py" \
             --synthetic --output "$BUILD_DIR/bad_apple_full.bin" \
             --mem "$ASSET_MEM" >/dev/null
-        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/bad_apple_full.c" \
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/freertos/bad_apple_full.c" \
         FIRMWARE_PROFILE=freertos \
         FREERTOS_CPU_CLOCK_HZ=4000000 \
             compile_minisoc_tb "$BUILD_DIR/tb_bad_apple_full.out" 1 \
@@ -400,7 +400,7 @@ case "$SIM_KIND" in
             --data-bytes 256 --seed 0x12345678 \
             --output "$BUILD_DIR/boot_image_test.bin" \
             --mem-output "$ASSET_MEM" >/dev/null
-        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/boot_image_verify.c"
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/baremetal/boot_image_verify.c"
         if [ "$SIM_KIND" = "boot_image_verify_pico" ]; then
             compile_minisoc_tb "$BUILD_DIR/tb_boot_image_verify_pico.out" 0 tb_boot_image_verify "$REPO_ROOT/sim/tb_boot_image_verify.v"
             run_and_check "$BUILD_DIR/tb_boot_image_verify_pico.log" vvp "$BUILD_DIR/tb_boot_image_verify_pico.out"
@@ -473,7 +473,7 @@ case "$SIM_KIND" in
             vvp "$BUILD_DIR/tb_freertos_yield_smoke.out"
         ;;
     freertos_smoke)
-        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/freertos_smoke.c" \
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/freertos/freertos_smoke.c" \
         FIRMWARE_PROFILE=freertos \
         FREERTOS_CPU_CLOCK_HZ=4000000 \
             prepare_firmware
@@ -523,7 +523,7 @@ case "$SIM_KIND" in
             vvp "$BUILD_DIR/tb_freertos_queue.out"
         ;;
     freertos_acceptance)
-        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/freertos_acceptance.c" \
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/freertos/freertos_acceptance.c" \
         FIRMWARE_PROFILE=freertos \
         FREERTOS_CPU_CLOCK_HZ=4000000 \
             compile_minisoc_tb "$BUILD_DIR/tb_freertos_acceptance.out" 1 \
@@ -532,7 +532,7 @@ case "$SIM_KIND" in
             vvp "$BUILD_DIR/tb_freertos_acceptance.out"
         ;;
     minisoc_timer_irq_dark)
-        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/timer_irq_smoke.c" \
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/irq/timer_irq_smoke.c" \
         FIRMWARE_PROFILE=dark_irq \
             compile_minisoc_tb "$BUILD_DIR/tb_minisoc_timer_irq_dark.out" 1 \
                 tb_minisoc_timer_irq "$REPO_ROOT/sim/tb_minisoc_timer_irq.v"
@@ -540,7 +540,7 @@ case "$SIM_KIND" in
             vvp "$BUILD_DIR/tb_minisoc_timer_irq_dark.out"
         ;;
     gdb_stub)
-        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/gdb_stub_smoke.c" \
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/baremetal/gdb_stub_smoke.c" \
         FIRMWARE_PROFILE=gdb_stub \
             prepare_firmware
         GDB_CONTINUE_PC=$(riscv64-unknown-elf-nm --defined-only \
@@ -566,7 +566,7 @@ case "$SIM_KIND" in
             vvp "$BUILD_DIR/tb_gdb_stub_caddr.out"
         ;;
     minisoc_vga_bitmap_dark)
-        FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/vga_bitmap_smoke.c" \
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/baremetal/vga_bitmap_smoke.c" \
             compile_minisoc_tb "$BUILD_DIR/tb_minisoc_vga_bitmap_dark.out" 1 \
                 tb_minisoc_vga_bitmap "$REPO_ROOT/sim/tb_minisoc_vga_bitmap.v"
         run_and_check "$BUILD_DIR/tb_minisoc_vga_bitmap_dark.log" \

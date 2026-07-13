@@ -11,7 +11,7 @@
 //
 // 失败约定：任何一步读回不匹配都写 0xdeadXXXX 错误码退出（沿用 test_fail 语义），
 // testbench / 上板 LED 据此判断。全部通过则 test_pass()。
-#include "testlib.h"
+#include "tests/testlib.h"
 
 // SDRAM 基址上的 32 位字视图。volatile 防止编译器把这些硬件访问优化掉。
 #define SDRAM_WORD(index) (*(volatile unsigned int *)(TINYBUS_SDRAM_BASE + ((index) * 4u)))

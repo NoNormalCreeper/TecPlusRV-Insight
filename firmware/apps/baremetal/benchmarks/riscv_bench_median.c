@@ -1,12 +1,12 @@
 // 来源：riscv-software-src/riscv-tests 的 benchmarks/median。
 // 本文件只替换 platform 层：计数器、输出和 test_exit；kernel 与 dataset 原样引用。
-#include "testlib.h"
-#include "../drivers/perf.h"
-#include "../runtime/rt_alloc.h"
-#include "../runtime/rt_string.h"
+#include "tests/testlib.h"
+#include "drivers/perf.h"
+#include "runtime/rt_alloc.h"
+#include "runtime/rt_string.h"
 
-#include "../../tests/riscv_tests/riscv-tests/benchmarks/median/median.c"
-#include "../../tests/riscv_tests/riscv-tests/benchmarks/median/dataset1.h"
+#include "../../../../tests/riscv_tests/riscv-tests/benchmarks/median/median.c"
+#include "../../../../tests/riscv_tests/riscv-tests/benchmarks/median/dataset1.h"
 
 static int bram_input[DATA_SIZE];
 static int bram_result[DATA_SIZE];

@@ -1,9 +1,9 @@
-// Bad Apple 最小 bring-up：从 bootloader 预装的 SDRAM asset 播放 tile diff 和音符。
-#include "../drivers/buzzer.h"
-#include "../drivers/gpio.h"
-#include "../drivers/mmio.h"
-#include "../drivers/uart.h"
-#include "../drivers/vga.h"
+// Bad Apple 早期最小 demo：从 bootloader 预装的 SDRAM asset 播放 tile diff 和音符。
+#include "drivers/buzzer.h"
+#include "drivers/gpio.h"
+#include "drivers/mmio.h"
+#include "drivers/uart.h"
+#include "drivers/vga.h"
 
 #define ASSET_BASE 0x81000000u
 #define ASSET_MAGIC 0x314d4142u

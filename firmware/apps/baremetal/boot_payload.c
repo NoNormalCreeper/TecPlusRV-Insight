@@ -1,8 +1,8 @@
 // UART bootloader 的最小可下载 payload。
 // 启动后通过 UART 和 LED 给出可见证据，并写 test_exit 供 SoC 仿真收敛。
-#include "../drivers/gpio.h"
-#include "../drivers/mmio.h"
-#include "../drivers/uart.h"
+#include "drivers/gpio.h"
+#include "drivers/mmio.h"
+#include "drivers/uart.h"
 
 int main(void)
 {

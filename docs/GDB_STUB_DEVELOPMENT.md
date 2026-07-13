@@ -37,7 +37,7 @@
 | `firmware/runtime/trap_entry.S` | 保存和恢复 canonical machine context |
 | `firmware/runtime/trap_frame.h` | 汇编与 C 共用的 frame layout |
 | `firmware/runtime/trap.c` | `mtvec` 初始化与默认 trap runtime |
-| `firmware/tests/gdb_stub_smoke.c` | register/memory/多次 stop/resume 验收 firmware |
+| `firmware/apps/baremetal/gdb_stub_smoke.c` | 可上板的 register/memory/多次 stop/resume 验收程序 |
 | `sim/tb_gdb_stub.v` | DarkRISCV CPU + UART + RSP 端到端仿真 |
 | `scripts/gdb_stub_probe.py` | 物理串口 raw RSP probe |
 | `scripts/test_gdb_stub_*_contract.sh` | profile、DWARF、Bootloader 与 Windows GDB 命令契约 |

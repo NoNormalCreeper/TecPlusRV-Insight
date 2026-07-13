@@ -17,8 +17,8 @@ BOOTLOAD_MONITOR_ARG ?= --monitor
 FIRMWARE_PROFILE ?= baremetal
 FIRMWARE_RUNTIME ?=
 FIRMWARE_DEBUG ?= none
-FIRMWARE_MAIN ?= $(REPO_ROOT)/firmware/main.c
-GDB_STUB_MAIN ?= $(REPO_ROOT)/firmware/tests/gdb_stub_smoke.c
+FIRMWARE_MAIN ?= $(REPO_ROOT)/firmware/apps/baremetal/soc_selftest.c
+GDB_STUB_MAIN ?= $(REPO_ROOT)/firmware/apps/baremetal/gdb_stub_smoke.c
 APP ?=
 BOOTLOAD_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bootload/firmware
 BAD_APPLE_FIRMWARE_OUT := $(REPO_ROOT)/firmware/build/bad_apple_minimal
@@ -163,14 +163,14 @@ firmware-debug:
 
 timer-irq-smoke:
 	FIRMWARE_PROFILE=dark_irq \
-		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/timer_irq_smoke.c" \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/irq/timer_irq_smoke.c" \
 		FIRMWARE_OUT="$(TIMER_IRQ_FIRMWARE_OUT)" \
 		"$(BUILD_FIRMWARE)"
 
 freertos-smoke:
 	FIRMWARE_PROFILE=freertos \
 		FREERTOS_CPU_CLOCK_HZ=50000000 \
-		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_smoke.c" \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/freertos/freertos_smoke.c" \
 		FIRMWARE_OUT="$(FREERTOS_SMOKE_FIRMWARE_OUT)" \
 		"$(BUILD_FIRMWARE)"
 
@@ -184,7 +184,7 @@ freertos-queue:
 freertos-acceptance:
 	FIRMWARE_PROFILE=freertos \
 		FREERTOS_CPU_CLOCK_HZ=50000000 \
-		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_acceptance.c" \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/freertos/freertos_acceptance.c" \
 		FIRMWARE_OUT="$(FREERTOS_ACCEPTANCE_FIRMWARE_OUT)" \
 		"$(BUILD_FIRMWARE)"
 
@@ -219,23 +219,23 @@ gdb-stub-debug: gdb-stub-load
 timer-irq-load:
 	@$(MAKE) bootload PORT="$(PORT)" \
 		FIRMWARE_PROFILE=dark_irq \
-		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/timer_irq_smoke.c"
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/irq/timer_irq_smoke.c"
 
 freertos-load:
 	@$(MAKE) bootload PORT="$(PORT)" \
 		FIRMWARE_PROFILE=freertos \
-		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_smoke.c"
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/freertos/freertos_smoke.c"
 
 freertos-acceptance-load:
 	@$(MAKE) bootload PORT="$(PORT)" \
 		FIRMWARE_PROFILE=freertos \
-		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_acceptance.c"
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/freertos/freertos_acceptance.c"
 
 boot-image-test-build:
 	python3 "$(REPO_ROOT)/scripts/make_boot_image_test_asset.py" \
 		--data-bytes "$(DATA_BYTES)" --seed "$(SEED)" \
 		--output "$(BOOT_IMAGE_TEST_ASSET)"
-	FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/boot_image_verify.c" \
+	FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/baremetal/boot_image_verify.c" \
 		FIRMWARE_OUT="$(BOOT_IMAGE_TEST_FIRMWARE_OUT)" "$(BUILD_FIRMWARE)"
 
 boot-image-test-load: boot-image-test-build
@@ -256,7 +256,7 @@ bad-apple-build:
 		--start 30 --duration 20 \
 		--output "$(BAD_APPLE_ASSET)" --preview "$(BAD_APPLE_PREVIEW)" \
 		--report "$(BAD_APPLE_REPORT)"
-	FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/bad_apple_minimal.c" \
+	FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/baremetal/bad_apple_minimal.c" \
 		FIRMWARE_OUT="$(BAD_APPLE_FIRMWARE_OUT)" "$(BUILD_FIRMWARE)"
 
 bad-apple-load: bad-apple-build
@@ -279,7 +279,7 @@ bad-apple-full-build:
 		--output "$(BAD_APPLE_FULL_ASSET)" --mem "$(BAD_APPLE_FULL_MEM)" \
 		--report "$(BAD_APPLE_FULL_REPORT)"
 	FIRMWARE_PROFILE=freertos FREERTOS_CPU_CLOCK_HZ=50000000 \
-		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/bad_apple_full.c" \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/freertos/bad_apple_full.c" \
 		FIRMWARE_OUT="$(BAD_APPLE_FULL_FIRMWARE_OUT)" "$(BUILD_FIRMWARE)"
 
 bad-apple-full-preview: bad-apple-full-build
@@ -314,7 +314,7 @@ bad-apple-window-build:
 		--transpose -12 --start "$(START)" --duration "$(DURATION)" \
 		--output "$(BAD_APPLE_WINDOW_ASSET)" --report "$(BAD_APPLE_WINDOW_REPORT)"
 	FIRMWARE_PROFILE=freertos FREERTOS_CPU_CLOCK_HZ=50000000 \
-		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/bad_apple_full.c" \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/freertos/bad_apple_full.c" \
 		FIRMWARE_OUT="$(BAD_APPLE_WINDOW_FIRMWARE_OUT)" "$(BUILD_FIRMWARE)"
 
 bad-apple-window-preview: bad-apple-window-build

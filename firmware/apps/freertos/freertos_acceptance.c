@@ -1,4 +1,4 @@
-// FreeRTOS 常用模块与 SDRAM heap 的短时综合验收。
+// FreeRTOS 常用模块与 SDRAM heap 的短时上板综合验收。
 #include "FreeRTOS.h"
 #include "event_groups.h"
 #include "queue.h"

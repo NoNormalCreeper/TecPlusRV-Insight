@@ -155,7 +155,7 @@ host 统计窗口严格从 READY 后开始，到 ACK 返回结束，不包含人
 ### Task 2: CPU 全量读回 verifier
 
 **Files:**
-- Create: `firmware/tests/boot_image_verify.c`
+- Create: `firmware/apps/baremetal/boot_image_verify.c`
 - Create: `sim/tb_boot_image_verify.v`
 - Modify: `sim/run_sim.sh`
 - Modify: `scripts/test_catalog.json`

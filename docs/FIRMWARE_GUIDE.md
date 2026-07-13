@@ -21,6 +21,21 @@ firmware/apps/
 
 GDB 不是第四个目录。它是调试 `baremetal/` 应用的一种启动方式。
 
+`firmware/apps/` 是所有面向用户、应通过 Bootloader 上板运行的单用户程序唯一入口。
+`firmware/tests/` 只保留自动仿真和 regression 用例，不作为上板程序目录。自动化测试可以
+复用 `apps` 中的验收程序，但用户不应通过 `FIRMWARE_MAIN=firmware/tests/...` 选择板上程序。
+
+当前应用按用途分为：
+
+| 用途 | 代表程序 |
+| --- | --- |
+| 最小 demo | `baremetal/hello.c`、`irq/timer_demo.c`、`freertos/queue_demo.c` |
+| 默认 SoC 自检 | `baremetal/soc_selftest.c` |
+| 综合 demo | `baremetal/board_demo.c`、`baremetal/vga_bitmap_animation.c`、`freertos/bad_apple_full.c` |
+| 调试 demo | `baremetal/gdb_demo.c` |
+| 板级验收 | `baremetal/sdram_memtest.c`、`irq/timer_irq_smoke.c`、`freertos/freertos_acceptance.c` |
+| 可上板 benchmark | `baremetal/benchmarks/system_bench.c`、`baremetal/benchmarks/sdram_sum_bench.c` |
+
 现有最小示例：
 
 ```text
@@ -55,13 +70,13 @@ make firmware APP=freertos/queue_demo.c
 make firmware APP=firmware/apps/baremetal/hello.c
 ```
 
-没有 `APP` 时，旧入口保持不变：
+没有 `APP` 时，命令形式保持不变：
 
 ```bash
 make firmware
 ```
 
-它仍然构建 `firmware/main.c`。
+默认入口现为 `firmware/apps/baremetal/soc_selftest.c`。
 
 ### 产物
 
@@ -274,7 +289,7 @@ git submodule update --init --recursive
 
 ```bash
 FIRMWARE_PROFILE=dark_irq \
-FIRMWARE_MAIN="$PWD/firmware/tests/timer_irq_smoke.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/irq/timer_irq_smoke.c" \
 FIRMWARE_OUT=firmware/build/manual/timer/firmware \
   ./scripts/build_firmware.sh
 ```

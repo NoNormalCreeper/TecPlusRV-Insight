@@ -1,7 +1,7 @@
-// Traffic-light MMIO end-to-end regression firmware.
-#include "../drivers/gpio.h"
-#include "../drivers/mmio.h"
-#include "../drivers/traffic_light.h"
+// 交通灯 MMIO 上板验收程序，同时供端到端回归复用。
+#include "drivers/gpio.h"
+#include "drivers/mmio.h"
+#include "drivers/traffic_light.h"
 
 #define TRAFFIC_TEST_PATTERN 0x0a55u
 

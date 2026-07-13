@@ -83,7 +83,7 @@ make firmware-load APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200
 ```bash
 make bootload \
   PORT=COM8 \
-  FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c"
+  FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/boot_payload.c"
 ```
 
 `bootload/FIRMWARE_MAIN` 是仿真、验收和历史脚本使用的兼容入口；普通用户程序优先使用 `firmware-load/APP`。
@@ -136,7 +136,8 @@ make firmware-debug APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200 \
 make firmware-load APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200
 ```
 
-仍使用默认 `firmware/main.c` 的历史流程可以继续执行 `make bootload PORT=COM8`。
+仍使用默认 SoC 自检应用的历史流程可以继续执行 `make bootload PORT=COM8`；其源码现位于
+`firmware/apps/baremetal/soc_selftest.c`。
 
 看到提示后再按 RESET。RESET 会让 bootloader 重新接管 BRAM，因此可以反复下载不同 payload，不需要重新烧录 bitstream。
 

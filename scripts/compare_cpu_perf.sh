@@ -6,7 +6,7 @@ set -eu
 
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
-PERF_MAIN=${1:-$REPO_ROOT/firmware/tests/perf_mix.c}
+PERF_MAIN=${1:-$REPO_ROOT/firmware/apps/baremetal/benchmarks/perf_mix.c}
 PERF_DIR="$REPO_ROOT/sim/build/perf"
 FIRMWARE_OUT="$REPO_ROOT/firmware/build/perf/firmware"
 OBJDUMP=${OBJDUMP:-riscv64-unknown-elf-objdump}

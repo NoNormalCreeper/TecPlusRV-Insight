@@ -23,11 +23,11 @@ fingerprint_default() {
 
 before=$(fingerprint_default)
 
-FIRMWARE_MAIN="$REPO_ROOT/firmware/main.c" \
+FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/baremetal/soc_selftest.c" \
 FIRMWARE_OUT="firmware/build/tests/output_isolation/main/firmware" \
     "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
 
-FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/boot_payload.c" \
+FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/baremetal/boot_payload.c" \
 FIRMWARE_OUT="$PAYLOAD_OUT" \
     "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
 

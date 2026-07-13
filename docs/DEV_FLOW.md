@@ -136,7 +136,7 @@
 
 - `startup.S`
 - `linker.ld`
-- `main.c`
+- `apps/baremetal/soc_selftest.c`
 - `apps/baremetal/*.c`
 - `apps/irq/*.c`
 - `apps/freertos/*.c`
@@ -423,7 +423,7 @@ make test-soc
 
 适用例子：
 
-- 改 `main.c`
+- 改 `apps/baremetal/soc_selftest.c`
 - 改驱动头文件
 - 改 `startup.S`
 - 改 `linker.ld`
@@ -490,7 +490,7 @@ make freertos-load PORT=COM8  # 上传并监视 FreeRTOS smoke
 firmware 还必须写 `test_exit=1`。若只有 LED=F 或始终没有 pass 文本，视为失败。
 当前 profile 只支持 `CPU_IMPL=1` 的 DarkRISCV。
 
-DarkRISCV core 默认具备 IRQ 能力，但普通 baremetal payload 不会主动安装 trap handler 或开启 IRQ。`make bootload` 默认仍加载 `baremetal + firmware/main.c`；需要其他 payload 时可通过 `FIRMWARE_PROFILE` 和 `FIRMWARE_MAIN` 覆盖同一个上传入口。
+DarkRISCV core 默认具备 IRQ 能力，但普通 baremetal payload 不会主动安装 trap handler 或开启 IRQ。`make bootload` 默认仍加载 `baremetal + firmware/apps/baremetal/soc_selftest.c`；需要其他 payload 时可通过 `FIRMWARE_PROFILE` 和 `FIRMWARE_MAIN` 覆盖同一个上传入口。
 
 ### GDB stub 开发与上板顺序
 
@@ -922,7 +922,7 @@ python3 scripts/test_uart_loader.py
 再构建真实 payload 并检查封包：
 
 ```bash
-FIRMWARE_MAIN="$PWD/firmware/tests/boot_payload.c" \
+FIRMWARE_MAIN="$PWD/firmware/apps/baremetal/boot_payload.c" \
 FIRMWARE_OUT=firmware/build/manual/boot_payload \
   ./scripts/build_firmware.sh
 python3 scripts/uart_loader.py \

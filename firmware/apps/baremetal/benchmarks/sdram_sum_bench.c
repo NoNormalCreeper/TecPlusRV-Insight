@@ -9,7 +9,7 @@
 //   - a[i] = i，求和期望值 = N*(N-1)/2，用它做正确性断言，防止“测了个假循环”。
 //
 // 覆盖范围说明：与 sdram_memtest 一致，只做 32 位字访问。
-#include "testlib.h"
+#include "tests/testlib.h"
 
 // SDRAM 基址上的 32 位字视图。volatile 保证填充和读取都真正落到内存上，
 // 不被编译器优化成常量或消掉循环。

@@ -133,7 +133,7 @@ run_perf_mix() {
     local instret_addr
 
     echo "=== 构建 perf_mix ==="
-    if ! FIRMWARE_MAIN="$REPO_ROOT/firmware/tests/perf_mix.c" FIRMWARE_OUT="$firmware_out" \
+    if ! FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/baremetal/benchmarks/perf_mix.c" FIRMWARE_OUT="$firmware_out" \
         "$BUILD_FIRMWARE" > "$build_log" 2>&1; then
         cat "$build_log"
         exit 1
@@ -150,9 +150,9 @@ run_perf_mix() {
 }
 
 run_perf_mix
-run_workload "system_bench" "firmware/tests/system_bench.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
-run_workload "riscv_tests_median" "firmware/tests/riscv_bench_median.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
-run_workload "riscv_tests_memcpy" "firmware/tests/riscv_bench_memcpy.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
+run_workload "system_bench" "firmware/apps/baremetal/benchmarks/system_bench.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
+run_workload "riscv_tests_median" "firmware/apps/baremetal/benchmarks/riscv_bench_median.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
+run_workload "riscv_tests_memcpy" "firmware/apps/baremetal/benchmarks/riscv_bench_memcpy.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
 
 {
     echo "# 性能实验汇总"

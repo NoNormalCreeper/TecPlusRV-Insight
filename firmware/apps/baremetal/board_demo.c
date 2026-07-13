@@ -1,9 +1,9 @@
 // 板上最小可见 demo。
 // 首轮依次切换 4 个 LED 图样并打印 UART 文本，随后写一次 test_exit=1 方便仿真收敛；
 // 之后继续无限循环，同一份程序也适合直接导入 ISE 上板观察。
-#include "../drivers/gpio.h"
-#include "../drivers/mmio.h"
-#include "../drivers/uart.h"
+#include "drivers/gpio.h"
+#include "drivers/mmio.h"
+#include "drivers/uart.h"
 
 static const unsigned int k_led_pattern[4] = {
     0x1u,

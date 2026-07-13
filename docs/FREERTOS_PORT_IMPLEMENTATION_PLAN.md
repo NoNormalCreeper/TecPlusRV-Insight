@@ -39,8 +39,8 @@
 - `firmware/tests/freertos_frame_contract.c`：初始 canonical frame 定向检查。
 - `firmware/tests/freertos_first_task.c`：公共 restore 入口与首任务启动。
 - `firmware/tests/freertos_yield_smoke.c`：双任务 `ecall` yield。
-- `firmware/tests/freertos_smoke.c`：timer 抢占、delay、critical section。
-- `firmware/tests/freertos_queue.c`：静态 producer/consumer queue demo。
+- `firmware/apps/freertos/freertos_smoke.c`：可上板的 timer 抢占、delay、critical section 验收程序。
+- `firmware/tests/freertos_queue.c`：静态 producer/consumer queue 自动回归。
 - `sim/tb_freertos_smoke.v`：FreeRTOS 通用 MiniSoC bench 与 trap 观测。
 - `scripts/test_freertos_build_contract.sh`：kernel revision、profile、ELF/BRAM size 检查。
 
@@ -654,7 +654,7 @@ git commit -m "feat: 支持 FreeRTOS ecall 主动切换"
 ### Task 5: 接入 timer tick、抢占、delay 与 critical section
 
 **Files:**
-- Create: `firmware/tests/freertos_smoke.c`
+- Create: `firmware/apps/freertos/freertos_smoke.c`
 - Modify: `firmware/freertos/port.c`
 - Modify: `firmware/drivers/machine_timer.h`
 - Modify: `firmware/runtime/trap.c`
@@ -748,7 +748,7 @@ traps、platform 14/14 PASS。
 - [x] **Step 6: Commit**
 
 ```bash
-git add firmware/tests/freertos_smoke.c firmware/freertos/port.c \
+git add firmware/apps/freertos/freertos_smoke.c firmware/freertos/port.c \
   firmware/drivers/machine_timer.h firmware/runtime/trap.c firmware/runtime/trap.h \
   scripts/build_firmware.sh sim/tb_freertos_smoke.v sim/run_sim.sh
 git commit -m "feat: 接入 FreeRTOS timer tick 与抢占"
@@ -828,7 +828,7 @@ git commit -m "feat: 增加 FreeRTOS 静态 queue 演示"
 - Modify: `scripts/export_ise_project.sh`
 - Modify: `firmware/startup.S`
 - Modify: `firmware/linker.ld`
-- Modify: `firmware/tests/freertos_smoke.c`
+- Modify: `firmware/apps/freertos/freertos_smoke.c`
 - Modify: `sim/tb_freertos_smoke.v`
 - Modify: `sim/run_sim.sh`
 - Modify: `docs/DEV_FLOW.md`
@@ -875,7 +875,7 @@ Make targets：
 ```make
 freertos-smoke:
 	FIRMWARE_PROFILE=freertos \
-	FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_smoke.c" \
+	FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/freertos/freertos_smoke.c" \
 	FIRMWARE_OUT="$(REPO_ROOT)/firmware/build/freertos/smoke/firmware" \
 	"$(BUILD_FIRMWARE)"
 
@@ -888,7 +888,7 @@ freertos-queue:
 freertos-load:
 	$(MAKE) bootload PORT="$(PORT)" \
 	FIRMWARE_PROFILE=freertos \
-	FIRMWARE_MAIN="$(REPO_ROOT)/firmware/tests/freertos_smoke.c"
+	FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/freertos/freertos_smoke.c"
 ```
 
 ISE export 必须检查 submodule、复制 kernel source/include 与 `firmware/freertos`，并用
@@ -934,7 +934,7 @@ Expected: 所有 suite 0 failure；`git diff --check` 无输出。
 
 ```bash
 git add scripts/test_catalog.json Makefile scripts/export_ise_project.sh \
-  firmware/startup.S firmware/linker.ld firmware/tests/freertos_smoke.c \
+  firmware/startup.S firmware/linker.ld firmware/apps/freertos/freertos_smoke.c \
   sim/tb_freertos_smoke.v sim/run_sim.sh \
   docs/DEV_FLOW.md docs/darkriscv_wrapper_summary.md docs/FREERTOS_PORT_DESIGN.md
 git commit -m "test: 接入 FreeRTOS 自动回归与上板入口"

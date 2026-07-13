@@ -1,5 +1,5 @@
 // LOAD_IMAGE 上板 verifier：CPU 释放后从 SDRAM 全量读回确定性 BTV1 asset。
-#include "testlib.h"
+#include "tests/testlib.h"
 
 #define ASSET_BASE 0x81000000u
 #define ASSET_MAGIC 0x31565442u
