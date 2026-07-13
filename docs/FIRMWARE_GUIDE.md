@@ -31,8 +31,9 @@ GDB 不是第四个目录。它是调试 `baremetal/` 应用的一种启动方�
 | --- | --- |
 | 最小 demo | `baremetal/hello.c`、`irq/timer_demo.c`、`freertos/queue_demo.c` |
 | 默认 SoC 自检 | `baremetal/soc_selftest.c` |
-| 综合 demo | `baremetal/board_demo.c`、`baremetal/vga_bitmap_animation.c`、`freertos/bad_apple_full.c` |
-| 调试 demo | `baremetal/gdb_demo.c` |
+| 综合 demo | `baremetal/board_demo.c`（无外部 asset 的短时巡检）、`freertos/bad_apple_full.c`（完整多任务媒体展示） |
+| 单外设 demo | `baremetal/vga_bitmap_animation.c`、`baremetal/buzzer_tone.c` |
+| Runtime Insight demo | `baremetal/gdb_demo.c` |
 | 板级验收 | `baremetal/sdram_memtest.c`、`irq/timer_irq_smoke.c`、`freertos/freertos_acceptance.c` |
 | 可上板 benchmark | `baremetal/benchmarks/system_bench.c`、`baremetal/benchmarks/memset_bench.c`、`baremetal/benchmarks/crc32_bench.c` |
 
@@ -43,6 +44,11 @@ firmware/apps/baremetal/hello.c
 firmware/apps/irq/timer_demo.c
 firmware/apps/freertos/queue_demo.c
 ```
+
+答辩时可先用 `board_demo.c` 快速检查 SDRAM、VGA、LED、交通灯、蜂鸣器、按键、UART
+和性能计数器，再用 `bad_apple_full.c` 展示完整 FreeRTOS 多任务应用。`board_demo` 的
+VGA 输出取决于当前 bitstream 是否启用 bitmap 外设；UART 会明确打印 `VGA PASS` 或
+`VGA SKIP`，不会把未启用的外设伪装成通过。
 
 ## 2. 编译
 

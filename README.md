@@ -210,6 +210,17 @@ make firmware-debug APP=baremetal/hello.c PORT=COM8 BOOTLOAD_BAUD=115200
 
 完整目录规则、产物说明、三类程序模板和兼容入口见 [`docs/FIRMWARE_GUIDE.md`](docs/FIRMWARE_GUIDE.md)。无参数 `make firmware`、`FIRMWARE_MAIN` 和 `bootload` 继续作为内部/历史兼容入口。
 
+答辩用的短时综合巡检与 Runtime Insight 演示分别使用：
+
+```bash
+make firmware-load APP=baremetal/board_demo.c PORT=COM8 BOOTLOAD_BAUD=115200
+make firmware-debug APP=baremetal/gdb_demo.c PORT=COM8 BOOTLOAD_BAUD=115200
+```
+
+`board_demo` 不依赖外部媒体 asset，会依次给出 SDRAM、VGA、LED、交通灯、蜂鸣器、
+按键、UART 和性能计数器证据；GDB 的逐步演示命令见
+[`docs/GDB_USER_GUIDE.md`](docs/GDB_USER_GUIDE.md)。
+
 在 Windows + WSL2 中，推荐让 CP2102 保持为 Windows `COMx`，由 WSL 一条命令完成构建、上传并进入 serial monitor：
 
 Windows 端只需预先安装一次 `pyserial`：`py -m pip install pyserial`。完整配置和备用 USB/IP 流程见 `docs/WINDOWS_WSL_UART.md`。

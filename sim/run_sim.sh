@@ -657,11 +657,13 @@ case "$SIM_KIND" in
         run_and_check "$BUILD_DIR/tb_minisoc_rvtest_dark.log" vvp "$BUILD_DIR/tb_minisoc_rvtest_dark.out"
         ;;
     board_demo_pico)
-        compile_minisoc_tb "$BUILD_DIR/tb_board_demo_pico.out" 0 tb_board_demo "$REPO_ROOT/sim/tb_board_demo.v"
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/baremetal/board_demo.c" \
+            compile_minisoc_tb "$BUILD_DIR/tb_board_demo_pico.out" 0 tb_board_demo "$REPO_ROOT/sim/tb_board_demo.v"
         run_and_check "$BUILD_DIR/tb_board_demo_pico.log" vvp "$BUILD_DIR/tb_board_demo_pico.out"
         ;;
     board_demo_dark)
-        compile_minisoc_tb "$BUILD_DIR/tb_board_demo_dark.out" 1 tb_board_demo "$REPO_ROOT/sim/tb_board_demo.v"
+        FIRMWARE_MAIN="$REPO_ROOT/firmware/apps/baremetal/board_demo.c" \
+            compile_minisoc_tb "$BUILD_DIR/tb_board_demo_dark.out" 1 tb_board_demo "$REPO_ROOT/sim/tb_board_demo.v"
         run_and_check "$BUILD_DIR/tb_board_demo_dark.log" vvp "$BUILD_DIR/tb_board_demo_dark.out"
         ;;
     sdram_smoke)

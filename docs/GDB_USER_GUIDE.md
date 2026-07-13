@@ -230,8 +230,9 @@ target remote COM8
 
 ## 5. 调试自己的用户程序
 
-仓库提供 `firmware/apps/baremetal/gdb_demo.c`。它在第一次 `DEBUG_BREAK()` 前把
-`input` 初始化为 7，继续后计算 `output = input * 3`，再在第二次 breakpoint 暴露结果。
+仓库提供 `firmware/apps/baremetal/gdb_demo.c`。它把控制状态放在 BRAM，把一个带初值
+数组放在 SDRAM。第一次 `DEBUG_BREAK()` 可以同时观察和修改两类状态；继续后程序计算
+`output = input * multiplier` 与 SDRAM checksum，再在第二次 breakpoint 暴露结果。
 
 一条命令构建、上传并连接：
 
@@ -246,7 +247,10 @@ make firmware-debug \
 
 ```gdb
 p/x gdb_demo_state
+p/x gdb_demo_sdram
 set var gdb_demo_state.input = 10
+set var gdb_demo_state.multiplier = 4
+set var gdb_demo_sdram[0] = 0x100
 list
 continue
 ```
@@ -256,13 +260,17 @@ continue
 ```gdb
 p/x gdb_demo_state
 p/x gdb_demo_state.output
+p/x gdb_demo_state.checksum
 continue
 ```
 
-如果第一次停住时把 `input` 改为 10，第二次停住时 `output` 应为 30。这同时证明
-symbol/DWARF、memory write、cooperative stop 和 continue 路径。
+按上面的修改，第二次停住时 `output` 应为 `40`（`0x28`），`checksum` 应为
+`0x190`。最后一次 `continue` 后，LED 显示 `output` 的低 4 bit，也就是 `0x8`。
+这同时证明 symbol/DWARF、BRAM/SDRAM memory read/write、cooperative stop、continue
+和板级反馈路径。
 
-最后一次 `continue` 后程序进入无限循环。因为当前不支持异步 Ctrl-C，要开始新 session，请退出 GDB、重新执行一站式命令并按 RESET。
+最后一次 `continue` 后程序进入无限循环。因为当前不支持异步 Ctrl-C，要开始新
+session，请退出 GDB、重新执行一站式命令并按 RESET。
 
 ## 6. UART 与日志策略
 
@@ -358,6 +366,7 @@ xPack GDB 可能在 Windows host encoding 下打印转换 warning。本轮真实
 ```bash
 python3 scripts/test_runner.py run-case gdb_stub_profile_contract
 python3 scripts/test_runner.py run-case gdb_stub
+bash scripts/test_defense_demos.sh
 ```
 
 修改 stub、trap、UART 或 build flow 时使用开发文档中的完整合并前回归。实现细节见 [`GDB_STUB_DEVELOPMENT.md`](GDB_STUB_DEVELOPMENT.md)。
