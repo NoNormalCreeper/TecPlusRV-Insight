@@ -7,6 +7,7 @@ module tb_dot4_int8;
 reg clk;
 reg reset;
 reg req;
+reg [31:0] tag;
 reg [31:0] rs1;
 reg [31:0] rs2;
 wire ack;
@@ -16,6 +17,7 @@ dot4_int8 dut (
     .clk(clk),
     .reset(reset),
     .req(req),
+    .tag(tag),
     .rs1(rs1),
     .rs2(rs2),
     .ack(ack),
@@ -32,14 +34,8 @@ task run_case;
         @(negedge clk);
         rs1 = case_rs1;
         rs2 = case_rs2;
+        tag = tag + 32'd4;
         req = 1'b1;
-
-        @(posedge clk);
-        #1;
-        if (ack !== 1'b0) begin
-            $display("FAIL: 接收请求当拍不应 ack");
-            $finish;
-        end
 
         @(posedge clk);
         #1;
@@ -66,8 +62,8 @@ task run_back_to_back;
         @(negedge clk);
         rs1 = 32'h0101_0101;
         rs2 = 32'h0101_0101;
+        tag = 32'h0000_0100;
         req = 1'b1;
-        @(posedge clk);
         @(posedge clk);
         #1;
         if (ack !== 1'b1 || result !== 32'd4) begin
@@ -79,10 +75,10 @@ task run_back_to_back;
         @(negedge clk);
         rs1 = 32'h0202_0202;
         rs2 = 32'h0303_0303;
-        @(posedge clk);
+        tag = 32'h0000_0104;
         #1;
         if (ack !== 1'b0) begin
-            $display("FAIL: 第二条 DOT4 接收当拍错误 ack");
+            $display("FAIL: transaction tag 改变后旧 ack 未立即失效");
             $finish;
         end
         @(posedge clk);
@@ -103,6 +99,7 @@ initial begin
     clk = 1'b0;
     reset = 1'b1;
     req = 1'b0;
+    tag = 32'h0000_0000;
     rs1 = 32'h0000_0000;
     rs2 = 32'h0000_0000;
 

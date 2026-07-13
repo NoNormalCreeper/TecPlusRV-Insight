@@ -678,6 +678,11 @@
       "sim_target": "darkriscv_machine_trap"
     },
     {
+      "id": "darkriscv_dot4",
+      "kind": "sim",
+      "sim_target": "darkriscv_dot4"
+    },
+    {
       "id": "machine_timer",
       "kind": "sim",
       "sim_target": "machine_timer"

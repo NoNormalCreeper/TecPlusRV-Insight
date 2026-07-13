@@ -1,19 +1,18 @@
 // 四路 signed INT8 点积协处理器。
-// req 有效时锁存结果，下一拍给出单周期 ack；ack 是相邻 transaction 的边界。
+// req 有效时锁存结果；tag 绑定当前指令，防止流水线停顿时重复接收同一请求。
 module dot4_int8 (
     input             clk,
     input             reset,
     input             req,
+    input      [31:0] tag,
     input      [31:0] rs1,
     input      [31:0] rs2,
-    output reg        ack,
+    output            ack,
     output reg [31:0] result
 );
 
-localparam STATE_IDLE = 1'b0;
-localparam STATE_RESPOND = 1'b1;
-
-reg state;
+reg result_valid;
+reg [31:0] result_tag;
 
 wire signed [7:0] a0 = rs1[7:0];
 wire signed [7:0] a1 = rs1[15:8];
@@ -34,28 +33,23 @@ wire signed [17:0] sum =
     {{2{product2[15]}}, product2} +
     {{2{product3[15]}}, product3};
 
+// 结果只对产生它的 instruction PC 有效。相邻 custom 指令即使 req 连续为高，
+// tag 改变也会立即撤销旧 ack，让 CPU 为新结果停顿。
+assign ack = result_valid && req && (tag == result_tag);
+
 always @(posedge clk) begin
     if (reset) begin
-        state <= STATE_IDLE;
-        ack <= 1'b0;
+        result_valid <= 1'b0;
+        result_tag <= 32'h0000_0000;
         result <= 32'h0000_0000;
     end else begin
-        ack <= 1'b0;
-        case (state)
-            STATE_IDLE: begin
-                if (req) begin
-                    result <= {{14{sum[17]}}, sum};
-                    state <= STATE_RESPOND;
-                end
-            end
-            STATE_RESPOND: begin
-                ack <= 1'b1;
-                state <= STATE_IDLE;
-            end
-            default: begin
-                state <= STATE_IDLE;
-            end
-        endcase
+        if (!req) begin
+            result_valid <= 1'b0;
+        end else if (!result_valid || tag != result_tag) begin
+            result <= {{14{sum[17]}}, sum};
+            result_tag <= tag;
+            result_valid <= 1'b1;
+        end
     end
 end
 

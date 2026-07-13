@@ -202,6 +202,7 @@ compile_minisoc_tb() {
         "$REPO_ROOT/rtl/soc/tecplus_cpu_wrapper.v" \
         "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
         "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
+        "$REPO_ROOT/rtl/accel/dot4_int8.v" \
         "$REPO_ROOT/rtl/soc/bram_dualport.v" \
         "$REPO_ROOT/rtl/soc/tinybus_decode.v" \
         "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
@@ -260,6 +261,7 @@ compile_minisoc_perf_tb() {
         "$REPO_ROOT/rtl/soc/tecplus_cpu_wrapper.v" \
         "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
         "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
+        "$REPO_ROOT/rtl/accel/dot4_int8.v" \
         "$REPO_ROOT/rtl/soc/bram_dualport.v" \
         "$REPO_ROOT/rtl/soc/tinybus_decode.v" \
         "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
@@ -794,6 +796,35 @@ case "$SIM_KIND" in
             "$REPO_ROOT/sim/tb_darkriscv_machine_trap.v" \
             "$REPO_ROOT/rtl/core/darkriscv.v"
         run_and_check "$BUILD_DIR/tb_darkriscv_machine_trap.log" vvp "$BUILD_DIR/tb_darkriscv_machine_trap.out"
+        ;;
+    darkriscv_dot4)
+        need_tool riscv64-unknown-elf-gcc
+        need_tool riscv64-unknown-elf-objcopy
+        dot4_march=rv32i
+        if riscv64-unknown-elf-gcc -march=rv32i_zicsr -mabi=ilp32 \
+            -E -x c /dev/null -o /dev/null >/dev/null 2>&1; then
+            dot4_march=rv32i_zicsr
+        fi
+        riscv64-unknown-elf-gcc -march="$dot4_march" -mabi=ilp32 \
+            -nostdlib -nostartfiles \
+            -T "$REPO_ROOT/tests/riscv_tests/tecplus_p/link.ld" \
+            -o "$BUILD_DIR/darkriscv_dot4.elf" \
+            "$REPO_ROOT/firmware/tests/darkriscv_dot4.S"
+        riscv64-unknown-elf-objcopy -O binary \
+            "$BUILD_DIR/darkriscv_dot4.elf" \
+            "$BUILD_DIR/darkriscv_dot4.bin"
+        python3 "$REPO_ROOT/scripts/bin2mem.py" \
+            "$BUILD_DIR/darkriscv_dot4.bin" \
+            "$BUILD_DIR/darkriscv_dot4.mem" 16384
+        iverilog -g2001 -DSIMULATION -I "$REPO_ROOT/rtl/core" \
+            -s tb_darkriscv_dot4 \
+            -P "tb_darkriscv_dot4.FIRMWARE_MEM_FILE=\"$BUILD_DIR/darkriscv_dot4.mem\"" \
+            -o "$BUILD_DIR/tb_darkriscv_dot4.out" \
+            "$REPO_ROOT/sim/tb_darkriscv_dot4.v" \
+            "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
+            "$REPO_ROOT/rtl/core/darkriscv.v" \
+            "$REPO_ROOT/rtl/accel/dot4_int8.v"
+        run_and_check "$BUILD_DIR/tb_darkriscv_dot4.log" vvp "$BUILD_DIR/tb_darkriscv_dot4.out"
         ;;
     machine_timer)
         iverilog -g2001 -s tb_machine_timer \

@@ -294,6 +294,7 @@ package_minisoc() {
     need_file "rtl/soc/mmio_test_exit.v"
     need_file "rtl/soc/sdram_data_ctrl.v"
     need_file "rtl/soc/tecplus_minisoc_top.v"
+    need_file "rtl/accel/dot4_int8.v"
     need_file "$ucf"
 
     copy_flat "rtl/periph/uart_tx.v"
@@ -317,6 +318,7 @@ package_minisoc() {
     copy_flat_if_exists "rtl/soc/tecplus_cpu_wrapper.v"
     copy_flat_if_exists "rtl/soc/picorv32_adapter.v"
     copy_flat_if_exists "rtl/soc/darkriscv_adapter.v"
+    copy_flat "rtl/accel/dot4_int8.v"
 
     if [ -f "$REPO_ROOT/rtl/soc/bram_dualport.v" ]; then
         copy_flat "rtl/soc/bram_dualport.v"
