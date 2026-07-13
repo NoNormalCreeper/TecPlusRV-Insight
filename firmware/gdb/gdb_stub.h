@@ -4,7 +4,7 @@
 
 static inline void gdb_breakpoint(void)
 {
-    __asm__ volatile ("ebreak" ::: "memory");
+    __asm__ volatile ("ebreak" ::: "memory");   // break at entry point
 }
 
 #endif
