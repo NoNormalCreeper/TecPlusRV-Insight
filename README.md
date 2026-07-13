@@ -277,7 +277,8 @@ Windows `COMx` 一键下载是推荐路径；usbipd、`/dev/ttyUSB0` 与 RESET �
 make perf
 ```
 
-workload、指标口径和瓶颈分析方法见 `docs/BENCHMARKS.md`。
+workload、指标口径和瓶颈分析方法见 `docs/BENCHMARKS.md`；真实板级采集流程见
+`docs/BOARD_PERFORMANCE_TEST.md`。
 
 单独跑 core-backed counter source 检查：
 

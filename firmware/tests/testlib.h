@@ -14,6 +14,10 @@ static inline void test_banner(const char *name)
 
 static inline void test_fail(unsigned int code)
 {
+    uart_puts("FAIL: test_exit=");
+    uart_put_hex(code);
+    uart_puts("\n");
+    uart_flush();
     gpio_write_led(code & 0xfu);
     mmio_write(TINYBUS_TEST_EXIT, code);
     for (;;) {
@@ -29,6 +33,8 @@ static inline void test_expect(int condition, unsigned int code)
 
 static inline void test_pass(void)
 {
+    uart_puts("PASS\n");
+    uart_flush();
     gpio_write_led(0x5u);
     mmio_write(TINYBUS_TEST_EXIT, 1u);
     for (;;) {

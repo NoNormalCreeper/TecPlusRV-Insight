@@ -95,6 +95,9 @@ for app in \
     baremetal/soc_selftest.c \
     baremetal/gdb_demo.c \
     baremetal/vga_bitmap_animation.c \
+    baremetal/benchmarks/memset_bench.c \
+    baremetal/benchmarks/stride_bench.c \
+    baremetal/benchmarks/crc32_bench.c \
     baremetal/benchmarks/system_bench.c \
     irq/timer_irq_smoke.c \
     freertos/bad_apple_full.c; do
@@ -104,9 +107,12 @@ for app in \
     fi
 done
 
-legacy_board_sources='firmware/tests/(board_demo|boot_payload|boot_image_verify|buzzer_tone|gdb_stub_smoke|sdram_memtest|traffic_light_mmio|vga_bitmap_smoke|vga_bitmap_animation|timer_irq_smoke|freertos_smoke|freertos_acceptance|bad_apple_minimal|bad_apple_full|perf_mix|system_bench|sdram_sum_bench|riscv_bench_median|riscv_bench_memcpy)\.c'
+legacy_board_sources='firmware/tests/(board_demo|boot_payload|boot_image_verify|buzzer_tone|gdb_stub_smoke|sdram_memtest|traffic_light_mmio|vga_bitmap_smoke|vga_bitmap_animation|timer_irq_smoke|freertos_smoke|freertos_acceptance|bad_apple_minimal|bad_apple_full|perf_mix|system_bench|sdram_sum_bench|riscv_bench_median|riscv_bench_memcpy|memset_bench|stride_bench|crc32_bench)\.c'
 if grep -E "$legacy_board_sources" \
-    "$repo_root/Makefile" "$repo_root/scripts/export_ise_project.sh" >/dev/null; then
+    "$repo_root/Makefile" \
+    "$repo_root/scripts/export_ise_project.sh" \
+    "$repo_root/scripts/run_benchmarks.sh" \
+    "$repo_root/scripts/run_board_benchmarks.sh" >/dev/null; then
     echo "FAIL: 上板入口仍引用 firmware/tests 中的单用户程序" >&2
     exit 1
 fi
@@ -124,5 +130,10 @@ grep -F 'make firmware-load' "$repo_root/docs/FIRMWARE_GUIDE.md" >/dev/null
 grep -F 'make firmware-debug' "$repo_root/docs/FIRMWARE_GUIDE.md" >/dev/null
 grep -F 'DEBUG_BREAK()' "$repo_root/docs/FIRMWARE_GUIDE.md" >/dev/null
 grep -F 'docs/FIRMWARE_GUIDE.md' "$repo_root/README.md" >/dev/null
+grep -F 'uart_puts("PASS\n");' "$repo_root/firmware/tests/testlib.h" >/dev/null
+grep -F '缺少 RESULT' "$repo_root/scripts/run_board_benchmarks.sh" >/dev/null
+grep -F '缺少 PASS' "$repo_root/scripts/run_board_benchmarks.sh" >/dev/null
+grep -F '0xc0e65e2bu' \
+    "$repo_root/firmware/apps/baremetal/benchmarks/crc32_bench.c" >/dev/null
 
 echo "PASS: firmware APP 目录推断、统一入口与旧命令兼容"

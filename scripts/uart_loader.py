@@ -12,6 +12,16 @@ import time
 from pathlib import Path
 
 
+def configure_utf8_stdio() -> None:
+    """WSL 调 Windows Python 时，管道输出默认可能落到本地代码页。"""
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
+configure_utf8_stdio()
+
+
 BOOT_MAGIC = 0xbadabb1e
 PROTOCOL_VERSION = 1
 COMMAND_LOAD_AND_RUN = 1

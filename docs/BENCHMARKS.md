@@ -1,6 +1,6 @@
 # 性能实验与结果解读
 
-`make perf`（等价于 `make benchmark`）是本项目的统一性能实验入口。它会依次构建并在 PicoRV32、DarkRISCV 上运行四类 workload：
+`make perf`（等价于 `make benchmark`）是本项目的统一性能实验入口。它会依次构建并在 PicoRV32、DarkRISCV 上运行以下 workload：
 
 | workload | 作用 | 存储覆盖 |
 | --- | --- | --- |
@@ -8,6 +8,9 @@
 | `system_bench` | 三点滑动窗口滤波，模拟相邻像素/采样处理 | BRAM 与 SDRAM |
 | `riscv_tests_median` | `riscv-tests` upstream `median` kernel 与 dataset | BRAM 与 SDRAM |
 | `riscv_tests_memcpy` | `riscv-tests` upstream `memcpy` dataset | BRAM->BRAM 与 SDRAM->SDRAM |
+| `memset_bench` | 连续写入，用于清屏、清 buffer、初始化数组等场景 | BRAM 与 SDRAM |
+| `stride_bench` | 固定访问次数，比较 stride=1/2/4/8/16 的地址模式 | BRAM 与 SDRAM |
+| `crc32_bench` | 读取 buffer 并执行 bitwise CRC32，模拟协议/资源校验 | BRAM 与 SDRAM |
 
 每次运行会创建 `sim/build/benchmarks/<UTC 时间戳>/`，其中包含：
 
@@ -34,9 +37,10 @@ BENCHMARK_RUN_ID=after-change make perf
 ## 如何据此分析瓶颈
 
 1. 先看同一 workload 的两核 `instret` 是否一致；不一致时，不能把 CPI 差异简单归因于微架构。
-2. 对 `system_bench` 和 `median` 比较 BRAM / SDRAM 的 `cycles` 与 `wait %`。SDRAM 项显著上升时，瓶颈是外部存储访问，而非纯算术或分支。
-3. 对 `perf_mix` 的四项 case 横向比较：`alu_dep`、`branch_alternating` 与 `bram_load_store` 的差异可以区分计算/控制流/片上数据访问贡献；`mixed` 用作更接近一般裸机工作负载的总览。
-4. 优化优先级通常是：把热数据放入 BRAM、批量使用 32-bit 对齐的 `memcpy/memset`、减少 SDRAM 往返访问；若后续要继续扩展，再评估小型 Cache 或 burst/line buffer。每项优化前后均应使用固定 `BENCHMARK_RUN_ID` 重跑并保存两份表。
+2. 对 `system_bench`、`median`、`memset_bench` 和 `crc32_bench` 比较 BRAM / SDRAM 的 `cycles` 与 `wait %`。SDRAM 项显著上升时，瓶颈是外部存储访问，而非纯算术或分支。
+3. `stride_bench` 在当前无 Cache、closed-page SDRAM 设计上预期不会随 stride 显著变化；它用于确认固定事务数下的地址模式成本。只有后续加入 Cache、burst 或 open-page 策略后，才能把 stride 差异解释为局部性收益。
+4. 对 `perf_mix` 的四项 case 横向比较：`alu_dep`、`branch_alternating` 与 `bram_load_store` 的差异可以区分计算/控制流/片上数据访问贡献；`mixed` 用作更接近一般裸机工作负载的总览。
+5. 优化优先级通常是：把热数据放入 BRAM、批量使用 32-bit 对齐的 `memcpy/memset`、减少 SDRAM 往返访问；若后续要继续扩展，再评估小型 Cache 或 burst/line buffer。每项优化前后均应使用固定 `BENCHMARK_RUN_ID` 重跑并保存两份表。
 
 `sdram_overlap_read` 是正确性回归而非性能表项：它以最小滑动窗口重叠读覆盖 DarkRISCV 的 SDRAM 请求重放路径，已加入双核 regression。
 

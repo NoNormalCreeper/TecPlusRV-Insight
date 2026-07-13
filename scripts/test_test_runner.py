@@ -498,6 +498,15 @@ class CiSuiteContractTest(unittest.TestCase):
         self.assertTrue(long_cases <= all_cases)
         self.assertTrue(ci_cases.isdisjoint(long_cases))
 
+    def test_benchmark_report_timeout_covers_full_workload_set(self):
+        catalog_path = Path(__file__).with_name("test_catalog.json")
+        catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+        benchmark_case = next(
+            case for case in catalog["cases"] if case["id"] == "benchmark_report"
+        )
+
+        self.assertGreaterEqual(benchmark_case["timeout_sec"], 900)
+
 
 if __name__ == "__main__":
     unittest.main()

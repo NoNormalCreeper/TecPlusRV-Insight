@@ -34,7 +34,7 @@ GDB 不是第四个目录。它是调试 `baremetal/` 应用的一种启动方�
 | 综合 demo | `baremetal/board_demo.c`、`baremetal/vga_bitmap_animation.c`、`freertos/bad_apple_full.c` |
 | 调试 demo | `baremetal/gdb_demo.c` |
 | 板级验收 | `baremetal/sdram_memtest.c`、`irq/timer_irq_smoke.c`、`freertos/freertos_acceptance.c` |
-| 可上板 benchmark | `baremetal/benchmarks/system_bench.c`、`baremetal/benchmarks/sdram_sum_bench.c` |
+| 可上板 benchmark | `baremetal/benchmarks/system_bench.c`、`baremetal/benchmarks/memset_bench.c`、`baremetal/benchmarks/crc32_bench.c` |
 
 现有最小示例：
 

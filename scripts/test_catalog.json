@@ -521,7 +521,7 @@
       "kind": "script",
       "script": "scripts/run_benchmarks.sh",
       "requires": ["rtl_syntax"],
-      "timeout_sec": 180
+      "timeout_sec": 900
     },
     {
       "id": "dual_core_regression",

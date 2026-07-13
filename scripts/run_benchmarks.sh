@@ -153,6 +153,9 @@ run_perf_mix
 run_workload "system_bench" "firmware/apps/baremetal/benchmarks/system_bench.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
 run_workload "riscv_tests_median" "firmware/apps/baremetal/benchmarks/riscv_bench_median.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
 run_workload "riscv_tests_memcpy" "firmware/apps/baremetal/benchmarks/riscv_bench_memcpy.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
+run_workload "memset_bench" "firmware/apps/baremetal/benchmarks/memset_bench.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
+run_workload "stride_bench" "firmware/apps/baremetal/benchmarks/stride_bench.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
+run_workload "crc32_bench" "firmware/apps/baremetal/benchmarks/crc32_bench.c" "minisoc_sdram_pico" "minisoc_sdram_dark"
 
 {
     echo "# 性能实验汇总"
