@@ -15,6 +15,13 @@ cleanup() {
 
 trap cleanup EXIT
 
+# quiet_pass 是用于区分 generic regression 与 strict smoke 的测试夹具，
+# 不能依赖可能新增 UART 副作用的共享 test helper。
+if grep -Eq '^[[:space:]]*#include[[:space:]]+"testlib\.h"' "$QUIET_MAIN"; then
+    echo "FAIL: quiet_pass 不应该依赖可能输出 UART 的 testlib.h" >&2
+    exit 1
+fi
+
 FIRMWARE_MAIN="$QUIET_MAIN" FIRMWARE_OUT="$FIRMWARE_OUT" \
     "$REPO_ROOT/scripts/build_firmware.sh" >/dev/null
 
