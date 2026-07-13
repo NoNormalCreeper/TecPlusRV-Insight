@@ -276,6 +276,13 @@ compile_minisoc_perf_tb() {
 }
 
 case "$SIM_KIND" in
+    dot4_int8)
+        iverilog -g2001 -s tb_dot4_int8 \
+            -o "$BUILD_DIR/tb_dot4_int8.out" \
+            "$REPO_ROOT/sim/tb_dot4_int8.v" \
+            "$REPO_ROOT/rtl/accel/dot4_int8.v"
+        run_and_check "$BUILD_DIR/tb_dot4_int8.log" vvp "$BUILD_DIR/tb_dot4_int8.out"
+        ;;
     uart_tx)
         iverilog -g2001 -o "$BUILD_DIR/tb_uart_tx.out" \
             "$REPO_ROOT/sim/tb_uart_tx.v" \

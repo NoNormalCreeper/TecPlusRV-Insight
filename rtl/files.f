@@ -1,5 +1,6 @@
 # rtl/files.f
 rtl/core/picorv32.v
+rtl/accel/dot4_int8.v
 rtl/periph/uart_tx.v
 rtl/periph/uart_rx.v
 rtl/periph/traffic_light_gpio.v

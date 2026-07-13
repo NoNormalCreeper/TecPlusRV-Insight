@@ -59,6 +59,10 @@ need_tool iverilog
 mkdir -p "$BUILD_DIR"
 
 case "$CASE_ID" in
+    dot4_int8)
+        run_iverilog dot4_int8 \
+            "$REPO_ROOT/rtl/accel/dot4_int8.v"
+        ;;
     probe_led_key_top)
         run_iverilog probe_led_key_top \
             "$REPO_ROOT/rtl/probe/probe_led_key_top.v"
