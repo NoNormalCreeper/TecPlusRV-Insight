@@ -17,7 +17,8 @@ FIRMWARE_OUT=${FIRMWARE_OUT:-$REPO_ROOT/firmware/build/firmware}
 FIRMWARE_PROFILE=${FIRMWARE_PROFILE:-}
 FIRMWARE_RUNTIME=${FIRMWARE_RUNTIME:-}
 FIRMWARE_DEBUG=${FIRMWARE_DEBUG:-none}
-FIRMWARE_ACCEL=${FIRMWARE_ACCEL:-none}
+# DOT4 包装函数默认属于平台 firmware 库；未调用时不会执行非标准指令。
+FIRMWARE_ACCEL=${FIRMWARE_ACCEL:-dot4}
 
 case "$FIRMWARE_OUT" in
     */) echo "FIRMWARE_OUT 必须是文件前缀，不能以 / 结尾：$FIRMWARE_OUT" >&2; exit 1 ;;

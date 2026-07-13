@@ -40,7 +40,10 @@ DarkRISCV decode/execute
 int dot4_s8(unsigned int packed_a, unsigned int packed_b);
 ```
 
-默认 firmware 不包含该非标准指令；只有显式设置 `FIRMWARE_ACCEL=dot4` 才链接包装函数。
+所有用户 firmware 默认链接该包装函数，因此应用包含 `accel/dot4.h` 后即可直接调用，
+无需为 `firmware-load` 额外设置参数。链接包装函数本身不会执行非标准指令；实际调用
+`dot4_s8()` 的镜像只能运行在启用 DOT4 的 DarkRISCV profile 上。需要纯 RV32I 镜像时
+可显式设置 `FIRMWARE_ACCEL=none`。
 
 ## 自动验证
 

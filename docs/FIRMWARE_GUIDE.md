@@ -1,6 +1,6 @@
 # Firmware 编译、上传与调试指南
 
-这份文档是 TecPlusRV firmware 的统一用户入口。用户程序放在正确的 `firmware/apps/` 子目录后，只需要选择源文件；构建系统会根据目录决定是否链接 IRQ runtime 或 FreeRTOS。
+这份文档是 TecPlusRV firmware 的统一用户入口。用户程序放在正确的 `firmware/apps/` 子目录后，只需要选择源文件；构建系统会根据目录决定是否链接 IRQ runtime 或 FreeRTOS，并默认链接当前平台的 DOT4 软件接口。
 
 ## 1. 选择应用目录
 
@@ -83,6 +83,12 @@ make firmware
 ```
 
 默认入口现为 `firmware/apps/baremetal/soc_selftest.c`。
+
+所有用户程序默认链接 `firmware/accel/dot4.S`，因此可以直接包含
+`accel/dot4.h` 并调用 `dot4_s8()`，无需额外设置 `FIRMWARE_ACCEL`。链接包装函数本身
+不会执行 custom 指令；但真正调用 `dot4_s8()` 的程序只能运行在启用 DOT4 的
+DarkRISCV bitstream 上，PicoRV32 不支持该指令。需要生成完全不含 DOT4 包装函数的
+纯 RV32I 镜像时，可显式传入 `FIRMWARE_ACCEL=none`。
 
 ### 产物
 

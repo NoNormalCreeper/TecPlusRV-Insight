@@ -29,6 +29,8 @@ DarkRISCV profile 实现了一条非标准 `dot4.s8 rd, rs1, rs2` 指令：两�
 各打包四个 signed INT8，结果为四组乘积之和。它不是完整 SIMD/Vector 扩展，
 PicoRV32 也不会执行这条指令。详细编码、验证边界和 ISE/上板步骤见
 [`docs/DOT4_CUSTOM_ISA.md`](docs/DOT4_CUSTOM_ISA.md)。
+`firmware/apps` 用户程序默认链接 `dot4_s8()` 软件接口；只有应用实际调用它时才要求
+板上运行的是启用 DOT4 的 DarkRISCV bitstream。
 
 ```bash
 make dot4-bench

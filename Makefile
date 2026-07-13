@@ -17,7 +17,8 @@ BOOTLOAD_MONITOR_ARG ?= --monitor
 FIRMWARE_PROFILE ?= baremetal
 FIRMWARE_RUNTIME ?=
 FIRMWARE_DEBUG ?= none
-FIRMWARE_ACCEL ?= none
+# 所有用户程序默认链接当前平台的软件加速接口；只有实际调用时才会执行 custom 指令。
+FIRMWARE_ACCEL ?= dot4
 FIRMWARE_MAIN ?= $(REPO_ROOT)/firmware/apps/baremetal/soc_selftest.c
 GDB_STUB_MAIN ?= $(REPO_ROOT)/firmware/apps/baremetal/gdb_stub_smoke.c
 APP ?=
@@ -101,6 +102,7 @@ help:
 	@echo "  make firmware                  构建手动默认 firmware 镜像"
 	@echo "  make firmware APP=baremetal/hello.c  按 apps 目录构建用户程序"
 	@echo "  make firmware-load APP=... PORT=COM8 构建、上传并监视用户程序"
+	@echo "  make firmware APP=... FIRMWARE_ACCEL=none  构建不含 DOT4 接口的纯 RV32I 镜像"
 	@echo "  make firmware-debug APP=baremetal/... PORT=COM8  启动 Windows GDB"
 	@echo "  make dot4-bench                仿真比较 RV32I scalar 与 custom-0 DOT4"
 	@echo "  make dot4-load PORT=COM8       构建并上传 DarkRISCV DOT4 benchmark"

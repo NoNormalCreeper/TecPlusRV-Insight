@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 验证用户 APP 目录推断、统一 compile/load/debug 入口与旧入口兼容。
+# 验证用户 APP 目录推断、默认 DOT4 库、统一 compile/load/debug 入口与旧入口兼容。
 set -euo pipefail
 
 repo_root=$(cd "$(dirname "$0")/.." && pwd)
@@ -51,6 +51,8 @@ expect_success_contains 'FIRMWARE_RUNTIME="freertos"' \
     firmware-load APP=freertos/queue_demo.c PORT=COM8
 expect_success_contains 'bootload PORT="COM8"' \
     firmware-load APP=baremetal/hello.c PORT=COM8
+expect_success_contains 'FIRMWARE_ACCEL="dot4"' \
+    firmware-load APP=baremetal/hello.c PORT=COM8
 expect_success_contains "FIRMWARE_MAIN=\"$repo_root/firmware/apps/baremetal/hello.c\"" \
     firmware-debug APP=baremetal/hello.c PORT=COM8
 expect_success_contains 'FIRMWARE_PROFILE="gdb_stub"' \
@@ -77,7 +79,11 @@ expect_success_contains 'firmware/apps/baremetal/soc_selftest.c' firmware
 expect_success_contains 'FIRMWARE_MAIN="/tmp/gdb_user_program.c"' \
     gdb-stub-debug PORT=COM8 GDB_STUB_MAIN=/tmp/gdb_user_program.c
 
-for app in baremetal/hello.c irq/timer_demo.c freertos/queue_demo.c; do
+for app in \
+    baremetal/hello.c \
+    baremetal/benchmarks/dot4_bench.c \
+    irq/timer_demo.c \
+    freertos/queue_demo.c; do
     name=${app%.*}
     name=${name//\//-}
     make --no-print-directory -C "$repo_root" firmware APP="$app" \
@@ -137,4 +143,4 @@ grep -F '缺少 PASS' "$repo_root/scripts/run_board_benchmarks.sh" >/dev/null
 grep -F '0xc0e65e2bu' \
     "$repo_root/firmware/apps/baremetal/benchmarks/crc32_bench.c" >/dev/null
 
-echo "PASS: firmware APP 目录推断、统一入口与旧命令兼容"
+echo "PASS: firmware APP 目录推断、默认 DOT4 库、统一入口与旧命令兼容"

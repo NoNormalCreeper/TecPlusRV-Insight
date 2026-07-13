@@ -269,7 +269,7 @@ package_minisoc() {
     local firmware_main="${1:-}"
     local target_note="${2:-}"
     local firmware_profile="${3:-baremetal}"
-    local firmware_accel="${4:-none}"
+    local firmware_accel="${4:-dot4}"
     local cpu_note="如果当前工程支持双核 wrapper，可在 ISE 的 Generics, Parameters 中覆写 CPU_IMPL：0 表示 PicoRV32，1 表示 DarkRISCV。"
 
     if [ -n "$firmware_main" ]; then
