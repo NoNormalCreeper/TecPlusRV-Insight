@@ -98,6 +98,7 @@ module darkriscv
     output            CPR_REQ,
     output     [ 2:0] CPR_FCT3,
     output     [ 6:0] CPR_FCT7,
+    output     [31:0] CPR_PC,
     output     [31:0] CPR_RS1,
     output     [31:0] CPR_RS2,
     output     [31:0] CPR_RDR,
@@ -358,6 +359,14 @@ module darkriscv
     //wire    FCC = FLUSH ? 0 : XFCC; // OPCODE==7'b0001111; //FCT3
     wire    SYS = FLUSH ? 0 : XSYS; // OPCODE==7'b1110011; //FCT3
 
+`ifdef __COPROCESSOR__
+    // TecPlusRV 第一版只占用 custom-0 中的一个精确编码。
+    // 其余 custom-0 必须继续走 illegal-instruction trap。
+    wire DOT4 = CUS && FCT3==3'b000 && FCT7==7'b0000000;
+`else
+    wire DOT4 = 1'b0;
+`endif
+
 
 
     reg [31:0] REGS [0:`RLEN-1];	// synthesis attribute ram_style of REGS is "distributed";
@@ -447,7 +456,7 @@ module darkriscv
     wire JTARGET_MISALIGNED;
     // 当前单 hart、无 cache，标准 FENCE 作为合法 NOP；FENCE.I 仍留给后续实现。
     wire FENCE = !FLUSH && XIDATA[6:0]==7'b0001111 && XIDATA[14:12]==3'b000;
-    wire IERR = FLUSH ? 0 : !(XLUI||XAUIPC||XJAL||XJALR||XBCC||XLCC||XSCC||XMCC||XRCC||XCUS||XSYS||FENCE);
+    wire IERR = FLUSH ? 0 : !(XLUI||XAUIPC||XJAL||XJALR||XBCC||XLCC||XSCC||XMCC||XRCC||DOT4||XSYS||FENCE);
 
     wire DBER = DBERR;
     wire IBER = IBERR;
@@ -614,9 +623,10 @@ module darkriscv
 `endif
 
 `ifdef __COPROCESSOR__
-    assign CPR_REQ = CUS;
+    assign CPR_REQ = DOT4;
     assign CPR_FCT3 = FCT3;
     assign CPR_FCT7 = FCT7;
+    assign CPR_PC = PC;
     assign CPR_RS1 = U1REG;
     assign CPR_RS2 = U2REG;
     assign CPR_RDR = DREG;
@@ -800,7 +810,7 @@ module darkriscv
                   MCC||RCC ? RMDATA:
 
 `ifdef __COPROCESSOR__
-                       CUS ? CPR_RDW :
+                      DOT4 ? CPR_RDW :
 `endif
 `ifdef __CSR__
                        CSRX ? CRDATA :

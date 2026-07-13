@@ -17,6 +17,7 @@ BOOTLOAD_MONITOR_ARG ?= --monitor
 FIRMWARE_PROFILE ?= baremetal
 FIRMWARE_RUNTIME ?=
 FIRMWARE_DEBUG ?= none
+FIRMWARE_ACCEL ?= none
 FIRMWARE_MAIN ?= $(REPO_ROOT)/firmware/apps/baremetal/soc_selftest.c
 GDB_STUB_MAIN ?= $(REPO_ROOT)/firmware/apps/baremetal/gdb_stub_smoke.c
 APP ?=
@@ -92,7 +93,7 @@ SELECTED_FIRMWARE_PROFILE := $(if $(strip $(APP)),,$(FIRMWARE_PROFILE))
 SELECTED_FIRMWARE_RUNTIME := $(if $(strip $(APP)),$(APP_RUNTIME),$(FIRMWARE_RUNTIME))
 SELECTED_FIRMWARE_MAIN := $(if $(strip $(APP)),$(APP_SOURCE),$(FIRMWARE_MAIN))
 
-.PHONY: help check-env firmware firmware-load firmware-debug timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload gdb-stub-load gdb-stub-debug boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load bad-apple-window-build bad-apple-window-preview bad-apple-window-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci ci-full perf benchmark board-benchmark ise-export
+.PHONY: help check-env firmware firmware-load firmware-debug dot4-bench dot4-load timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload gdb-stub-load gdb-stub-debug boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load bad-apple-window-build bad-apple-window-preview bad-apple-window-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci ci-full perf benchmark board-benchmark ise-export
 
 help:
 	@echo "常用目标："
@@ -101,6 +102,8 @@ help:
 	@echo "  make firmware APP=baremetal/hello.c  按 apps 目录构建用户程序"
 	@echo "  make firmware-load APP=... PORT=COM8 构建、上传并监视用户程序"
 	@echo "  make firmware-debug APP=baremetal/... PORT=COM8  启动 Windows GDB"
+	@echo "  make dot4-bench                仿真比较 RV32I scalar 与 custom-0 DOT4"
+	@echo "  make dot4-load PORT=COM8       构建并上传 DarkRISCV DOT4 benchmark"
 	@echo "  make firmware FIRMWARE_OUT=... 构建到指定输出前缀"
 	@echo "  make timer-irq-smoke           构建 DarkRISCV timer IRQ 专用镜像"
 	@echo "  make timer-irq-load PORT=COM8  构建、上传并监视 timer IRQ 验收镜像"
@@ -137,6 +140,7 @@ help:
 	@echo "  make perf / make benchmark     跑完整双核 benchmark，并生成日志、表格和环境快照"
 	@echo "  make board-benchmark PORT=COM9 BOOTLOAD_BAUD=115200  上板运行性能测试"
 	@echo "  make ise-export ISE_TARGET=minisoc   导出 ISE 工程所需文件到新目录"
+	@echo "  make ise-export ISE_TARGET=minisoc_dot4_dark  导出 DOT4 ISE/上板包"
 
 check-env:
 	"$(CHECK_ENV)"
@@ -144,7 +148,8 @@ check-env:
 firmware:
 	FIRMWARE_PROFILE="$(SELECTED_FIRMWARE_PROFILE)" \
 		FIRMWARE_RUNTIME="$(SELECTED_FIRMWARE_RUNTIME)" \
-		FIRMWARE_DEBUG="$(FIRMWARE_DEBUG)" \
+	FIRMWARE_DEBUG="$(FIRMWARE_DEBUG)" \
+		FIRMWARE_ACCEL="$(FIRMWARE_ACCEL)" \
 		FIRMWARE_MAIN="$(SELECTED_FIRMWARE_MAIN)" \
 		"$(BUILD_FIRMWARE)"
 
@@ -161,6 +166,16 @@ firmware-debug:
 	$(if $(PORT),,$(error firmware-debug 需要 PORT，例如 PORT=COM8))
 	$(if $(filter baremetal,$(APP_RUNTIME)),,$(error 当前 GDB 调试尚不支持 $(APP_RUNTIME) 应用))
 	@$(MAKE) gdb-stub-debug PORT="$(PORT)" GDB_STUB_MAIN="$(APP_SOURCE)"
+
+dot4-bench:
+	"$(REPO_ROOT)/scripts/test_dot4_benchmark.sh"
+
+dot4-load:
+	$(if $(PORT),,$(error dot4-load 需要 PORT，例如 PORT=COM8))
+	@$(MAKE) bootload PORT="$(PORT)" \
+		FIRMWARE_PROFILE=baremetal \
+		FIRMWARE_ACCEL=dot4 \
+		FIRMWARE_MAIN="$(REPO_ROOT)/firmware/apps/baremetal/benchmarks/dot4_bench.c"
 
 timer-irq-smoke:
 	FIRMWARE_PROFILE=dark_irq \
@@ -196,6 +211,7 @@ bootload:
 	@FIRMWARE_PROFILE="$(FIRMWARE_PROFILE)" \
 		FIRMWARE_RUNTIME="$(FIRMWARE_RUNTIME)" \
 		FIRMWARE_DEBUG="$(FIRMWARE_DEBUG)" \
+		FIRMWARE_ACCEL="$(FIRMWARE_ACCEL)" \
 		FIRMWARE_MAIN="$(FIRMWARE_MAIN)" \
 		FIRMWARE_OUT="$(BOOTLOAD_FIRMWARE_OUT)" \
 		"$(BUILD_FIRMWARE)"

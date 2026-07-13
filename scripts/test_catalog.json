@@ -5,6 +5,17 @@
   },
   "cases": [
     {
+      "id": "rtl_syntax__dot4_int8",
+      "kind": "script",
+      "script": "scripts/rtl_syntax_case.sh",
+      "args": ["dot4_int8"]
+    },
+    {
+      "id": "dot4_int8",
+      "kind": "sim",
+      "sim_target": "dot4_int8"
+    },
+    {
       "id": "rtl_syntax__probe_led_key_top",
       "kind": "script",
       "script": "scripts/rtl_syntax_case.sh",
@@ -667,6 +678,17 @@
       "sim_target": "darkriscv_machine_trap"
     },
     {
+      "id": "darkriscv_dot4",
+      "kind": "sim",
+      "sim_target": "darkriscv_dot4"
+    },
+    {
+      "id": "dot4_benchmark",
+      "kind": "script",
+      "script": "scripts/test_dot4_benchmark.sh",
+      "timeout_sec": 120
+    },
+    {
       "id": "machine_timer",
       "kind": "sim",
       "sim_target": "machine_timer"
@@ -692,7 +714,14 @@
     }
   ],
   "suites": {
+    "dot4": [
+      "rtl_syntax__dot4_int8",
+      "dot4_int8",
+      "darkriscv_dot4",
+      "dot4_benchmark"
+    ],
     "rtl_syntax_internal": [
+      "rtl_syntax__dot4_int8",
       "rtl_syntax__probe_led_key_top",
       "rtl_syntax__probe_uart_top",
       "rtl_syntax__uart_rx",
@@ -750,6 +779,8 @@
       "bram_dualport",
       "tinybus_decode",
       "mmio_test_exit",
+      "dot4_int8",
+      "darkriscv_dot4",
       "darkriscv_machine_trap",
       "machine_timer",
       "minisoc_timer_irq_dark",
