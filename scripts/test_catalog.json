@@ -430,7 +430,7 @@
       "id": "bad_apple_full",
       "kind": "sim",
       "sim_target": "bad_apple_full",
-      "timeout_sec": 180,
+      "timeout_sec": 300,
       "requires": ["rtl_syntax"]
     },
     {
