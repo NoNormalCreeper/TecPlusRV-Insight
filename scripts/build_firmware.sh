@@ -17,6 +17,7 @@ FIRMWARE_OUT=${FIRMWARE_OUT:-$REPO_ROOT/firmware/build/firmware}
 FIRMWARE_PROFILE=${FIRMWARE_PROFILE:-}
 FIRMWARE_RUNTIME=${FIRMWARE_RUNTIME:-}
 FIRMWARE_DEBUG=${FIRMWARE_DEBUG:-none}
+FIRMWARE_ACCEL=${FIRMWARE_ACCEL:-none}
 
 case "$FIRMWARE_OUT" in
     */) echo "FIRMWARE_OUT 必须是文件前缀，不能以 / 结尾：$FIRMWARE_OUT" >&2; exit 1 ;;
@@ -64,6 +65,19 @@ DEBUG_SOURCES=""
 EXTRA_CFLAGS=""
 EXTRA_INCLUDES=""
 EXTRA_LDFLAGS=""
+ACCEL_SOURCES=""
+
+case "$FIRMWARE_ACCEL" in
+    none)
+        ;;
+    dot4)
+        ACCEL_SOURCES="$REPO_ROOT/firmware/accel/dot4.S"
+        ;;
+    *)
+        echo "未知 FIRMWARE_ACCEL：$FIRMWARE_ACCEL" >&2
+        exit 1
+        ;;
+esac
 
 select_zicsr_march() {
     # 新工具链要求显式声明 Zicsr；旧 GCC 10 只接受 rv32i，
@@ -187,6 +201,7 @@ $REPO_ROOT/firmware/runtime/rt_print.c
 $REPO_ROOT/firmware/runtime/rt_alloc.c
 $RUNTIME_SOURCES
 $DEBUG_SOURCES
+$ACCEL_SOURCES
 $FIRMWARE_MAIN
 $REPO_ROOT/firmware/drivers/perf.c
 $REPO_ROOT/firmware/tests/selftest.c
@@ -234,6 +249,7 @@ echo "firmware 构建完成："
 echo "  entry: $FIRMWARE_MAIN"
 echo "  runtime: $FIRMWARE_RUNTIME"
 echo "  debug: $FIRMWARE_DEBUG"
+echo "  accel: $FIRMWARE_ACCEL"
 echo "  output: $FIRMWARE_OUT"
 echo "  $FIRMWARE_OUT.elf"
 echo "  $FIRMWARE_OUT.bin"

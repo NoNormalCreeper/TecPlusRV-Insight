@@ -47,3 +47,21 @@ BENCHMARK_RUN_ID=after-change make perf
 ## 已归档的 #19 基线
 
 2026-07-10 的完整仿真样本已固定在 [`results/issue19-2026-07-10/`](../results/issue19-2026-07-10/)，课程化的结论见 [`reports/issue19-performance-summary.md`](../reports/issue19-performance-summary.md)。该样本是 Icarus 仿真基线，不是板级 benchmark；后续优化和上板 PPA 的记录方式见 [`docs/FUTURE_PERFORMANCE_PLAN.md`](FUTURE_PERFORMANCE_PLAN.md)。
+
+## DarkRISCV custom-0 DOT4 microbenchmark
+
+```bash
+make dot4-bench
+```
+
+该命令只运行 DarkRISCV，比较相同 packed INT8 输入下的纯 RV32I scalar kernel 与
+`dot4.s8`。脚本会自动检查 checksum 一致，并要求 custom 的 `cycles` 和 `instret`
+均低于 scalar。2026-07-13 当前 Icarus 样本为：
+
+| 模式 | cycles | instret | checksum |
+| --- | ---: | ---: | --- |
+| RV32I scalar | 694296 | 242718 | `0x00000170` |
+| custom-0 DOT4 | 25752 | 6718 | `0x00000170` |
+
+在该固定 workload 下 cycle speedup 为 `26.96x`。这是 RTL 仿真相对结果；实际吞吐、
+DSP/LUT 代价与 Fmax 必须用 ISE Map/PAR/Timing Report 和真实上板日志重新确认。

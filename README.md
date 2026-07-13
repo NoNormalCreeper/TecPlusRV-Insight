@@ -23,6 +23,19 @@ TecPlusRV 是一个面向 TEC-PLUS Spartan-6 XC6SLX9-2FTG256 平台的 RISC-V So
 - 从 SDRAM 取指或启动的执行路径
 - ISE 工程文件或 bitstream
 
+## DarkRISCV custom-0 DOT4
+
+DarkRISCV profile 实现了一条非标准 `dot4.s8 rd, rs1, rs2` 指令：两个源寄存器
+各打包四个 signed INT8，结果为四组乘积之和。它不是完整 SIMD/Vector 扩展，
+PicoRV32 也不会执行这条指令。详细编码、验证边界和 ISE/上板步骤见
+[`docs/DOT4_CUSTOM_ISA.md`](docs/DOT4_CUSTOM_ISA.md)。
+
+```bash
+make dot4-bench
+make ise-export ISE_TARGET=minisoc_dot4_dark
+make dot4-load PORT=COM8
+```
+
 ## 仓库结构
 
 - `rtl/probe/`：早期上板探针顶层

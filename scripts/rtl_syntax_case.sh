@@ -59,6 +59,10 @@ need_tool iverilog
 mkdir -p "$BUILD_DIR"
 
 case "$CASE_ID" in
+    dot4_int8)
+        run_iverilog dot4_int8 \
+            "$REPO_ROOT/rtl/accel/dot4_int8.v"
+        ;;
     probe_led_key_top)
         run_iverilog probe_led_key_top \
             "$REPO_ROOT/rtl/probe/probe_led_key_top.v"
@@ -219,7 +223,8 @@ case "$CASE_ID" in
         iverilog -g2001 -I "$REPO_ROOT/rtl/core" -s darkriscv_adapter \
             -o "$BUILD_DIR/darkriscv_adapter.syntax.out" \
             "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
-            "$REPO_ROOT/rtl/core/darkriscv.v"
+            "$REPO_ROOT/rtl/core/darkriscv.v" \
+            "$REPO_ROOT/rtl/accel/dot4_int8.v"
         ;;
     tecplus_cpu_wrapper)
         require_files tecplus_cpu_wrapper \
@@ -232,7 +237,8 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/soc/picorv32_adapter.v" \
             "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
             "$REPO_ROOT/rtl/core/picorv32.v" \
-            "$REPO_ROOT/rtl/core/darkriscv.v"
+            "$REPO_ROOT/rtl/core/darkriscv.v" \
+            "$REPO_ROOT/rtl/accel/dot4_int8.v"
         ;;
     tecplus_minisoc_top)
         require_files tecplus_minisoc_top \
@@ -249,6 +255,7 @@ case "$CASE_ID" in
             "$REPO_ROOT/rtl/soc/darkriscv_adapter.v" \
             "$REPO_ROOT/rtl/core/picorv32.v" \
             "$REPO_ROOT/rtl/core/darkriscv.v" \
+            "$REPO_ROOT/rtl/accel/dot4_int8.v" \
             "$REPO_ROOT/rtl/soc/bram_dualport.v" \
             "$REPO_ROOT/rtl/soc/tinybus_decode.v" \
             "$REPO_ROOT/rtl/soc/mmio_test_exit.v" \
