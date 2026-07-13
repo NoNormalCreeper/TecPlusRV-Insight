@@ -1,5 +1,5 @@
 // 四路 signed INT8 点积协处理器。
-// req 首次拉高时锁存结果，下一拍给出单周期 ack；req 撤销前不重复接收。
+// req 有效时锁存结果，下一拍给出单周期 ack；ack 是相邻 transaction 的边界。
 module dot4_int8 (
     input             clk,
     input             reset,
@@ -10,11 +10,10 @@ module dot4_int8 (
     output reg [31:0] result
 );
 
-localparam [1:0] STATE_IDLE = 2'd0;
-localparam [1:0] STATE_RESPOND = 2'd1;
-localparam [1:0] STATE_WAIT_DROP = 2'd2;
+localparam STATE_IDLE = 1'b0;
+localparam STATE_RESPOND = 1'b1;
 
-reg [1:0] state;
+reg state;
 
 wire signed [7:0] a0 = rs1[7:0];
 wire signed [7:0] a1 = rs1[15:8];
@@ -51,11 +50,7 @@ always @(posedge clk) begin
             end
             STATE_RESPOND: begin
                 ack <= 1'b1;
-                state <= STATE_WAIT_DROP;
-            end
-            STATE_WAIT_DROP: begin
-                if (!req)
-                    state <= STATE_IDLE;
+                state <= STATE_IDLE;
             end
             default: begin
                 state <= STATE_IDLE;

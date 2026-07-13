@@ -49,11 +49,46 @@ task run_case;
             $finish;
         end
 
-        // CPU 会在看到 ack 后前进，但 req 可能到下一拍才撤销；不得重复响应。
+        // CPU 在看到 ack 后推进到下一条指令，普通指令会在下一个采样沿前撤销 req。
+        @(negedge clk);
+        req = 1'b0;
         @(posedge clk);
         #1;
         if (ack !== 1'b0) begin
             $display("FAIL: 同一 req 被重复 ack");
+            $finish;
+        end
+    end
+endtask
+
+task run_back_to_back;
+    begin
+        @(negedge clk);
+        rs1 = 32'h0101_0101;
+        rs2 = 32'h0101_0101;
+        req = 1'b1;
+        @(posedge clk);
+        @(posedge clk);
+        #1;
+        if (ack !== 1'b1 || result !== 32'd4) begin
+            $display("FAIL: 背靠背测试的第一条 DOT4 未响应");
+            $finish;
+        end
+
+        // ACK 代表上一 transaction 完成；下一条 DOT4 可以让 req 连续为高。
+        @(negedge clk);
+        rs1 = 32'h0202_0202;
+        rs2 = 32'h0303_0303;
+        @(posedge clk);
+        #1;
+        if (ack !== 1'b0) begin
+            $display("FAIL: 第二条 DOT4 接收当拍错误 ack");
+            $finish;
+        end
+        @(posedge clk);
+        #1;
+        if (ack !== 1'b1 || result !== 32'd24) begin
+            $display("FAIL: 连续为高的 req 未被识别为下一条 DOT4");
             $finish;
         end
 
@@ -78,6 +113,7 @@ initial begin
     run_case(32'h0403_0201, 32'h0807_0605, 32'd70);
     run_case(32'h80ff_017f, 32'h7f02_ff80, -32'sd32515);
     run_case(32'h8080_8080, 32'h8080_8080, 32'd65536);
+    run_back_to_back();
 
     // pending 请求被 reset 时必须取消，不能在 reset 后冒出旧响应。
     @(negedge clk);
