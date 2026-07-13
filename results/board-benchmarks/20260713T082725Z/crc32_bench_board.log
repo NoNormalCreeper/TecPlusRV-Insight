@@ -1,0 +1,16 @@
+[loader] input:   \\wsl.localhost\Ubuntu\home\liophis\projects\TecPlusRV-Insight\build\board-benchmarks\20260713T082725Z\firmware\crc32_bench\firmware.bin
+[loader] magic:   0xbadabb1e (wire: 1e bb da ba)
+[loader] version: 1
+[loader] command: LOAD_AND_RUN (1)
+[loader] payload: 7676 bytes
+[loader] crc32:   0xf4341730
+[loader] packet:  7690 bytes
+[loader] 串口已打开，请按下并松开 TEC-PLUS RESET，等待 bootloader READY...
+[loader] 收到 READY，按 64-byte chunk 发送 7690 bytes...
+7690/7690 Byte, chunk 121/121, 100.0%
+[loader] 收到 ACK，CPU 已释放并开始运行 payload。
+[loader] 传输统计：7690 bytes / 1.630 s = 4716.4 B/s，理论利用率 40.9%，重传 0 次
+[loader] 进入 serial monitor，按 Enter 或 Ctrl+C 退出。
+crc32_bench
+RESULT: benchmark=crc32_bench memory=bram bytes=4096 cycles=655428 instret=253971 mem_wait=16404 crc=0xc0e65e2b
+RESULT: benchmark=crc32_bench memory=sdram bytes=4096 cycles=729638 instret=253971 mem_wait=94710 crc=0xc0e65e2b

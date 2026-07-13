@@ -1,0 +1,17 @@
+BRAM sections: 8015 bytes
+  .text            3883 bytes @ 0
+  .data               4 bytes @ 3884
+  .bss             4124 bytes @ 3888
+  .data_load          4 bytes @ 8012
+  .sdram_data         0 bytes @ 2147483648
+  .sdram_bss       4096 bytes @ 2147483648
+  .heap           65536 bytes @ 2147487744
+firmware 构建完成：
+  entry: /home/liophis/projects/TecPlusRV-Insight/firmware/tests/stride_bench.c
+  runtime: baremetal
+  debug: none
+  output: /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/stride_bench/firmware
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/stride_bench/firmware.elf
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/stride_bench/firmware.bin
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/stride_bench/firmware.mem
+  BRAM image: 8016 bytes

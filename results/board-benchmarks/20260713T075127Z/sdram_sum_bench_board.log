@@ -1,0 +1,15 @@
+[loader] input:   \\wsl.localhost\Ubuntu\home\liophis\projects\TecPlusRV-Insight\build\board-benchmarks\20260713T075127Z\firmware\sdram_sum_bench\firmware.bin
+[loader] magic:   0xbadabb1e (wire: 1e bb da ba)
+[loader] version: 1
+[loader] command: LOAD_AND_RUN (1)
+[loader] payload: 3408 bytes
+[loader] crc32:   0x6f7a79f9
+[loader] packet:  3422 bytes
+[loader] 串口已打开，请按下并松开 TEC-PLUS RESET，等待 bootloader READY...
+[loader] 收到 READY，按 64-byte chunk 发送 3422 bytes...
+3422/3422 Byte, chunk 54/54, 100.0%
+[loader] 收到 ACK，CPU 已释放并开始运行 payload。
+[loader] 传输统计：3422 bytes / 0.780 s = 4384.9 B/s，理论利用率 38.1%，重传 0 次
+[loader] 进入 serial monitor，按 Enter 或 Ctrl+C 退出。
+sdram_sum_bench
+sdram_sum_bench: words=1024 sum=0x0007fe00 cycles=34834 instret=4104

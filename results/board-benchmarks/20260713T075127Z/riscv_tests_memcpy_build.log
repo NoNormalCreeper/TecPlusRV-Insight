@@ -1,0 +1,18 @@
+BRAM sections: 51643 bytes
+  .text            3611 bytes @ 0
+  .data           16004 bytes @ 3612
+  .bss            16024 bytes @ 19616
+  .data_load      16004 bytes @ 35640
+  .sdram_data         0 bytes @ 2147483648
+  .sdram_bss          0 bytes @ 2147483648
+  .heap           65536 bytes @ 2147483648
+WARNING: firmware BRAM section 超过 48 KiB soft budget：51643 bytes
+firmware 构建完成：
+  entry: /home/liophis/projects/TecPlusRV-Insight/firmware/tests/riscv_bench_memcpy.c
+  runtime: baremetal
+  debug: none
+  output: /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/riscv_tests_memcpy/firmware
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/riscv_tests_memcpy/firmware.elf
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/riscv_tests_memcpy/firmware.bin
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/riscv_tests_memcpy/firmware.mem
+  BRAM image: 51644 bytes

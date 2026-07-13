@@ -1,0 +1,24 @@
+[loader] input:   \\wsl.localhost\Ubuntu\home\liophis\projects\TecPlusRV-Insight\build\board-benchmarks\20260713T082725Z\firmware\stride_bench\firmware.bin
+[loader] magic:   0xbadabb1e (wire: 1e bb da ba)
+[loader] version: 1
+[loader] command: LOAD_AND_RUN (1)
+[loader] payload: 8016 bytes
+[loader] crc32:   0x4f45aed5
+[loader] packet:  8030 bytes
+[loader] 串口已打开，请按下并松开 TEC-PLUS RESET，等待 bootloader READY...
+[loader] 收到 READY，按 64-byte chunk 发送 8030 bytes...
+8030/8030 Byte, chunk 126/126, 100.0%
+[loader] 收到 ACK，CPU 已释放并开始运行 payload。
+[loader] 传输统计：8030 bytes / 1.874 s = 4284.0 B/s，理论利用率 37.2%，重传 0 次
+[loader] 进入 serial monitor，按 Enter 或 Ctrl+C 退出。
+stride_bench
+RESULT: benchmark=stride_bench case=stride1 memory=bram words=1024 accesses=2048 cycles=90176 instret=32785 mem_wait=16404 checksum=0xe7e55562
+RESULT: benchmark=stride_bench case=stride1 memory=sdram words=1024 accesses=2048 cycles=155722 instret=32785 mem_wait=86045 checksum=0xe7e55562
+RESULT: benchmark=stride_bench case=stride2 memory=bram words=1024 accesses=2048 cycles=90176 instret=32785 mem_wait=16404 checksum=0x32324e8a
+RESULT: benchmark=stride_bench case=stride2 memory=sdram words=1024 accesses=2048 cycles=155712 instret=32785 mem_wait=86036 checksum=0x32324e8a
+RESULT: benchmark=stride_bench case=stride4 memory=bram words=1024 accesses=2048 cycles=90176 instret=32785 mem_wait=16404 checksum=0x063fbe56
+RESULT: benchmark=stride_bench case=stride4 memory=sdram words=1024 accesses=2048 cycles=155712 instret=32785 mem_wait=86036 checksum=0x063fbe56
+RESULT: benchmark=stride_bench case=stride8 memory=bram words=1024 accesses=2048 cycles=90176 instret=32785 mem_wait=16404 checksum=0x59b7dae7
+RESULT: benchmark=stride_bench case=stride8 memory=sdram words=1024 accesses=2048 cycles=155712 instret=32785 mem_wait=86036 checksum=0x59b7dae7
+RESULT: benchmark=stride_bench case=stride16 memory=bram words=1024 accesses=2048 cycles=90176 instret=32785 mem_wait=16404 checksum=0x47b4d7a8
+RESULT: benchmark=stride_bench case=stride16 memory=sdram words=1024 accesses=2048 cycles=155712 instret=32785 mem_wait=86036 checksum=0x47b4d7a8

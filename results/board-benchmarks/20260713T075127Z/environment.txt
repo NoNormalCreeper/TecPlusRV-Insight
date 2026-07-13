@@ -1,0 +1,9 @@
+run_id=20260713T075127Z
+timestamp_utc=2026-07-13T07:51:27Z
+git_commit=9e800cd97957697f4255b787d1c45bf224d663d4
+git_status=4 modified_paths
+port=COM9
+bootload_baud=115200
+host=Linux 6.6.114.1-microsoft-standard-WSL2 x86_64 GNU/Linux
+riscv_gcc=riscv64-unknown-elf-gcc (13.2.0-11ubuntu1+12) 13.2.0
+counter_scope=firmware perf_begin/perf_end delta; values come from real board UART logs

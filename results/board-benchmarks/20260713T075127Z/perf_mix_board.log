@@ -1,0 +1,17 @@
+[loader] input:   \\wsl.localhost\Ubuntu\home\liophis\projects\TecPlusRV-Insight\build\board-benchmarks\20260713T075127Z\firmware\perf_mix\firmware.bin
+[loader] magic:   0xbadabb1e (wire: 1e bb da ba)
+[loader] version: 1
+[loader] command: LOAD_AND_RUN (1)
+[loader] payload: 4164 bytes
+[loader] crc32:   0xb68f2e5e
+[loader] packet:  4178 bytes
+[loader] 串口已打开，请按下并松开 TEC-PLUS RESET，等待 bootloader READY...
+[loader] 收到 READY，按 64-byte chunk 发送 4178 bytes...
+4178/4178 Byte, chunk 66/66, 100.0%
+[loader] 收到 ACK，CPU 已释放并开始运行 payload。
+[loader] 传输统计：4178 bytes / 0.825 s = 5061.3 B/s，理论利用率 43.9%，重传 0 次
+[loader] 进入 serial monitor，按 Enter 或 Ctrl+C 退出。
+RESULT: benchmark=perf_mix case=alu_dep cycles=65604 instret=24595 mem_wait=20
+RESULT: benchmark=perf_mix case=branch_alternating cycles=86086 instret=26644 mem_wait=20
+RESULT: benchmark=perf_mix case=bram_load_store cycles=32832 instret=10257 mem_wait=8212
+RESULT: benchmark=perf_mix case=mixed cycles=100748 instret=35959 mem_wait=16404

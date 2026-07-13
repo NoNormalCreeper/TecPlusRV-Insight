@@ -1,0 +1,17 @@
+BRAM sections: 7675 bytes
+  .text            3543 bytes @ 0
+  .data               4 bytes @ 3544
+  .bss             4124 bytes @ 3548
+  .data_load          4 bytes @ 7672
+  .sdram_data         0 bytes @ 2147483648
+  .sdram_bss       4096 bytes @ 2147483648
+  .heap           65536 bytes @ 2147487744
+firmware 构建完成：
+  entry: /home/liophis/projects/TecPlusRV-Insight/firmware/tests/crc32_bench.c
+  runtime: baremetal
+  debug: none
+  output: /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/crc32_bench/firmware
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/crc32_bench/firmware.elf
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/crc32_bench/firmware.bin
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/crc32_bench/firmware.mem
+  BRAM image: 7676 bytes
