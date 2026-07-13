@@ -56,7 +56,7 @@
 **Files:**
 - Create: `firmware/accel/dot4.h`
 - Create: `firmware/accel/dot4.S`
-- Create: `firmware/tests/dot4_bench.c`
+- Create: `firmware/apps/baremetal/benchmarks/dot4_bench.c`
 - Create: `scripts/test_dot4_benchmark.sh`
 - Modify: `scripts/build_firmware.sh`
 - Modify: `Makefile`
@@ -80,6 +80,6 @@
 
 - [x] 增加 `dot4` suite 和 `make dot4-bench`。
 - [x] 增加 `minisoc_dot4_dark` ISE 导出目标。
-- [x] 从共同基线 `3f41961` 生成无 DOT4 的 `minisoc_dark` PPA 对照包，并验证两份导出包可脱离源码树独立 elaboration。
+- [x] 从共同基线 `35968e6` 生成无 DOT4 的 `minisoc_dark` PPA 对照包，并验证两份导出包可脱离源码树独立 elaboration。
 - [x] fresh 运行 `dot4`、smoke、RV32I、RV32MI completion gate。
 - [ ] 用户执行 ISE Map/PAR/Timing 与真实上板验证。

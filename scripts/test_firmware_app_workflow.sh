@@ -98,6 +98,7 @@ for app in \
     baremetal/benchmarks/memset_bench.c \
     baremetal/benchmarks/stride_bench.c \
     baremetal/benchmarks/crc32_bench.c \
+    baremetal/benchmarks/dot4_bench.c \
     baremetal/benchmarks/system_bench.c \
     irq/timer_irq_smoke.c \
     freertos/bad_apple_full.c; do
@@ -107,7 +108,7 @@ for app in \
     fi
 done
 
-legacy_board_sources='firmware/tests/(board_demo|boot_payload|boot_image_verify|buzzer_tone|gdb_stub_smoke|sdram_memtest|traffic_light_mmio|vga_bitmap_smoke|vga_bitmap_animation|timer_irq_smoke|freertos_smoke|freertos_acceptance|bad_apple_minimal|bad_apple_full|perf_mix|system_bench|sdram_sum_bench|riscv_bench_median|riscv_bench_memcpy|memset_bench|stride_bench|crc32_bench)\.c'
+legacy_board_sources='firmware/tests/(board_demo|boot_payload|boot_image_verify|buzzer_tone|gdb_stub_smoke|sdram_memtest|traffic_light_mmio|vga_bitmap_smoke|vga_bitmap_animation|timer_irq_smoke|freertos_smoke|freertos_acceptance|bad_apple_minimal|bad_apple_full|perf_mix|system_bench|sdram_sum_bench|riscv_bench_median|riscv_bench_memcpy|memset_bench|stride_bench|crc32_bench|dot4_bench)\.c'
 if grep -E "$legacy_board_sources" \
     "$repo_root/Makefile" \
     "$repo_root/scripts/export_ise_project.sh" \

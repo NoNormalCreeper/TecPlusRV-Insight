@@ -62,12 +62,12 @@ make ise-export ISE_TARGET=minisoc_dot4_dark
 make dot4-load PORT=COM8
 ```
 
-本分支的面积基线是共同祖先 `3f41961` 上的 `minisoc_dark`，不是当前分支的
+本分支的面积基线是共同祖先 `35968e6` 上的 `minisoc_dark`，不是当前分支的
 `minisoc_dark`：当前分支已经全局接入 DOT4，拿它作对照会把加速器也综合进去。本地已
 准备两份脱离源码树仍可独立 elaboration 的导出包：
 
 ```text
-build/ise-export/minisoc_dark_baseline-3f41961
+build/ise-export/minisoc_dark_baseline-35968e6
 build/ise-export/minisoc_dot4_dark-final
 ```
 
@@ -76,8 +76,8 @@ build/ise-export/minisoc_dot4_dark-final
 
 | 配置 | Slice | LUT | FF | RAMB16 | DSP48A1 | 50 MHz slack |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| DarkRISCV baseline (`3f41961`) | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 |
-| DarkRISCV + DOT4 (`563d75c`) | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 |
+| DarkRISCV baseline (`35968e6`) | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 |
+| DarkRISCV + DOT4（报告中记录实际 feature HEAD） | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 |
 | 增量 | 待计算 | 待计算 | 待计算 | 待计算 | 待计算 | — |
 
 DSP48A1 数量用于解释实现方式，不作为功能正确性的硬性条件：XST 可能把四个 signed

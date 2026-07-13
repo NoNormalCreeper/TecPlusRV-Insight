@@ -377,7 +377,7 @@ case "$ISE_TARGET" in
         package_minisoc "$REPO_ROOT/firmware/apps/irq/timer_irq_smoke.c" "这是 DarkRISCV machine timer IRQ 验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包同时包含 firmware/build/firmware.bin，可通过共用 bootloader 装载；仓库中也可运行 make timer-irq-load PORT=COM8。UART 输出 timer irq pass: ticks=<次数> loops=<前台循环次数> 表示 firmware 验收通过。2026-07-11 当前 revision 已完成 Map/PAR 与真实上板：50 MHz post-route timing slack 为 0.462 ns，上板输出 ticks=3 loops=46；后续 RTL 或约束变化必须重新验收。" "dark_irq"
         ;;
     minisoc_dot4_dark|dot4_dark)
-        package_minisoc "$REPO_ROOT/firmware/tests/dot4_bench.c" "这是 DarkRISCV custom-0 DOT4 验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。必须重新检查 Map/PAR：无 OVERMAPPED、记录 DSP48A1/LUT/FF 增量、50 MHz post-route slack 为正。上板后运行 make dot4-load PORT=COM8；UART 中 scalar/custom checksum 应一致，且 custom cycles/instret 应更低。当前只有 Icarus 功能和性能对照证据，ISE 与真实上板仍是人工 Gate。" "baremetal" "dot4"
+        package_minisoc "$REPO_ROOT/firmware/apps/baremetal/benchmarks/dot4_bench.c" "这是 DarkRISCV custom-0 DOT4 验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。必须重新检查 Map/PAR：无 OVERMAPPED、记录 DSP48A1/LUT/FF 增量、50 MHz post-route slack 为正。上板后运行 make dot4-load PORT=COM8；UART 中 scalar/custom checksum 应一致，且 custom cycles/instret 应更低。当前只有 Icarus 功能和性能对照证据，ISE 与真实上板仍是人工 Gate。" "baremetal" "dot4"
         ;;
     minisoc_freertos_dark|freertos_dark)
         FREERTOS_CPU_CLOCK_HZ=50000000 \
