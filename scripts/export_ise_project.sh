@@ -269,14 +269,17 @@ package_minisoc() {
     local firmware_main="${1:-}"
     local target_note="${2:-}"
     local firmware_profile="${3:-baremetal}"
+    local firmware_accel="${4:-none}"
     local cpu_note="如果当前工程支持双核 wrapper，可在 ISE 的 Generics, Parameters 中覆写 CPU_IMPL：0 表示 PicoRV32，1 表示 DarkRISCV。"
 
     if [ -n "$firmware_main" ]; then
         FIRMWARE_PROFILE="$firmware_profile" \
+        FIRMWARE_ACCEL="$firmware_accel" \
         FIRMWARE_MAIN="$firmware_main" FIRMWARE_OUT="$ISE_FIRMWARE_OUT" \
             "$BUILD_FIRMWARE_SCRIPT"
     else
         FIRMWARE_PROFILE="$firmware_profile" \
+        FIRMWARE_ACCEL="$firmware_accel" \
         FIRMWARE_OUT="$ISE_FIRMWARE_OUT" "$BUILD_FIRMWARE_SCRIPT"
     fi
 
@@ -373,6 +376,9 @@ case "$ISE_TARGET" in
     minisoc_dark)
         package_minisoc "$REPO_ROOT/firmware/apps/irq/timer_irq_smoke.c" "这是 DarkRISCV machine timer IRQ 验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包同时包含 firmware/build/firmware.bin，可通过共用 bootloader 装载；仓库中也可运行 make timer-irq-load PORT=COM8。UART 输出 timer irq pass: ticks=<次数> loops=<前台循环次数> 表示 firmware 验收通过。2026-07-11 当前 revision 已完成 Map/PAR 与真实上板：50 MHz post-route timing slack 为 0.462 ns，上板输出 ticks=3 loops=46；后续 RTL 或约束变化必须重新验收。" "dark_irq"
         ;;
+    minisoc_dot4_dark|dot4_dark)
+        package_minisoc "$REPO_ROOT/firmware/tests/dot4_bench.c" "这是 DarkRISCV custom-0 DOT4 验收目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。必须重新检查 Map/PAR：无 OVERMAPPED、记录 DSP48A1/LUT/FF 增量、50 MHz post-route slack 为正。上板后运行 make dot4-load PORT=COM8；UART 中 scalar/custom checksum 应一致，且 custom cycles/instret 应更低。当前只有 Icarus 功能和性能对照证据，ISE 与真实上板仍是人工 Gate。" "baremetal" "dot4"
+        ;;
     minisoc_freertos_dark|freertos_dark)
         FREERTOS_CPU_CLOCK_HZ=50000000 \
             package_minisoc "$REPO_ROOT/firmware/apps/freertos/freertos_smoke.c" "这是 DarkRISCV FreeRTOS timer/preemption/delay/critical smoke 上板目标。请在 ISE 的 Generics, Parameters 中设置 CPU_IMPL=1、BOOTLOADER_ENABLE=1、VGA_TEXT_ENABLE=0。导出包的 firmware/build/firmware.bin 可通过共用 bootloader 装载；仓库中也可运行 make freertos-load PORT=COM8。LED=5 且 test_exit=1 表示 smoke 完成。导出包内的 third_party/ 与 firmware/freertos/ 是 payload 可复现源码，不要作为 RTL source 加入 ISE。真实 Map/PAR/timing 与上板 UART 仍属于人工 Gate。" "freertos"
@@ -402,7 +408,7 @@ case "$ISE_TARGET" in
         ;;
     *)
         echo "未知 ISE 导出目标：$ISE_TARGET" >&2
-        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_minisoc_sdram, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark, minisoc_freertos_dark, minisoc_freertos_acceptance_dark, minisoc_vga_bitmap_dark, bad_apple_minimal, bad_apple_full_dark" >&2
+        echo "支持：probe_led_key, probe_uart, probe_sdram_smoke, probe_minisoc_sdram, probe_bigboard_tl, probe_buzzer_uart, probe_vga, probe_vga_text, minisoc, minisoc_pico, minisoc_dark, minisoc_dot4_dark, minisoc_freertos_dark, minisoc_freertos_acceptance_dark, minisoc_vga_bitmap_dark, bad_apple_minimal, bad_apple_full_dark" >&2
         exit 1
         ;;
 esac

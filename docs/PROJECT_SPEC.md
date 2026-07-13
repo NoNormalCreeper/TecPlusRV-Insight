@@ -26,7 +26,7 @@ TecPlusRV 对应北京邮电大学《项目式课程阶段 2》题目 B：基于
 
 ## 拓展目标
 
-- 增加轻量级加速器，例如 popcount、Hamming distance、DOT4 INT8
+- 已实现 DarkRISCV custom-0 `DOT4 INT8` 指令；后续可增加 MMIO frontend，比较接口开销
 - 增加更丰富的调试/可观测机制
 - 尝试 Flash / EEPROM 相关启动或配置功能
 - 如果时间允许，再增加显示类可观测外设
