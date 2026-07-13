@@ -1,0 +1,16 @@
+[loader] input:   \\wsl.localhost\Ubuntu\home\liophis\projects\TecPlusRV-Insight\build\board-benchmarks\20260713T075127Z\firmware\riscv_tests_median\firmware.bin
+[loader] magic:   0xbadabb1e (wire: 1e bb da ba)
+[loader] version: 1
+[loader] command: LOAD_AND_RUN (1)
+[loader] payload: 13300 bytes
+[loader] crc32:   0xb400682f
+[loader] packet:  13314 bytes
+[loader] 串口已打开，请按下并松开 TEC-PLUS RESET，等待 bootloader READY...
+[loader] 收到 READY，按 64-byte chunk 发送 13314 bytes...
+13314/13314 Byte, chunk 209/209, 100.0%
+[loader] 收到 ACK，CPU 已释放并开始运行 payload。
+[loader] 传输统计：13314 bytes / 2.673 s = 4980.4 B/s，理论利用率 43.2%，重传 0 次
+[loader] 进入 serial monitor，按 Enter 或 Ctrl+C 退出。
+riscv_tests_median
+RESULT: benchmark=riscv_tests_median memory=bram elements=400 cycles=23350 instret=5610 mem_wait=6396
+RESULT: benchmark=riscv_tests_median memory=sdram elements=400 cycles=51312 instret=5609 mem_wait=35881

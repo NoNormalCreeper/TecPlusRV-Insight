@@ -6,7 +6,7 @@
 
 结果符合 issue #19 的核心判断：当 workload 偏向连续写入或读改写访存时，SDRAM 等待会成为主要开销；当 workload 计算占比更高时，同样从 SDRAM 读取数据，整体 CPI 增幅会明显收敛。
 
-原始板级日志位于 `build/board-benchmarks/20260713T082725Z/`；该目录是本地构建产物，不替代本报告中的关键数据摘录。
+原始板级日志已归档到 [`results/board-benchmarks/20260713T082725Z/`](../results/board-benchmarks/20260713T082725Z/)；本报告只摘录关键数据与结论。
 
 ## 与 issue #19 的关系
 

@@ -1,0 +1,17 @@
+BRAM sections: 7703 bytes
+  .text            3571 bytes @ 0
+  .data               4 bytes @ 3572
+  .bss             4124 bytes @ 3576
+  .data_load          4 bytes @ 7700
+  .sdram_data         0 bytes @ 2147483648
+  .sdram_bss       4096 bytes @ 2147483648
+  .heap           65536 bytes @ 2147487744
+firmware 构建完成：
+  entry: /home/liophis/projects/TecPlusRV-Insight/firmware/tests/memset_bench.c
+  runtime: baremetal
+  debug: none
+  output: /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/memset_bench/firmware
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/memset_bench/firmware.elf
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/memset_bench/firmware.bin
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T082725Z/firmware/memset_bench/firmware.mem
+  BRAM image: 7704 bytes

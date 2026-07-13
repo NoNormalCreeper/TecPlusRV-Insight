@@ -1,0 +1,17 @@
+BRAM sections: 3407 bytes
+  .text            3363 bytes @ 0
+  .data               4 bytes @ 3364
+  .bss               36 bytes @ 3368
+  .data_load          4 bytes @ 3404
+  .sdram_data         0 bytes @ 2147483648
+  .sdram_bss          0 bytes @ 2147483648
+  .heap           65536 bytes @ 2147483648
+firmware 构建完成：
+  entry: /home/liophis/projects/TecPlusRV-Insight/firmware/tests/sdram_sum_bench.c
+  runtime: baremetal
+  debug: none
+  output: /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/sdram_sum_bench/firmware
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/sdram_sum_bench/firmware.elf
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/sdram_sum_bench/firmware.bin
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/sdram_sum_bench/firmware.mem
+  BRAM image: 3408 bytes

@@ -1,0 +1,17 @@
+BRAM sections: 13299 bytes
+  .text            3667 bytes @ 0
+  .data            3204 bytes @ 3668
+  .bss             3224 bytes @ 6872
+  .data_load       3204 bytes @ 10096
+  .sdram_data         0 bytes @ 2147483648
+  .sdram_bss          0 bytes @ 2147483648
+  .heap           65536 bytes @ 2147483648
+firmware 构建完成：
+  entry: /home/liophis/projects/TecPlusRV-Insight/firmware/tests/riscv_bench_median.c
+  runtime: baremetal
+  debug: none
+  output: /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/riscv_tests_median/firmware
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/riscv_tests_median/firmware.elf
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/riscv_tests_median/firmware.bin
+  /home/liophis/projects/TecPlusRV-Insight/build/board-benchmarks/20260713T075127Z/firmware/riscv_tests_median/firmware.mem
+  BRAM image: 13300 bytes
