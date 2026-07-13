@@ -62,6 +62,28 @@ make ise-export ISE_TARGET=minisoc_dot4_dark
 make dot4-load PORT=COM8
 ```
 
+本分支的面积基线是共同祖先 `3f41961` 上的 `minisoc_dark`，不是当前分支的
+`minisoc_dark`：当前分支已经全局接入 DOT4，拿它作对照会把加速器也综合进去。本地已
+准备两份脱离源码树仍可独立 elaboration 的导出包：
+
+```text
+build/ise-export/minisoc_dark_baseline-3f41961
+build/ise-export/minisoc_dot4_dark-final
+```
+
+两份工程都设置相同的 `CPU_IMPL=1`、`BOOTLOADER_ENABLE=1`、
+`VGA_TEXT_ENABLE=0`，使用同一器件、ISE 设置和 50 MHz 约束。报告至少并排记录：
+
+| 配置 | Slice | LUT | FF | RAMB16 | DSP48A1 | 50 MHz slack |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| DarkRISCV baseline (`3f41961`) | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 |
+| DarkRISCV + DOT4 (`563d75c`) | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 | 待填写 |
+| 增量 | 待计算 | 待计算 | 待计算 | 待计算 | 待计算 | — |
+
+DSP48A1 数量用于解释实现方式，不作为功能正确性的硬性条件：XST 可能把四个 signed
+8x8 乘法映射到 DSP，也可能使用 LUT。无论采用哪种映射，都必须确认 `u_dot4` 未被
+trim、Map 未 overmap 且 post-route slack 为正。
+
 ISE 中设置 `CPU_IMPL=1`、`BOOTLOADER_ENABLE=1`、`VGA_TEXT_ENABLE=0`，并保存：
 
 1. XST/Map 报告：无 `OVERMAPPED`，记录 Slice/LUT/FF 与 DSP48A1 数量；
