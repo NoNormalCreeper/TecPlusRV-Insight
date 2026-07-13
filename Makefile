@@ -92,7 +92,7 @@ SELECTED_FIRMWARE_PROFILE := $(if $(strip $(APP)),,$(FIRMWARE_PROFILE))
 SELECTED_FIRMWARE_RUNTIME := $(if $(strip $(APP)),$(APP_RUNTIME),$(FIRMWARE_RUNTIME))
 SELECTED_FIRMWARE_MAIN := $(if $(strip $(APP)),$(APP_SOURCE),$(FIRMWARE_MAIN))
 
-.PHONY: help check-env firmware firmware-load firmware-debug timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload gdb-stub-load gdb-stub-debug boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load bad-apple-window-build bad-apple-window-preview bad-apple-window-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci ci-full perf benchmark board-benchmark ise-export
+.PHONY: help check-env firmware firmware-load firmware-debug timer-irq-smoke timer-irq-load freertos-smoke freertos-queue freertos-acceptance freertos-load freertos-acceptance-load bootload gdb-stub-load gdb-stub-debug boot-image-test-build boot-image-test-load bad-apple-build bad-apple-load bad-apple-full-build bad-apple-full-preview bad-apple-source-audio-preview bad-apple-compact-midi-preview bad-apple-full-load bad-apple-window-build bad-apple-window-preview bad-apple-window-load rtl-syntax sim test-probe test-platform test-soc test-smoke test-freertos test-dual-core test-all ci ci-full perf benchmark board-benchmark board-benchmark-new ise-export
 
 help:
 	@echo "常用目标："
@@ -136,6 +136,7 @@ help:
 	@echo "  python3 scripts/test_runner.py list   列出 catalog 里的 suite / case"
 	@echo "  make perf / make benchmark     跑完整双核 benchmark，并生成日志、表格和环境快照"
 	@echo "  make board-benchmark PORT=COM9 BOOTLOAD_BAUD=115200  上板运行性能测试"
+	@echo "  make board-benchmark-new PORT=COM9 BOOTLOAD_BAUD=115200  只上板运行新增性能测试"
 	@echo "  make ise-export ISE_TARGET=minisoc   导出 ISE 工程所需文件到新目录"
 
 check-env:
@@ -380,6 +381,10 @@ benchmark: rtl-syntax
 
 board-benchmark:
 	"$(REPO_ROOT)/scripts/run_board_benchmarks.sh"
+
+board-benchmark-new:
+	BOARD_BENCHMARK_CASES="memset_bench stride_bench crc32_bench" \
+		"$(REPO_ROOT)/scripts/run_board_benchmarks.sh"
 
 ISE_TARGET ?= minisoc
 ISE_EXPORT_DIR ?= $(REPO_ROOT)/build/ise-export/$(ISE_TARGET)

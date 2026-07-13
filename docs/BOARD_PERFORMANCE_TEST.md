@@ -20,6 +20,19 @@ FPGA 中需要先下载 MiniSoC bootloader bitstream，并确认：
 make board-benchmark PORT=COM9 BOOTLOAD_BAUD=115200
 ```
 
+只跑新增的 `memset_bench`、`stride_bench` 和 `crc32_bench` 时执行：
+
+```bash
+make board-benchmark-new PORT=COM9 BOOTLOAD_BAUD=115200
+```
+
+也可以手动选择 case：
+
+```bash
+BOARD_BENCHMARK_CASES="memset_bench crc32_bench" \
+  make board-benchmark PORT=COM9 BOOTLOAD_BAUD=115200
+```
+
 每个 case 会依次：
 
 1. 构建对应 firmware；
@@ -51,6 +64,9 @@ build/board-benchmarks/<UTC 时间戳>/
 | `system_bench` | 三点滑动窗口滤波 | 同一算法比较 BRAM 与 SDRAM |
 | `riscv_tests_median` | upstream median kernel | 比较 BRAM 与 SDRAM 数据区 |
 | `riscv_tests_memcpy` | upstream memcpy dataset | 比较 BRAM->BRAM 与 SDRAM->SDRAM |
+| `memset_bench` | 连续写入 | 比较清 buffer / 清屏一类写密集场景 |
+| `stride_bench` | 不同步长访问 | 比较访问局部性对 BRAM / SDRAM 的影响 |
+| `crc32_bench` | CRC32 校验 | 比较读取 + 位运算混合负载 |
 | `sdram_sum_bench` | SDRAM 顺序读求和 | 简单、直观的外部存储基线 |
 
 ## 记录口径
@@ -67,10 +83,7 @@ build/board-benchmarks/<UTC 时间戳>/
 
 可以继续加入以下 workload：
 
-- `crc32_bench`：模拟协议包、图像块或存储校验；
-- `memset_bench`：覆盖 framebuffer / buffer 清零；
-- `pointer_chase_bench`：测试非连续访问和 SDRAM 延迟敏感场景；
-- `stride_bench`：比较 stride=1、2、4、16 的访存模式；
+- `pointer_chase_bench`：测试前后依赖的非连续访问和 SDRAM 延迟敏感场景；
 - `uart_print_bench`：单独测 UART 输出对 firmware 的阻塞影响；
 - `freertos_context_switch_bench`：测 FreeRTOS task 切换和 tick 成本。
 

@@ -11,6 +11,7 @@ UART_LOADER="$REPO_ROOT/scripts/uart_loader.py"
 WINDOWS_PYTHON=${WINDOWS_PYTHON:-py.exe}
 PORT=${PORT:-}
 BOOTLOAD_BAUD=${BOOTLOAD_BAUD:-115200}
+BOARD_BENCHMARK_CASES=${BOARD_BENCHMARK_CASES:-}
 RUN_ID=${BOARD_BENCHMARK_RUN_ID:-$(date -u +%Y%m%dT%H%M%SZ)}
 RESULT_DIR=${BOARD_BENCHMARK_RESULT_DIR:-"$REPO_ROOT/build/board-benchmarks/$RUN_ID"}
 FIRMWARE_DIR="$RESULT_DIR/firmware"
@@ -107,11 +108,41 @@ run_case() {
     extract_results "$board_log"
 }
 
-run_case "perf_mix" "firmware/tests/perf_mix.c"
-run_case "system_bench" "firmware/tests/system_bench.c"
-run_case "riscv_tests_median" "firmware/tests/riscv_bench_median.c"
-run_case "riscv_tests_memcpy" "firmware/tests/riscv_bench_memcpy.c"
-run_case "sdram_sum_bench" "firmware/tests/sdram_sum_bench.c"
+case_selected() {
+    local name="$1"
+    local selected
+
+    if [ -z "$BOARD_BENCHMARK_CASES" ]; then
+        return 0
+    fi
+
+    for selected in $BOARD_BENCHMARK_CASES; do
+        if [ "$selected" = "$name" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+run_selected_case() {
+    local name="$1"
+    local main_file="$2"
+
+    if case_selected "$name"; then
+        run_case "$name" "$main_file"
+    else
+        echo "=== 跳过 $name：BOARD_BENCHMARK_CASES 未选择 ==="
+    fi
+}
+
+run_selected_case "perf_mix" "firmware/tests/perf_mix.c"
+run_selected_case "system_bench" "firmware/tests/system_bench.c"
+run_selected_case "riscv_tests_median" "firmware/tests/riscv_bench_median.c"
+run_selected_case "riscv_tests_memcpy" "firmware/tests/riscv_bench_memcpy.c"
+run_selected_case "memset_bench" "firmware/tests/memset_bench.c"
+run_selected_case "stride_bench" "firmware/tests/stride_bench.c"
+run_selected_case "crc32_bench" "firmware/tests/crc32_bench.c"
+run_selected_case "sdram_sum_bench" "firmware/tests/sdram_sum_bench.c"
 
 {
     echo "# 板级性能实验汇总"
