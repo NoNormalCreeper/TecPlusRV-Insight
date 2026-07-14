@@ -51,5 +51,6 @@ int main(void)
     gpio_write_led(gdb_demo_state.output & 0x0fu);
     mmio_write(TINYBUS_TEST_EXIT, 1u);
     for (;;) {
+        DEBUG_BREAK();  // endless loop
     }
 }
