@@ -1,8 +1,8 @@
-# TecPlusRV
+# TecPlusRV Insight
 
-TecPlusRV 是我们在 TEC-PLUS 开发板上完成的《项目式课程阶段2——从部件到整机：计算机系统控制器与处理器设计实践》RISC-V SoC 课程设计。系统运行于 Xilinx Spartan-6 XC6SLX9，使用统一的 MiniSoC 外壳接入 PicoRV32 和 DarkRISCV，并提供 BRAM、SDRAM、UART、VGA、蜂鸣器、交通灯和按键等存储与外设路径。
+TecPlusRV Insight 是我们在 TEC-PLUS 开发板上完成的《项目式课程阶段2——从部件到整机：计算机系统控制器与处理器设计实践》RISC-V SoC 课程设计，主题为*面向 TEC-PLUS 资源约束平台的可验证、可拓展 RISC-V SoC 设计与实现：系统软件运行、交互调试与指令扩展*，这也是项目名称 *Insight* 的名称来历。系统运行于 Xilinx Spartan-6 XC6SLX9，使用统一的 MiniSoC 外壳接入 PicoRV32 和 DarkRISCV，并提供 BRAM、SDRAM、UART、VGA、蜂鸣器、交通灯和按键等存储与外设路径。
 
-项目从 Probe 逐级上板开始，随后加入 UART Bootloader、最小 C runtime、machine trap、FreeRTOS port、cooperative GDB stub 和 `dot4.s8` 自定义指令。Bad Apple、GDB 调试和 DOT4 benchmark 是三组系统级 demo，分别检查多任务与多外设运行（以 Bad Apple!! 为例）、处理器状态观测（以 gdb 为例）和指令扩展性能（以 DOT4 benchmark 为例）。课程设计已经完成验收，仓库保留了本地回归、板级测试和性能数据。
+项目从 Probe 逐级上板开始，随后加入 UART Bootloader、最小 C runtime、machine trap、FreeRTOS port、cooperative GDB stub 和 `dot4.s8` 自定义指令。*Bad Apple!!*、GDB 调试和 DOT4 benchmark 是三组系统级 demo，分别检查多任务与多外设运行、处理器状态观测和指令扩展性能。课程设计已经完成验收，仓库保留了本地回归、板级测试和性能数据。
 
 ## 主要实现
 
