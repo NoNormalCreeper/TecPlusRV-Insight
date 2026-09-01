@@ -141,3 +141,11 @@ Probe 0 至 Probe 5 及其依赖模块已经完成上板测试，适合用于确
 - GDB stub 使用预埋 `ebreak` 的 cooperative breakpoint，不支持动态断点、single-step 和运行中异步暂停。
 - `dot4.s8` 是一条 custom-0 packed INT8 点积指令，不代表完整 SIMD 或 RISC-V Vector 扩展。
 - ISE 资源与时序结论以对应导出目标和板级记录为准，修改 RTL 或顶层配置后需要重新验证。
+
+## 许可证
+
+除另有声明的第三方组件和外部材料外，本项目自研部分采用 [Apache License 2.0](LICENSE) 发布。
+
+PicoRV32、DarkRISCV、FreeRTOS Kernel 和 riscv-tests 等第三方组件继续适用其各自的原始许可证。
+
+Copyright 2026 TecPlusRV contributors
