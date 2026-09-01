@@ -16,6 +16,13 @@ TecPlusRV Insight 是我们在 TEC-PLUS 开发板上完成的《项目式课程�
 - DarkRISCV custom-0 `dot4.s8` 指令，以及 scalar/custom 正确性和性能对照。
 - Probe、官方 `riscv-tests`、自动化 test catalog、CI、性能计数器和板级验证流程。
 
+## ~~宣传图~~
+
+最终成功播放 _Bad Apple!!_ 的时候我非常激动，因此做了张明信片分发给所有在这个项目中帮助过我的人们作为纪念。其实没什么实际的宣传作用，只是炫耀一下我做得（自认为）很好看。正面预览如下：
+
+<img width="400" alt="明信片 正面_v1 5" src="https://github.com/user-attachments/assets/37f363e8-c1f1-4bf5-9ba3-fe31e5202978" />
+
+
 ## 快速开始
 
 本地开发需要 Python 3、GNU Make、Icarus Verilog、RISC-V GCC 和 Binutils。Ubuntu 或 WSL2 的安装与环境说明见 [开发与验证流程](docs/DEV_FLOW.md)。
